@@ -1,6 +1,6 @@
 # HOMEY Startup Yol Haritası (Roadmap) ve Teknik Mimari Kılavuzu
 
-Bu belge, **HOMEY** emlak SaaS platformunun hayata geçirilmesi sürecinde size rehberlik etmek amacıyla hazırlanmış detaylı bir teknik yol haritası ve mimari kılavuzdur. Projede kullanılacak veritabanı şemaları, abonelik kontrolleri, komisyon hesaplama mantığı, randevu iş akışları ve adım adım geliştirme aşamaları aşağıda detaylandırılmıştır.
+Bu belge, **HOMEY** emlak SaaS platformunun hayata geçirilmesi sürecinde size rehberlik etmek amacıyla hazırlanmış detaylı teknik yol haritası ve mimari kılavuzdur. Projede kullanılacak veritabanı şemaları, abonelik kontrolleri, komisyon hesaplama mantığı, randevu iş akışları ve adım adım geliştirme aşamaları aşağıda detaylandırılmıştır.
 
 ---
 
