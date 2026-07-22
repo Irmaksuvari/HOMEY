@@ -400,7 +400,7 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder="Portföy ara..." 
-                className="bg-white border-2 border-charcoal rounded-full px-5 py-2 pl-11 text-sm shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] focus:outline-none focus:translate-x-[1px] focus:translate-y-[1px] focus:shadow-none transition-all w-64"
+                className="bg-white border-2 border-charcoal rounded-full px-5 py-2 pl-11 text-sm focus:outline-none transition-all w-64"
               />
               <Search size={16} className="absolute left-4 top-3 text-zinc-500" />
             </div>
@@ -412,9 +412,9 @@ export default function App() {
               <button 
                 key={tag}
                 onClick={() => { setFilterTag(tag); setActiveTab('portfolios'); }}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] transition-all ${
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${
                   filterTag === tag 
-                    ? 'bg-charcoal text-white translate-x-[1px] translate-y-[1px] shadow-none' 
+                    ? 'bg-charcoal text-white shadow-none' 
                     : 'bg-white text-charcoal hover:bg-zinc-50'
                 }`}
               >
@@ -434,7 +434,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Card 1: Active Listings (Pastel Yellow) */}
-              <div className="bento-card bg-pastelYellow">
+              <div className="bento-card bg-[#FEF08A]">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-charcoal/60">Aktif Portföyler</span>
                   <Building size={20} className="text-charcoal" />
@@ -454,7 +454,7 @@ export default function App() {
               </div>
 
               {/* Card 2: Sales & Revenue summary (Pastel Pink) */}
-              <div className="bento-card bg-pastelPink">
+              <div className="bento-card bg-[#FBCFE8]">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-charcoal/60">Aylık Toplam Ciro</span>
                   <DollarSign size={20} className="text-charcoal" />
@@ -470,8 +470,8 @@ export default function App() {
                 </svg>
               </div>
 
-              {/* Card 3: Upcoming Showings (Pastel Blue) */}
-              <div className="bento-card bg-pastelBlue">
+              {/* Card 3: Upcoming Showings (Pastel Purple) */}
+              <div className="bento-card bg-[#E9D5FF]">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-charcoal/60">Bugünkü Randevular</span>
                   <Calendar size={20} className="text-charcoal" />
@@ -505,7 +505,7 @@ export default function App() {
                 {employees.map(emp => (
                   <div 
                     key={emp.id}
-                    className="border-2 border-charcoal rounded-2xl p-4 bg-cream flex flex-col justify-between shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]"
+                    className="rounded-2xl p-4 bg-cream flex flex-col justify-between shadow-none border-none"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex gap-2.5 items-center">
@@ -604,10 +604,10 @@ export default function App() {
                   <div 
                     key={p.id}
                     onClick={() => setSelectedPortfolio(p)}
-                    className={`p-4 border-2 border-charcoal rounded-2xl cursor-pointer transition-all flex justify-between items-center ${
+                    className={`p-4 rounded-2xl cursor-pointer transition-all flex justify-between items-center border-none ${
                       selectedPortfolio?.id === p.id 
-                        ? 'bg-pastelYellow shadow-none translate-x-[1px] translate-y-[1px]' 
-                        : 'bg-cream hover:bg-white shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]'
+                        ? 'bg-[#FEF08A]' 
+                        : 'bg-cream hover:bg-white shadow-none'
                     }`}
                   >
                     <div>
@@ -635,7 +635,7 @@ export default function App() {
             {/* Portfolio Details Card */}
             <div>
               {selectedPortfolio ? (
-                <div className="bento-card bg-white border-charcoal">
+                <div className="bento-card bg-white">
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Seçili Portföy Detayı</span>
@@ -665,7 +665,7 @@ export default function App() {
                     </div>
                     
                     {/* Landlord details privacy checks */}
-                    <div className="mt-4 p-4 border-2 border-charcoal rounded-2xl bg-cream">
+                    <div className="mt-4 p-4 rounded-2xl bg-cream border-none">
                       <span className="text-xs text-zinc-500 font-bold block mb-2">Ev Sahibi (Landlord) İletişim Bilgileri:</span>
                       {currentRole === 'YETKILI' || selectedPortfolio.gorevliUzmanId === currentUser.id ? (
                         <div className="flex flex-col gap-1">
@@ -683,7 +683,7 @@ export default function App() {
 
                   {/* Appointment Form (only for specialists on colleague's portfolio) */}
                   {currentRole === 'UZMAN' && selectedPortfolio.gorevliUzmanId !== currentUser.id && (
-                    <div className="p-4 border-2 border-charcoal rounded-2xl bg-pastelPurple/20">
+                    <div className="p-4 rounded-2xl bg-pastelPurple/20 border-none">
                       <h4 className="font-extrabold text-sm mb-3 flex items-center gap-2">
                         <Calendar size={16} /> Randevu Teklifi Gönder
                       </h4>
@@ -796,12 +796,12 @@ export default function App() {
               <h2 className="text-2xl font-extrabold mb-4">Müşterilerim (Alıcı Adayları)</h2>
               <div className="flex flex-col gap-3">
                 {clients.map(c => (
-                  <div key={c.id} className="p-4 border-2 border-charcoal rounded-2xl bg-cream flex justify-between items-center shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]">
+                  <div key={c.id} className="p-4 rounded-2xl bg-cream flex justify-between items-center shadow-none">
                     <div>
                       <strong className="font-extrabold text-sm block">{c.ad} {c.soyad}</strong>
                       <span className="text-xs text-zinc-500">Telefon: {c.telefon}</span>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1 border border-charcoal rounded-full bg-pastelYellow">
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-pastelYellow">
                       {c.tip}
                     </span>
                   </div>
@@ -816,7 +816,7 @@ export default function App() {
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Ad Soyad</label>
                   <input 
                     type="text" 
-                    className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl" 
+                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50" 
                     placeholder="Örn: Murat Demir"
                     value={newClientName}
                     onChange={e => setNewClientName(e.target.value)}
@@ -827,14 +827,14 @@ export default function App() {
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Telefon Numarası</label>
                   <input 
                     type="text" 
-                    className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl" 
+                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50" 
                     placeholder="Örn: 0505 123 45 67"
                     value={newClientPhone}
                     onChange={e => setNewClientPhone(e.target.value)}
                     required
                   />
                 </div>
-                <button type="submit" className="w-full py-3 bg-charcoal text-white font-extrabold rounded-full hover:bg-black transition-colors shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]">
+                <button type="submit" className="w-full py-3 bg-charcoal text-white font-extrabold rounded-full hover:bg-black transition-colors shadow-none">
                   Müşteriyi Kaydet
                 </button>
               </form>
@@ -855,7 +855,7 @@ export default function App() {
                   <div className="relative">
                     <input 
                       type="number" 
-                      className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl pl-10" 
+                      className="w-full text-sm p-3 rounded-2xl pl-10 bg-zinc-50" 
                       value={grossCommission}
                       onChange={e => setGrossCommission(Number(e.target.value))}
                     />
@@ -866,7 +866,7 @@ export default function App() {
                 <div>
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Çalışma Senaryosu</label>
                   <select 
-                    className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl bg-white"
+                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50"
                     value={calcScenario}
                     onChange={e => setCalcScenario(e.target.value as any)}
                   >
@@ -877,7 +877,7 @@ export default function App() {
                 </div>
 
                 {/* Scenario details text */}
-                <div className="p-4 border-2 border-charcoal rounded-2xl bg-pastelPurple/20 text-xs flex flex-col gap-1.5 leading-relaxed">
+                <div className="p-4 rounded-2xl bg-pastelPurple/20 text-xs flex flex-col gap-1.5 leading-relaxed">
                   {calcScenario === 'A' && (
                     <p>💡 **Senaryo A:** Portföy de alıcı da size aittir. Brüt komisyondan Yetkili tarafından belirlenen **%{commSettings.aOfis} Ofis Payı** kesildikten sonra kalanın tamamı (%{commSettings.aDanisman}) sizin hakedişinizdir.</p>
                   )}
@@ -896,8 +896,8 @@ export default function App() {
               <div>
                 <h3 className="text-xl font-extrabold mb-4">Paylaşım Sonuçları</h3>
                 
-                <div className="p-4 border-2 border-charcoal rounded-2xl bg-cream flex flex-col gap-3">
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-charcoal/10">
+                <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3">
+                  <div className="flex justify-between items-center text-xs pb-2 border-b border-zinc-200">
                     <span>Toplam Komisyon:</span>
                     <strong className="font-extrabold">{grossCommission.toLocaleString('tr-TR')} TL</strong>
                   </div>
@@ -969,13 +969,13 @@ export default function App() {
             <h2 className="text-2xl font-extrabold mb-4">Ofis Finansal Raporları</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="p-5 border-2 border-charcoal bg-pastelPink rounded-2xl shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]">
+              <div className="p-5 bg-[#FBCFE8] rounded-2xl shadow-none border-none">
                 <span className="text-xs uppercase font-extrabold text-charcoal/60">Yıllık Toplam Hacim</span>
                 <h3 className="text-3xl font-extrabold mt-1">4.820.000 TL</h3>
                 <p className="text-xs text-charcoal/80 mt-2">Bu ciro ofisteki gayrimenkul uzmanlarının ortak başarıları ile elde edilmiştir.</p>
               </div>
 
-              <div className="p-5 border-2 border-charcoal bg-pastelBlue rounded-2xl shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]">
+              <div className="p-5 bg-[#BAE6FD] rounded-2xl shadow-none border-none">
                 <span className="text-xs uppercase font-extrabold text-charcoal/60">Ofis Net Geliri</span>
                 <h3 className="text-3xl font-extrabold mt-1">1.928.000 TL</h3>
                 <p className="text-xs text-charcoal/80 mt-2">Komisyon bölüşüm senaryolarından ofise kalan net payı ifade eder.</p>
@@ -1026,7 +1026,7 @@ export default function App() {
                     required
                   />
                 </div>
-                <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]">
+                <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-none">
                   Yeni Çalışan Ekle
                 </button>
               </form>
@@ -1035,7 +1035,7 @@ export default function App() {
               <h4 className="font-extrabold text-sm mb-3">Aktif Danışmanlar ({employees.length} / 4)</h4>
               <div className="flex flex-col gap-2">
                 {employees.map(emp => (
-                  <div key={emp.id} className="p-3 border-2 border-charcoal rounded-xl bg-cream flex justify-between items-center text-xs">
+                  <div key={emp.id} className="p-3 rounded-xl bg-cream flex justify-between items-center text-xs border-none">
                     <div>
                       <strong>{emp.ad} {emp.soyad}</strong>
                       <span className="block text-zinc-500 mt-0.5">{emp.eposta}</span>
@@ -1055,7 +1055,7 @@ export default function App() {
                 <h3 className="text-xl font-extrabold mb-3">Abonelik & Lisans Yönetimi</h3>
                 <p className="text-xs text-zinc-500 mb-4 leading-relaxed">BASIC plan dahilinde en fazla 4 gayrimenkul uzmanı ekleyebilirsiniz. PREMIUM planda ise herhangi bir lisans sınırlaması bulunmamaktadır.</p>
                 
-                <div className="p-4 border-2 border-charcoal rounded-2xl bg-cream flex flex-col gap-3 text-xs mb-4">
+                <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 text-xs mb-4 border-none">
                   <div className="flex justify-between items-center">
                     <span>Mevcut Lisans Durumu:</span>
                     <strong className="font-extrabold">{employees.length} / 4 Kullanıcı</strong>
@@ -1070,16 +1070,16 @@ export default function App() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => { setPackageType('BASIC'); setEmpError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold border-2 border-charcoal rounded-full transition-all ${
-                    packageType === 'BASIC' ? 'bg-pastelYellow shadow-none' : 'bg-white hover:bg-zinc-50 shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]'
+                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
+                    packageType === 'BASIC' ? 'bg-[#FEF08A]' : 'bg-white hover:bg-zinc-50'
                   }`}
                 >
                   BASIC Paket
                 </button>
                 <button 
                   onClick={() => { setPackageType('PREMIUM'); setEmpError(null); }}
-                  className={`flex-1 py-2 text-xs font-bold border-2 border-charcoal rounded-full transition-all ${
-                    packageType === 'PREMIUM' ? 'bg-pastelGreen shadow-none' : 'bg-white hover:bg-zinc-50 shadow-[2px_2px_0px_0px_rgba(17,17,17,1)]'
+                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
+                    packageType === 'PREMIUM' ? 'bg-pastelGreen' : 'bg-white hover:bg-zinc-50'
                   }`}
                 >
                   PREMIUM Paket
@@ -1099,7 +1099,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Senaryo A set */}
-              <div className="p-4 border-2 border-charcoal rounded-2xl bg-cream">
+              <div className="p-4 rounded-2xl bg-cream border-none">
                 <h4 className="font-extrabold text-sm mb-3">Senaryo A (Kendi Müşterisi)</h4>
                 <div className="flex flex-col gap-2">
                   <div>
@@ -1114,7 +1114,7 @@ export default function App() {
               </div>
 
               {/* Senaryo B set */}
-              <div className="p-4 border-2 border-charcoal rounded-2xl bg-cream">
+              <div className="p-4 rounded-2xl bg-cream border-none">
                 <h4 className="font-extrabold text-sm mb-3">Senaryo B (Ortak Çalışma)</h4>
                 <div className="flex flex-col gap-2">
                   <div>
@@ -1133,7 +1133,7 @@ export default function App() {
               </div>
 
               {/* Senaryo C set */}
-              <div className="p-4 border-2 border-charcoal rounded-2xl bg-cream">
+              <div className="p-4 rounded-2xl bg-cream border-none">
                 <h4 className="font-extrabold text-sm mb-3">Senaryo C (Dış Emlakçı)</h4>
                 <div className="flex flex-col gap-2">
                   <div>
@@ -1178,7 +1178,7 @@ export default function App() {
             {/* Collapsed Calendar Icon representing calendar */}
             <button 
               onClick={() => setRightPanelCollapsed(false)}
-              className="p-3 border-2 border-charcoal rounded-full bg-cream hover:bg-zinc-100 shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+              className="p-3 rounded-full bg-cream hover:bg-zinc-100 shadow-none transition-all border-none"
             >
               <Calendar size={18} />
             </button>
@@ -1186,7 +1186,7 @@ export default function App() {
             {/* Collapsed Add Button */}
             <button 
               onClick={() => { setActiveTab('portfolios'); setRightPanelCollapsed(false); }}
-              className="p-3 bg-charcoal text-white rounded-full border-2 border-charcoal hover:bg-black shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+              className="p-3 bg-charcoal text-white rounded-full hover:bg-black shadow-none transition-all border-none"
             >
               <Plus size={18} />
             </button>
@@ -1194,7 +1194,7 @@ export default function App() {
         ) : (
           <>
             {/* Top: Mini Interactive Calendar */}
-            <div className="border-2 border-charcoal rounded-3xl p-4 bg-cream shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
+            <div className="rounded-3xl p-4 bg-cream shadow-none border-none">
               <div className="flex justify-between items-center mb-3">
                 <span className="font-extrabold text-sm">Temmuz 2026</span>
                 <div className="flex gap-1">
@@ -1230,7 +1230,7 @@ export default function App() {
             {/* Action Button: Solid Black Pill Button */}
             <button 
               onClick={() => setActiveTab('portfolios')}
-              className="w-full bg-charcoal hover:bg-black text-white py-3.5 px-6 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 border-2 border-charcoal shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+              className="w-full bg-charcoal hover:bg-black text-white py-3.5 px-6 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 shadow-none transition-all border-none"
             >
               <Plus size={16} /> Yeni Portföy / Randevu
             </button>

@@ -15,7 +15,7 @@
 
 /* Custom Soft Brutalism Bento card transitions */
 .bento-card {
-  @apply transition-all duration-300 border-2 border-charcoal rounded-3xl p-6 shadow-brutal hover:shadow-brutal-lg hover:-translate-x-1 hover:-translate-y-1 bg-white overflow-hidden relative;
+  @apply transition-all duration-300 border-none rounded-3xl p-6 overflow-hidden relative shadow-none;
 }
 
 .sidebar-link {
