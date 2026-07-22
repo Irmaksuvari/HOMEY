@@ -4,6 +4,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { poolPromise } from './config/db';
 import { authenticateJWT, AuthenticatedRequest } from './middleware/auth';
+import authRoutes from './routes/authRoutes';
+import employeeRoutes from './routes/employeeRoutes';
+import portfolioRoutes from './routes/portfolioRoutes';
+import clientRoutes from './routes/clientRoutes';
 
 dotenv.config();
 
@@ -39,6 +43,12 @@ app.get('/api/profile', authenticateJWT, (req: AuthenticatedRequest, res) => {
     user: req.user
   });
 });
+
+// API Rotaları Kaydı
+app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/portfolios', portfolioRoutes);
+app.use('/api/clients', clientRoutes);
 
 // Arayüz Statik Dosyalarını Sunma
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
