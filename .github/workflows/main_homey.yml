@@ -59,7 +59,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'homey'
+          app-name: 'homey-hpdedvfshuc9fve4'
           slot-name: 'Production'
           package: .
           

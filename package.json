@@ -7,7 +7,7 @@
     "frontend"
   ],
   "scripts": {
-    "build": "npm run build --workspace=backend",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
     "start": "npm start --workspace=backend"
   }
 }

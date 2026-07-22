@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { poolPromise } from './config/db';
 import { authenticateJWT, AuthenticatedRequest } from './middleware/auth';
 
@@ -37,6 +38,16 @@ app.get('/api/profile', authenticateJWT, (req: AuthenticatedRequest, res) => {
     message: 'Korumalı profil verilerine ulaşıldı.',
     user: req.user
   });
+});
+
+// Arayüz Statik Dosyalarını Sunma
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  }
 });
 
 app.listen(PORT, () => {
