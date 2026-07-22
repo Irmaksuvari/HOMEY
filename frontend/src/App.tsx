@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Calculator, Users, Home, Calendar, DollarSign, 
   Percent, Shield, Plus, Lock, Check, X, Building, 
-  Search, Briefcase, FileText, AlertTriangle
+  Search, AlertTriangle
 } from 'lucide-react';
 
 // Mock Data
@@ -75,7 +75,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'portfolios' | 'calculator' | 'appointments' | 'settings'>('portfolios');
   
   // Portfolios
-  const [portfolios, setPortfolios] = useState(INITIAL_PORTFOLIOS);
+  const [portfolios] = useState(INITIAL_PORTFOLIOS);
   const [selectedPortfolio, setSelectedPortfolio] = useState<typeof INITIAL_PORTFOLIOS[0] | null>(null);
   
   // Commission Settings
