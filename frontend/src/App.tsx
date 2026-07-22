@@ -74,6 +74,7 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState<'UZMAN' | 'YETKILI'>('UZMAN');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'settings'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [currentUser] = useState({ id: 'uzman-1', ad: 'Can', soyad: 'Yılmaz' });
 
   // Filter tags in top bar
@@ -1157,84 +1158,119 @@ export default function App() {
       </main>
 
       {/* 4. RIGHT PANEL (Widgets & Schedule) */}
-      <aside className="w-80 bg-white border-l-4 border-charcoal p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
+      <aside className={`bg-white border-l-4 border-charcoal flex flex-col transition-all duration-300 z-10 shrink-0 ${
+        rightPanelCollapsed ? 'w-20 p-4 items-center gap-6' : 'w-80 p-6 gap-6'
+      } overflow-y-auto`}>
         
-        {/* Top: Mini Interactive Calendar */}
-        <div className="border-2 border-charcoal rounded-3xl p-4 bg-cream shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
-          <div className="flex justify-between items-center mb-3">
-            <span className="font-extrabold text-sm">Temmuz 2026</span>
-            <div className="flex gap-1">
-              <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft size={14} /></button>
-              <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft className="rotate-180" size={14} /></button>
-            </div>
-          </div>
-          
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 text-[10px] text-center font-bold">
-            {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
-              <span key={d} className="text-zinc-400">{d}</span>
-            ))}
-            {/* Blank leading days (July 2026 starts on Wednesday/Çarşamba, so 2 blank days) */}
-            <span className="p-1"></span>
-            <span className="p-1"></span>
-            {daysInMonth.map(day => (
-              <button 
-                key={day}
-                onClick={() => setSelectedCalendarDay(day)}
-                className={`p-1 rounded transition-colors ${
-                  selectedCalendarDay === day 
-                    ? 'bg-charcoal text-white' 
-                    : 'hover:bg-zinc-200'
-                }`}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
+        {/* Toggle Button */}
+        <div className="flex w-full items-center justify-between">
+          {!rightPanelCollapsed && <span className="text-xs font-bold text-zinc-500 tracking-widest uppercase">Ajanda</span>}
+          <button 
+            onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            className="p-1 rounded-lg hover:bg-zinc-100 border border-charcoal text-charcoal ml-auto"
+          >
+            {rightPanelCollapsed ? <ChevronLeft className="rotate-180" size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </div>
 
-        {/* Action Button: Solid Black Pill Button */}
-        <button 
-          onClick={() => setActiveTab('portfolios')}
-          className="w-full bg-charcoal hover:bg-black text-white py-3.5 px-6 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 border-2 border-charcoal shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
-        >
-          <Plus size={16} /> Yeni Portföy / Randevu
-        </button>
+        {rightPanelCollapsed ? (
+          <div className="flex flex-col items-center gap-6 mt-4">
+            {/* Collapsed Calendar Icon representing calendar */}
+            <button 
+              onClick={() => setRightPanelCollapsed(false)}
+              className="p-3 border-2 border-charcoal rounded-full bg-cream hover:bg-zinc-100 shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+            >
+              <Calendar size={18} />
+            </button>
 
-        {/* Bottom: "Bugünün Randevu Akışı" Timeline */}
-        <div className="flex flex-col gap-4">
-          <h4 className="font-extrabold text-sm uppercase tracking-wider text-zinc-500">Bugünün Randevu Akışı</h4>
-          
-          <div className="relative border-l-2 border-charcoal ml-2.5 pl-5 flex flex-col gap-6">
-            
-            {/* Timeline item 1 */}
-            <div className="relative">
-              <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-pastelYellow border-2 border-charcoal"></span>
-              <div className="text-xs">
-                <span className="font-extrabold block text-charcoal">11:30 - Sarıyer Daire Gösterimi</span>
-                <span className="text-zinc-500 block mt-0.5">Uzman: Can Yılmaz</span>
-                <span className="text-zinc-500 block">Müşteri: Murat Demir</span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-pastelYellow inline-block mt-2">
-                  PENDING
-                </span>
+            {/* Collapsed Add Button */}
+            <button 
+              onClick={() => { setActiveTab('portfolios'); setRightPanelCollapsed(false); }}
+              className="p-3 bg-charcoal text-white rounded-full border-2 border-charcoal hover:bg-black shadow-[2px_2px_0px_0px_rgba(17,17,17,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Top: Mini Interactive Calendar */}
+            <div className="border-2 border-charcoal rounded-3xl p-4 bg-cream shadow-[4px_4px_0px_0px_rgba(17,17,17,1)]">
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-extrabold text-sm">Temmuz 2026</span>
+                <div className="flex gap-1">
+                  <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft size={14} /></button>
+                  <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft className="rotate-180" size={14} /></button>
+                </div>
+              </div>
+              
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1 text-[10px] text-center font-bold">
+                {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
+                  <span key={d} className="text-zinc-400">{d}</span>
+                ))}
+                {/* Blank leading days (July 2026 starts on Wednesday/Çarşamba, so 2 blank days) */}
+                <span className="p-1"></span>
+                <span className="p-1"></span>
+                {daysInMonth.map(day => (
+                  <button 
+                    key={day}
+                    onClick={() => setSelectedCalendarDay(day)}
+                    className={`p-1 rounded transition-colors ${
+                      selectedCalendarDay === day 
+                        ? 'bg-charcoal text-white' 
+                        : 'hover:bg-zinc-200'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Timeline item 2 */}
-            <div className="relative">
-              <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-pastelGreen border-2 border-charcoal"></span>
-              <div className="text-xs">
-                <span className="font-extrabold block text-charcoal">14:00 - Caferağa Villa Tanıtımı</span>
-                <span className="text-zinc-500 block mt-0.5">Uzman: Elif Kaya</span>
-                <span className="text-zinc-500 block">Müşteri: Zeynep Öztürk</span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-pastelGreen inline-block mt-2">
-                  APPROVED
-                </span>
+            {/* Action Button: Solid Black Pill Button */}
+            <button 
+              onClick={() => setActiveTab('portfolios')}
+              className="w-full bg-charcoal hover:bg-black text-white py-3.5 px-6 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 border-2 border-charcoal shadow-[4px_4px_0px_0px_rgba(17,17,17,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+            >
+              <Plus size={16} /> Yeni Portföy / Randevu
+            </button>
+
+            {/* Bottom: "Bugünün Randevu Akışı" Timeline */}
+            <div className="flex flex-col gap-4">
+              <h4 className="font-extrabold text-sm uppercase tracking-wider text-zinc-500">Bugünün Randevu Akışı</h4>
+              
+              <div className="relative border-l-2 border-charcoal ml-2.5 pl-5 flex flex-col gap-6">
+                
+                {/* Timeline item 1 */}
+                <div className="relative">
+                  <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-pastelYellow border-2 border-charcoal"></span>
+                  <div className="text-xs">
+                    <span className="font-extrabold block text-charcoal">11:30 - Sarıyer Daire Gösterimi</span>
+                    <span className="text-zinc-500 block mt-0.5">Uzman: Can Yılmaz</span>
+                    <span className="text-zinc-500 block">Müşteri: Murat Demir</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-pastelYellow inline-block mt-2">
+                      PENDING
+                    </span>
+                  </div>
+                </div>
+
+                {/* Timeline item 2 */}
+                <div className="relative">
+                  <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-pastelGreen border-2 border-charcoal"></span>
+                  <div className="text-xs">
+                    <span className="font-extrabold block text-charcoal">14:00 - Caferağa Villa Tanıtımı</span>
+                    <span className="text-zinc-500 block mt-0.5">Uzman: Elif Kaya</span>
+                    <span className="text-zinc-500 block">Müşteri: Zeynep Öztürk</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-pastelGreen inline-block mt-2">
+                      APPROVED
+                    </span>
+                  </div>
+                </div>
+
               </div>
             </div>
-
-          </div>
-        </div>
+          </>
+        )}
 
       </aside>
 
