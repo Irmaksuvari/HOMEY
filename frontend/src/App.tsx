@@ -1358,7 +1358,7 @@ export default function App() {
 
   // RENDER 3: FULL COMPLETED DASHBOARD AND APPLICATION
   return (
-    <div className="min-h-screen bg-cream text-charcoal flex font-sans">
+    <div className="min-h-screen bg-cream text-charcoal flex font-sans overflow-x-hidden">
 
       {/* Toast Notification */}
       {toast && (
@@ -1375,7 +1375,7 @@ export default function App() {
       
       {/* LEFT SIDEBAR */}
       <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 z-40 border-r-4 border-charcoal shrink-0 ${
-        sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-72 p-6'
+        sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
       }`}>
         <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
@@ -1518,13 +1518,13 @@ export default function App() {
       </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto flex flex-col gap-6">
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden flex flex-col gap-6 min-w-0">
 
           {/* Global Top Header Bar with Autocomplete */}
-          <header className="flex items-center w-full gap-4">
+          <header className="flex flex-wrap items-center w-full gap-3 header-bar">
             {activeTab === 'dashboard' && (
-              <div className="shrink-0">
-                <h1 className="text-3xl font-extrabold text-charcoal">İyi günler, {user?.ad || 'Can'} 👋</h1>
+              <div className="shrink-0 min-w-0">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">İyi günler, {user?.ad || 'Can'} 👋</h1>
                 <p className="text-zinc-500 text-sm mt-1">Bugün ofis genelinde 3 aktif randevu ve 1 bekleyen teklif bulunuyor.</p>
               </div>
             )}
@@ -1534,7 +1534,7 @@ export default function App() {
               ref={searchContainerRef}
               className={`relative transition-all duration-300 ${
                 activeTab === 'dashboard' ? 'w-64 ml-auto' : 'w-full'
-              }`}
+              } min-w-0`}
             >
               {/* Search Input */}
               <input
@@ -1891,7 +1891,7 @@ export default function App() {
 
             {/* Bottom Data Table: Recent listings */}
             <div className="bento-card bg-white">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h3 className="text-xl font-extrabold text-charcoal">Son Eklenen Portföyler</h3>
                 <button 
                   onClick={() => setActiveTab('portfolios')}
@@ -1901,15 +1901,15 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="table-responsive">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase">
-                      <th className="pb-3">Tip / Tür</th>
-                      <th className="pb-3">Lokasyon</th>
-                      <th className="pb-3 text-right">Fiyat</th>
-                      <th className="pb-3">Görevli</th>
-                      <th className="pb-3 text-right">Durum</th>
+                      <th className="pb-3 whitespace-nowrap">Tip / Tür</th>
+                      <th className="pb-3 whitespace-nowrap">Lokasyon</th>
+                      <th className="pb-3 text-right whitespace-nowrap">Fiyat</th>
+                      <th className="pb-3 whitespace-nowrap">Görevli</th>
+                      <th className="pb-3 text-right whitespace-nowrap">Durum</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2035,8 +2035,8 @@ export default function App() {
           <div className="w-full">
             {/* Portfolios list (Full Width) */}
             <div className="bento-card bg-white">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-extrabold">Portföy Yönetimi ({filterTag} Filtreli)</h2>
+              <div className="flex flex-wrap justify-between items-start mb-6 gap-3">
+                <h2 className="text-xl md:text-2xl font-extrabold min-w-0 break-words">Portföy Yönetimi ({filterTag} Filtreli)</h2>
                 <button 
                   onClick={() => setShowAddPortfolioModal(true)}
                   className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none"
@@ -2084,13 +2084,13 @@ export default function App() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredPortfolios.map(p => (
-                  <div 
+                  <div
                     key={p.id}
                     onClick={() => setSelectedPortfolio(p)}
-                    className="p-5 rounded-2xl cursor-pointer hover:bg-cream/60 transition-colors flex justify-between items-center bg-cream/30 border-none"
+                    className="p-4 rounded-2xl cursor-pointer hover:bg-cream/60 transition-colors flex flex-wrap justify-between items-start gap-3 bg-cream/30 border-none min-w-0"
                   >
-                    <div>
-                      <div className="flex gap-2 items-center">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap gap-2 items-center">
                         <strong className="text-md font-bold text-charcoal">{p.tip}</strong>
                         <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${
                           p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
@@ -2103,13 +2103,13 @@ export default function App() {
                           {(p.durum || 'BOSTA').replace('_', ' ')}
                         </span>
                       </div>
-                      <div className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
-                        <MapPin size={12} /> {p.il || ''} / {p.ilce || ''} - {p.mahalle || ''}
+                      <div className="text-xs text-zinc-500 mt-2 flex items-center gap-1 min-w-0">
+                        <MapPin size={12} className="shrink-0" /> <span className="truncate">{p.il || ''} / {p.ilce || ''} - {p.mahalle || ''}</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-extrabold text-md text-charcoal">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</div>
-                      <span className="text-[10px] text-zinc-400 font-semibold mt-1 block">Uzman: {p.gorevliUzman || ''}</span>
+                    <div className="text-right shrink-0">
+                      <div className="font-extrabold text-md text-charcoal whitespace-nowrap">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</div>
+                      <span className="text-[10px] text-zinc-400 font-semibold mt-1 block truncate max-w-[120px]">Uzman: {p.gorevliUzman || ''}</span>
                     </div>
                   </div>
                 ))}
@@ -2118,12 +2118,12 @@ export default function App() {
 
             {/* Portfolio Details Popup Modal */}
             {selectedPortfolio && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-3 md:p-4 overflow-y-auto">
                 {isEditingPortfolio ? (
                   /* Edit Mode Form */
                   <form 
                     onSubmit={handleSaveEditPortfolio}
-                    className="bg-white rounded-3xl p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+                    className="bg-white rounded-3xl p-5 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto my-auto"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -2286,11 +2286,11 @@ export default function App() {
                   </form>
                 ) : (
                   /* View Mode */
-                  <div className="bg-white rounded-3xl p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-start">
-                      <div>
+                  <div className="bg-white rounded-3xl p-5 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-6 max-h-[90vh] overflow-y-auto my-auto">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy Detayı</span>
-                        <h2 className="text-2xl font-extrabold text-charcoal mt-1">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
+                        <h2 className="text-xl md:text-2xl font-extrabold text-charcoal mt-1 break-words">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
                       </div>
                       <button className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" onClick={() => setSelectedPortfolio(null)}>
                         <X size={16} />
@@ -2298,13 +2298,13 @@ export default function App() {
                     </div>
 
                     <div className="flex flex-col gap-3 text-sm">
-                      <div className="flex justify-between py-2 border-b border-zinc-200">
-                        <span className="text-zinc-500">Konum Bilgisi:</span>
-                        <strong className="font-bold">{selectedPortfolio.il} / {selectedPortfolio.ilce} / {selectedPortfolio.mahalle} Mah.</strong>
+                      <div className="flex flex-wrap justify-between gap-2 py-2 border-b border-zinc-200">
+                        <span className="text-zinc-500 shrink-0">Konum Bilgisi:</span>
+                        <strong className="font-bold text-right min-w-0 break-words">{selectedPortfolio.il} / {selectedPortfolio.ilce} / {selectedPortfolio.mahalle} Mah.</strong>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-zinc-200">
-                        <span className="text-zinc-500">Fiyat:</span>
-                        <strong className="font-extrabold text-indigo-700">{selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL</strong>
+                      <div className="flex flex-wrap justify-between gap-2 py-2 border-b border-zinc-200">
+                        <span className="text-zinc-500 shrink-0">Fiyat:</span>
+                        <strong className="font-extrabold text-indigo-700 whitespace-nowrap">{selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL</strong>
                       </div>
                       <div className="flex justify-between py-2 border-b border-zinc-200">
                         <span className="text-zinc-500">Metrekare:</span>

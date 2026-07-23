@@ -3,25 +3,108 @@
 @tailwind utilities;
 
 @layer base {
+  /* Global box-sizing so padding never blows up widths */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
   body {
     @apply bg-cream text-charcoal antialiased;
     font-family: 'Inter', sans-serif;
+    /* Prevent horizontal scroll at the body level */
+    overflow-x: hidden;
+    min-width: 0;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
+    /* Prevent headings from overflowing their containers */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* All images and media are responsive by default */
+  img, video, svg {
+    max-width: 100%;
+    height: auto;
   }
 }
 
 /* Custom Soft Brutalism Bento card transitions */
 .bento-card {
-  @apply transition-all duration-300 border-none rounded-3xl p-6 overflow-hidden relative shadow-none;
+  @apply transition-all duration-300 border-none rounded-3xl p-6 relative shadow-none;
+  /* Prevent card from overflowing horizontally */
+  overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* Tables with horizontal scroll wrapper to prevent layout breaks */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+  width: 100%;
+}
+
+.table-responsive table {
+  min-width: 540px; /* ensure table has a minimum before scrolling kicks in */
+}
+
+/* Truncate single-line text in tight cells/cards */
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Safe flex children — prevent them from overflowing parent */
+.flex-min-0 {
+  min-width: 0;
+  flex: 1 1 0%;
 }
 
 .sidebar-link {
   @apply flex items-center gap-3 px-4 py-3 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-200;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-link.active {
   @apply text-white bg-zinc-800 font-medium border border-zinc-700;
+}
+
+/* Modals: always scroll their own content, never bust viewport */
+.modal-scroll {
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Responsive grid helpers */
+@media (max-width: 768px) {
+  .bento-card {
+    @apply p-4;
+  }
+
+  /* Stack flex rows on mobile */
+  .flex-mobile-col {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* Header bar: stack greeting + search vertically on small screens */
+  .header-bar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .header-bar > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
