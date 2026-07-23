@@ -193,14 +193,16 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setEmployees(data);
+        setEmployees(Array.isArray(data) ? data : []);
         
         // Sync selected employee state
         setSelectedEmployee((prev: any) => {
           if (!prev) return null;
-          const updated = data.find((e: any) => e.id === prev.id);
+          const updated = Array.isArray(data) ? data.find((e: any) => e.id === prev.id) : null;
           return updated || null;
         });
+      } else {
+        console.error('Failed to fetch employees: HTTP', res.status);
       }
     } catch (err) {
       console.error('Failed to fetch employees:', err);
@@ -1162,23 +1164,23 @@ export default function App() {
                       <div className="flex justify-between items-start">
                         <div className="flex gap-2.5 items-center">
                           <div className="w-10 h-10 rounded-full bg-pastelPurple border-none flex items-center justify-center font-bold text-xs">
-                            {emp.ad[0]}{emp.soyad ? emp.soyad[0] : ''}
+                            {(emp.ad || 'U')[0]}{(emp.soyad || '')[0] || ''}
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-sm">{emp.ad} {emp.soyad}</h4>
-                            <span className="text-xs text-zinc-500">{emp.sozlesmeSayisi} Aktif Portföy</span>
+                            <h4 className="font-extrabold text-sm">{emp.ad || ''} {emp.soyad || ''}</h4>
+                            <span className="text-xs text-zinc-500">{emp.sozlesmeSayisi || 0} Aktif Portföy</span>
                           </div>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border border-charcoal uppercase ${
                           emp.durum === 'Ofiste' ? 'bg-[#BBF7D0]' : 'bg-[#FEF08A]'
                         }`}>
-                          {emp.durum}
+                          {emp.durum || 'Ofiste'}
                         </span>
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-charcoal/10 flex justify-between items-center text-xs">
                         <span className="text-zinc-500">Kazanılan Ciro:</span>
-                        <strong className="text-charcoal font-bold">{emp.getirdigiPara.toLocaleString('tr-TR')} TL</strong>
+                        <strong className="text-charcoal font-bold">{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
                       </div>
                     </div>
                   ))
@@ -2149,12 +2151,12 @@ export default function App() {
                     }`}
                   >
                     <div>
-                      <strong>{emp.ad} {emp.soyad}</strong>
-                      <span className="block text-zinc-500 mt-0.5">{emp.eposta}</span>
+                      <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
+                      <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
                     </div>
                     <div className="text-right">
-                      <strong>{emp.getirdigiPara.toLocaleString('tr-TR')} TL</strong>
-                      <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi} Sözleşme</span>
+                      <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
+                      <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi || 0} Sözleşme</span>
                     </div>
                   </div>
                 ))}

@@ -25,17 +25,17 @@ export const addEmployee = async (req: any, res: Response) => {
 
     const paketTipi = firmaResult.recordset[0].PaketTipi;
 
-    // 2. Mevcut kullanıcı/çalışan sayısını sorgula
+    // 2. Mevcut çalışan (UZMAN) sayısını sorgula
     const countResult = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query('SELECT COUNT(*) as UserCount FROM Kullanicilar WHERE FirmaId = @firmaId');
+      .query("SELECT COUNT(*) as UserCount FROM Kullanicilar WHERE FirmaId = @firmaId AND Rol = 'UZMAN'");
 
     const currentUserCount = countResult.recordset[0].UserCount;
 
-    // 3. Paket tipine göre limit kontrolü (BASIC ve DENEME planları için maksimum 4 kullanıcı)
+    // 3. Paket tipine göre limit kontrolü (BASIC ve DENEME planları için maksimum 4 çalışan)
     if ((paketTipi === 'BASIC' || paketTipi === 'DENEME') && currentUserCount >= 4) {
       return res.status(400).json({ 
-        message: `Paket limitinize ulaştınız. ${paketTipi} planda en fazla 4 kullanıcı ekleyebilirsiniz. Lütfen PREMIUM pakete yükseltin.` 
+        message: `Paket limitinize ulaştınız. ${paketTipi} planda en fazla 4 gayrimenkul uzmanı (danışman) ekleyebilirsiniz. Lütfen PREMIUM pakete yükseltin.` 
       });
     }
 
@@ -92,18 +92,19 @@ export const listEmployees = async (req: any, res: Response) => {
                (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = Kullanicilar.Id) as SozlesmeSayisi
         FROM Kullanicilar
         WHERE FirmaId = @firmaId
+        ORDER BY KayitTarihi ASC
       `);
 
     // Front-end'e uygun formatta verileri döndürme
     const list = result.recordset.map(emp => ({
       id: emp.Id,
-      ad: emp.Ad,
-      soyad: emp.Soyad,
-      eposta: emp.Eposta,
-      telefon: emp.Telefon,
-      rol: emp.Rol,
+      ad: emp.Ad || '',
+      soyad: emp.Soyad || '',
+      eposta: emp.Eposta || '',
+      telefon: emp.Telefon || '',
+      rol: emp.Rol || 'UZMAN',
       ilkGirisMi: emp.IlkGirisMi,
-      sozlesmeSayisi: emp.SozlesmeSayisi,
+      sozlesmeSayisi: emp.SozlesmeSayisi || 0,
       getirdigiPara: 0, // Analitiklerden toplanacak
       durum: emp.AktifMi ? 'Ofiste' : 'Pasif'
     }));
