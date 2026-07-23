@@ -16,9 +16,9 @@ export const addPortfolio = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    // Varsayılan kaparo ve depozito oranları hesaplaması
+    // Varsayılan kapora ve depozito oranları hesaplaması
     const fiyatNum = Number(fiyat);
-    const kaparoMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
+    const kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
     const depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
 
     const result = await pool.request()
@@ -29,7 +29,7 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('fiyat', sql.Decimal(18, 2), fiyatNum)
       .input('metrekare', sql.Int, Number(metrekare))
       .input('odaSayisi', sql.NVarChar, tip === 'ARSA' ? '' : odaSayisi || '')
-      .input('kaparoMiktari', sql.Decimal(18, 2), kaparoMiktari)
+      .input('kaporaMiktari', sql.Decimal(18, 2), kaporaMiktari)
       .input('depozitoMiktari', sql.Decimal(18, 2), depozitoMiktari)
       .input('il', sql.NVarChar, il)
       .input('ilce', sql.NVarChar, ilce)
@@ -39,13 +39,13 @@ export const addPortfolio = async (req: any, res: Response) => {
       .query(`
         INSERT INTO Portfoyler (
           FirmaId, GorevliUzmanId, Tip, Tur, Fiyat, Metrekare, OdaSayisi,
-          KaparoMiktari, DepozitoMiktari, Il, Ilce, Mahalle, 
+          KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, 
           EvSahibiAdi, EvSahibiTelefon, Durum
         )
         OUTPUT inserted.Id
         VALUES (
           @firmaId, @gorevliUzmanId, @tip, @tur, @fiyat, @metrekare, @odaSayisi,
-          @kaparoMiktari, @depozitoMiktari, @il, @ilce, @mahalle,
+          @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle,
           @evSahibiAdi, @evSahibiTelefon, 'BOSTA'
         )
       `);
@@ -89,7 +89,7 @@ export const listPortfolios = async (req: any, res: Response) => {
       fiyat: Number(p.Fiyat),
       metrekare: p.Metrekare,
       odaSayisi: p.OdaSayisi,
-      kaparo: Number(p.KaparoMiktari || 0),
+      kapora: Number(p.KaporaMiktari ?? p.KaparoMiktari ?? 0),
       depozito: Number(p.DepozitoMiktari || 0),
       il: p.Il,
       ilce: p.Ilce,
@@ -142,9 +142,9 @@ export const editPortfolio = async (req: any, res: Response) => {
       return res.status(403).json({ message: 'Bu portföyü düzenlemek için yetkiniz bulunmamaktadır.' });
     }
 
-    // Varsayılan kaparo ve depozito oranları hesaplaması
+    // Varsayılan kapora ve depozito oranları hesaplaması
     const fiyatNum = Number(fiyat);
-    const kaparoMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
+    const kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
     const depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
 
     // 3. Güncelleme sorgusu
@@ -155,7 +155,7 @@ export const editPortfolio = async (req: any, res: Response) => {
       .input('fiyat', sql.Decimal(18, 2), fiyatNum)
       .input('metrekare', sql.Int, Number(metrekare))
       .input('odaSayisi', sql.NVarChar, tip === 'ARSA' ? '' : odaSayisi || '')
-      .input('kaparoMiktari', sql.Decimal(18, 2), kaparoMiktari)
+      .input('kaporaMiktari', sql.Decimal(18, 2), kaporaMiktari)
       .input('depozitoMiktari', sql.Decimal(18, 2), depozitoMiktari)
       .input('il', sql.NVarChar, il)
       .input('ilce', sql.NVarChar, ilce)
@@ -169,7 +169,7 @@ export const editPortfolio = async (req: any, res: Response) => {
             Fiyat = @fiyat,
             Metrekare = @metrekare,
             OdaSayisi = @odaSayisi,
-            KaparoMiktari = @kaparoMiktari,
+            KaporaMiktari = @kaporaMiktari,
             DepozitoMiktari = @depozitoMiktari,
             Il = @il,
             Ilce = @ilce,

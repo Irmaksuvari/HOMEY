@@ -8,6 +8,10 @@ import authRoutes from './routes/authRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 import portfolioRoutes from './routes/portfolioRoutes';
 import clientRoutes from './routes/clientRoutes';
+import subscriptionRoutes from './routes/subscriptionRoutes';
+import appointmentRoutes from './routes/appointmentRoutes';
+import searchRoutes from './routes/searchRoutes';
+import presenceRoutes from './routes/presenceRoutes';
 
 dotenv.config();
 
@@ -49,6 +53,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/portfolios', portfolioRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/user', presenceRoutes);
 
 // Arayüz Statik Dosyalarını Sunma
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');

@@ -14,16 +14,26 @@ export const addEmployee = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    // 1. Firmanın paket tipini sorgula
+    // 1. Firmanın paket tipini ve AbonelikPaketleri kotasını sorgula
     const firmaResult = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query('SELECT PaketTipi FROM Firmalar WHERE Id = @firmaId');
+      .query(`
+        SELECT f.PaketTipi, p.CalisanKotasi 
+        FROM Firmalar f
+        LEFT JOIN AbonelikPaketleri p ON (
+          (f.PaketTipi = 'DENEME' AND p.PaketAdi = 'Deneme') OR
+          (f.PaketTipi = 'BASIC' AND p.PaketAdi = 'Basic') OR
+          (f.PaketTipi = 'PREMIUM' AND p.PaketAdi = 'Premium')
+        )
+        WHERE f.Id = @firmaId
+      `);
 
     if (firmaResult.recordset.length === 0) {
       return res.status(404).json({ message: 'İlişkili firma bulunamadı.' });
     }
 
-    const paketTipi = firmaResult.recordset[0].PaketTipi;
+    const { PaketTipi: paketTipi, CalisanKotasi: calisanKotasi } = firmaResult.recordset[0];
+    const effectiveLimit = calisanKotasi !== undefined && calisanKotasi !== null ? calisanKotasi : (paketTipi === 'PREMIUM' ? null : 4);
 
     // 2. Mevcut çalışan (UZMAN) sayısını sorgula
     const countResult = await pool.request()
@@ -32,10 +42,10 @@ export const addEmployee = async (req: any, res: Response) => {
 
     const currentUserCount = countResult.recordset[0].UserCount;
 
-    // 3. Paket tipine göre limit kontrolü (BASIC ve DENEME planları için maksimum 4 çalışan)
-    if ((paketTipi === 'BASIC' || paketTipi === 'DENEME') && currentUserCount >= 4) {
+    // 3. Paket kota kontrolü (Sınırlı kota tanımlı ise ve limit aşıldıysa engelle)
+    if (effectiveLimit !== null && currentUserCount >= effectiveLimit) {
       return res.status(400).json({ 
-        message: `Paket limitinize ulaştınız. ${paketTipi} planda en fazla 4 gayrimenkul uzmanı (danışman) ekleyebilirsiniz. Lütfen PREMIUM pakete yükseltin.` 
+        message: `Paket limitinize ulaştınız. ${paketTipi} planda en fazla ${effectiveLimit} gayrimenkul uzmanı (danışman) ekleyebilirsiniz. Lütfen PREMIUM pakete yükseltin.` 
       });
     }
 

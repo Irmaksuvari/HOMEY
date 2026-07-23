@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Calculator, Users, Home, Calendar, DollarSign, 
   Percent, Shield, Plus, Lock, Check, X, Building, 
   Search, AlertTriangle, TrendingUp, Menu, 
-  ChevronLeft, LogOut, MapPin, User, Briefcase
+  ChevronLeft, LogOut, MapPin, User, Briefcase,
+  FileText, Clock, LayoutDashboard, Loader2
 } from 'lucide-react';
 
 // Mock Data for Phase 3/4
@@ -15,7 +16,7 @@ const INITIAL_PORTFOLIOS = [
     fiyat: 4200000,
     metrekare: 120,
     odaSayisi: '3+1',
-    kaparo: 100000,
+    kapora: 100000,
     depozito: 0,
     il: 'İstanbul',
     ilce: 'Kadıköy',
@@ -24,7 +25,7 @@ const INITIAL_PORTFOLIOS = [
     gorevliUzmanId: 'uzman-1',
     evSahibiAdi: 'Mehmet Yılmaz',
     evSahibiTelefon: '0533 222 3344',
-    durum: 'BOSTA' // BOSTA, RANDEVULAR_MEVCUT, KAPARO_ASAMASINDA, KIRALANDI_SATILDI
+    durum: 'BOSTA' // BOSTA, RANDEVULAR_MEVCUT, KAPORA_ASAMASINDA, KIRALANDI_SATILDI
   },
   {
     id: '2',
@@ -33,7 +34,7 @@ const INITIAL_PORTFOLIOS = [
     fiyat: 65000,
     metrekare: 350,
     odaSayisi: '5+2',
-    kaparo: 130000,
+    kapora: 130000,
     depozito: 130000,
     il: 'İstanbul',
     ilce: 'Sarıyer',
@@ -51,7 +52,7 @@ const INITIAL_PORTFOLIOS = [
     fiyat: 9500000,
     metrekare: 210,
     odaSayisi: '4+1',
-    kaparo: 300000,
+    kapora: 300000,
     depozito: 0,
     il: 'Muğla',
     ilce: 'Bodrum',
@@ -60,7 +61,7 @@ const INITIAL_PORTFOLIOS = [
     gorevliUzmanId: 'uzman-1',
     evSahibiAdi: 'Kemal Arslan',
     evSahibiTelefon: '0535 777 8899',
-    durum: 'KAPARO_ASAMASINDA'
+    durum: 'KAPORA_ASAMASINDA'
   }
 ];
 
@@ -92,6 +93,8 @@ export default function App() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regPaketTipi, setRegPaketTipi] = useState<'DENEME' | 'BASIC' | 'PREMIUM'>('DENEME');
+  const [regAbonelikTipi, setRegAbonelikTipi] = useState<'AYLIK' | 'YILLIK'>('AYLIK');
   const [regError, setRegError] = useState<string | null>(null);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
 
@@ -101,12 +104,25 @@ export default function App() {
   const [changePassError, setChangePassError] = useState<string | null>(null);
 
   // Navigation & Layout States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   // Filter tags in top bar
   const [filterTag, setFilterTag] = useState<string>('Tümü');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Global Search Autocomplete States
+  const [searchResults, setSearchResults] = useState<{
+    portfolios: any[];
+    clients: any[];
+    employees: any[];
+    appointments: any[];
+    pages: any[];
+  } | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Business Logic States
   const [portfolios, setPortfolios] = useState(INITIAL_PORTFOLIOS);
@@ -163,25 +179,101 @@ export default function App() {
   const [empError, setEmpError] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
 
+  // Subscription Details & Schedule States
+  const [subInfo, setSubInfo] = useState<any>(null);
+  const [schedPaketTipi, setSchedPaketTipi] = useState<'BASIC' | 'PREMIUM'>('PREMIUM');
+  const [schedPeriyot, setSchedPeriyot] = useState<'AYLIK' | 'YILLIK'>('AYLIK');
+
+  // Ofis Presence States
+  const [isOfisteMi, setIsOfisteMi] = useState<boolean>(false);
+  const [officeUsers, setOfficeUsers] = useState<any[]>([]);
+  const [presenceLoading, setPresenceLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   // Appointments
-  const [appointments, setAppointments] = useState([
-    { id: '1', portfoyId: '1', portfoyTip: 'DAIRE', talepEden: 'Elif Kaya', musteri: 'Zeynep Öztürk', zaman: '14:00', tarih: '25 Temmuz', durum: 'APPROVED' },
-    { id: '2', portfoyId: '2', portfoyTip: 'VILLA', talepEden: 'Can Yılmaz', musteri: 'Murat Demir', zaman: '11:30', tarih: '26 Temmuz', durum: 'PENDING' }
-  ]);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [selectedMusteriId, setSelectedMusteriId] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   
   // Clients (Musteriler)
-  const [clients, setClients] = useState(INITIAL_CLIENTS);
+  const [clients, setClients] = useState<any[]>([]);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientBudget, setNewClientBudget] = useState('');
   const [newClientType, setNewClientType] = useState('DAIRE');
   const [newClientMusteriTipi, setNewClientMusteriTipi] = useState('ALICI');
 
-  // Interactive Mini Calendar States
+  // Dynamic Month/Year Navigation States for Mini Calendar
+  const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date(2026, 6, 1)); // Default July 2026
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(22);
-  const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const calendarYear = currentCalendarDate.getFullYear();
+  const calendarMonth = currentCalendarDate.getMonth(); // 0-indexed (0 = Jan, 6 = Jul)
+  
+  // Month Name in Turkish (e.g. "Temmuz 2026")
+  const calendarMonthName = currentCalendarDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  
+  // First day of month (Monday = 0 ... Sunday = 6)
+  const rawFirstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const firstDayOfWeek = (rawFirstDay + 6) % 7; // Monday = 0
+
+  // Total days in current month
+  const daysInCurrentMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const daysInMonthArray = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
+  const blankLeadingDays = Array.from({ length: firstDayOfWeek });
+
+  const handlePrevMonth = () => {
+    const prev = new Date(calendarYear, calendarMonth - 1, 1);
+    setCurrentCalendarDate(prev);
+    setSelectedCalendarDay(1);
+  };
+
+  const handleNextMonth = () => {
+    const next = new Date(calendarYear, calendarMonth + 1, 1);
+    setCurrentCalendarDate(next);
+    setSelectedCalendarDay(1);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setCurrentCalendarDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedCalendarDay(today.getDate());
+  };
+
+  // Portfolio Detail Modal Specific Mini Calendar States
+  const [popCalendarDate, setPopCalendarDate] = useState<Date>(new Date(2026, 6, 1));
+  const [popSelectedDay, setPopSelectedDay] = useState<number>(22);
+  const [popAppointments, setPopAppointments] = useState<any[]>([]);
+
+  const popYear = popCalendarDate.getFullYear();
+  const popMonth = popCalendarDate.getMonth();
+  const popMonthName = popCalendarDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  const popRawFirstDay = new Date(popYear, popMonth, 1).getDay();
+  const popFirstDayOfWeek = (popRawFirstDay + 6) % 7;
+  const popDaysInMonth = new Date(popYear, popMonth + 1, 0).getDate();
+  const popDaysArray = Array.from({ length: popDaysInMonth }, (_, i) => i + 1);
+  const popBlankDays = Array.from({ length: popFirstDayOfWeek });
+
+  const handlePopPrevMonth = () => {
+    setPopCalendarDate(new Date(popYear, popMonth - 1, 1));
+    setPopSelectedDay(1);
+  };
+
+  const handlePopNextMonth = () => {
+    setPopCalendarDate(new Date(popYear, popMonth + 1, 1));
+    setPopSelectedDay(1);
+  };
+
+  const handlePopToday = () => {
+    const today = new Date();
+    setPopCalendarDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setPopSelectedDay(today.getDate());
+  };
 
   // Fetch employees list from real backend
   const fetchEmployees = async (currentToken: string) => {
@@ -219,7 +311,7 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPortfolios(data);
+        setPortfolios(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Failed to fetch portfolios:', err);
@@ -236,10 +328,177 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setClients(data);
+        setClients(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Failed to fetch clients:', err);
+    }
+  };
+
+  // Fetch appointments list from real backend for currently selected month
+  const fetchAppointments = async (currentToken: string, dateObj: Date) => {
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth();
+    const startDate = new Date(y, m, 1, 0, 0, 0, 0).toISOString();
+    const endDate = new Date(y, m + 1, 0, 23, 59, 59, 999).toISOString();
+
+    try {
+      const res = await fetch(`/api/appointments/list?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`, {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAppointments(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+    }
+  };
+
+  // Fetch appointments for a specific portfolio (property modal calendar)
+  const fetchPortfolioAppointments = async (currentToken: string, portId: string, dateObj: Date) => {
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth();
+    const startDate = new Date(y, m, 1, 0, 0, 0, 0).toISOString();
+    const endDate = new Date(y, m + 1, 0, 23, 59, 59, 999).toISOString();
+
+    try {
+      const res = await fetch(`/api/appointments/list?portfoyId=${encodeURIComponent(portId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`, {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPopAppointments(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch portfolio appointments:', err);
+    }
+  };
+
+  // Fetch subscription details from real backend
+  const fetchSubscriptionDetails = async (currentToken: string) => {
+    try {
+      const res = await fetch('/api/subscription/details', {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubInfo(data);
+        if (data.mevcutPaket?.paketAdi) {
+          const upper = data.mevcutPaket.paketAdi.toUpperCase();
+          if (upper === 'PREMIUM') setPackageType('PREMIUM');
+          else setPackageType('BASIC');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch subscription details:', err);
+    }
+  };
+
+  // Fetch my current office status
+  const fetchMyOfficeStatus = async (currentToken: string) => {
+    try {
+      const res = await fetch('/api/user/my-status', {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsOfisteMi(!!data.ofisteMi);
+      }
+    } catch (err) {
+      console.error('Failed to fetch office status:', err);
+    }
+  };
+
+  // Fetch users currently in office
+  const fetchOfficeUsers = async (currentToken: string) => {
+    try {
+      const res = await fetch('/api/user/active-in-office', {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOfficeUsers(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch office users:', err);
+    }
+  };
+
+  // Toggle office presence
+  const handleToggleOfficeStatus = async () => {
+    if (!token) return;
+    setPresenceLoading(true);
+    try {
+      const res = await fetch('/api/user/toggle-office-status', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsOfisteMi(data.ofisteMi);
+        showToast(data.message, 'success');
+        fetchOfficeUsers(token);
+      } else {
+        showToast('Durum güncellenemedi.', 'error');
+      }
+    } catch (err) {
+      showToast('Sunucu bağlantı hatası.', 'error');
+    } finally {
+      setPresenceLoading(false);
+    }
+  };
+
+  // Schedule future package change handler
+  const handleSchedulePackageChange = async (targetPaket: 'BASIC' | 'PREMIUM', targetPeriyot: 'AYLIK' | 'YILLIK') => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/subscription/schedule-change', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          gelecekPaketAdi: targetPaket === 'PREMIUM' ? 'Premium' : 'Basic',
+          gelecekPeriyot: targetPeriyot
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchSubscriptionDetails(token);
+      } else {
+        alert(data.message || 'Paket değişimi planlanırken hata oluştu.');
+      }
+    } catch (err) {
+      alert('Sunucuyla bağlantı kurulamadı.');
+    }
+  };
+
+  // Cancel scheduled package change handler
+  const handleCancelScheduledChange = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/subscription/cancel-schedule', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchSubscriptionDetails(token);
+      } else {
+        alert(data.message || 'Planlama iptal edilirken hata oluştu.');
+      }
+    } catch (err) {
+      alert('Sunucu bağlantı hatası.');
     }
   };
 
@@ -279,8 +538,93 @@ export default function App() {
       fetchEmployees(token);
       fetchPortfolios(token);
       fetchClients(token);
+      fetchSubscriptionDetails(token);
+      fetchMyOfficeStatus(token);
+      fetchOfficeUsers(token);
     }
   }, [token]);
+
+  // 300ms Debounce for Global Search
+  useEffect(() => {
+    if (!token) return;
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      setShowSearchDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchLoading(true);
+      setShowSearchDropdown(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, token]);
+
+  // Close dropdown on outside click or Escape key
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSearchDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Smart Navigation: when user clicks a search result
+  const handleSelectSearchResult = useCallback((type: string, item: any) => {
+    setShowSearchDropdown(false);
+    setSearchQuery('');
+    setSearchResults(null);
+
+    if (type === 'portfolio') {
+      // Navigate to portfolios tab and open the portfolio detail modal
+      setActiveTab('portfolios');
+      // Find matching portfolio from local state or use the search result item
+      const found = portfolios.find((p: any) => p.id === item.id) || item;
+      setSelectedPortfolio(found);
+    } else if (type === 'client') {
+      setActiveTab('clients');
+    } else if (type === 'employee') {
+      setActiveTab('team');
+    } else if (type === 'appointment') {
+      setActiveTab('appointments');
+    } else if (type === 'page') {
+      setActiveTab(item.id as any);
+    }
+  }, [portfolios]);
+
+  useEffect(() => {
+    if (token) {
+      fetchAppointments(token, currentCalendarDate);
+    }
+  }, [token, currentCalendarDate]);
+
+  // Fetch portfolio specific appointments when modal is open
+  useEffect(() => {
+    if (token && selectedPortfolio?.id) {
+      fetchPortfolioAppointments(token, selectedPortfolio.id, popCalendarDate);
+    }
+  }, [token, selectedPortfolio, popCalendarDate]);
 
   // Login Handler
   const handleLogin = async (e: React.FormEvent) => {
@@ -337,7 +681,9 @@ export default function App() {
           soyad: regSoyad,
           eposta: regEmail,
           sifre: regPassword,
-          telefon: regPhone
+          telefon: regPhone,
+          paketTipi: regPaketTipi,
+          abonelikTipi: regPaketTipi === 'DENEME' ? 'AYLIK' : regAbonelikTipi
         })
       });
 
@@ -640,8 +986,8 @@ export default function App() {
       return;
     }
 
-    if (portfolio.durum === 'KAPARO_ASAMASINDA' || portfolio.durum === 'KIRALANDI_SATILDI') {
-      alert("Bu portföy kaparo aşamasında veya satıldığı için randevu alınamaz.");
+    if (portfolio.durum === 'KAPORA_ASAMASINDA' || portfolio.durum === 'KIRALANDI_SATILDI') {
+      alert("Bu portföy kapora aşamasında veya satıldığı için randevu alınamaz.");
       return;
     }
 
@@ -663,20 +1009,31 @@ export default function App() {
   };
 
   // Update Appointment Status
-  const handleUpdateAppStatus = (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
-    setAppointments(appointments.map(app => {
-      if (app.id === id) {
-        if (newStatus === 'APPROVED') {
-          const clash = appointments.some(a => a.portfoyId === app.portfoyId && a.zaman === app.zaman && a.tarih === app.tarih && a.durum === 'APPROVED');
-          if (clash) {
-            alert("HATA: Aynı saat diliminde onaylanmış başka bir randevu mevcut! Çakışma engellendi.");
-            return app;
-          }
-        }
-        return { ...app, durum: newStatus };
+  const handleUpdateAppStatus = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
+    if (!token) {
+      setAppointments(appointments.map(app => app.id === id ? { ...app, durum: newStatus } : app));
+      return;
+    }
+    try {
+      const res = await fetch('/api/appointments/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          appointmentId: id,
+          durum: newStatus
+        })
+      });
+      if (res.ok) {
+        fetchAppointments(token, currentCalendarDate);
+      } else {
+        setAppointments(appointments.map(app => app.id === id ? { ...app, durum: newStatus } : app));
       }
-      return app;
-    }));
+    } catch (err) {
+      setAppointments(appointments.map(app => app.id === id ? { ...app, durum: newStatus } : app));
+    }
   };
 
   // Filter logic for portfolios list
@@ -691,7 +1048,20 @@ export default function App() {
     // 2. Scope filter (All vs Mine)
     if (portfolioScope === 'mine') {
       const myName = `${user?.ad || ''} ${user?.soyad || ''}`.trim();
-      return p.gorevliUzmanId === user?.id || p.gorevliUzman === myName;
+      if (p.gorevliUzmanId !== user?.id && p.gorevliUzman !== myName) return false;
+    }
+    // 3. Search query filter
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const matchTip = (p.tip || '').toLowerCase().includes(q);
+      const matchTur = (p.tur || '').toLowerCase().includes(q);
+      const matchIl = (p.il || '').toLowerCase().includes(q);
+      const matchIlce = (p.ilce || '').toLowerCase().includes(q);
+      const matchMahalle = (p.mahalle || '').toLowerCase().includes(q);
+      const matchUzman = (p.gorevliUzman || '').toLowerCase().includes(q);
+      if (!matchTip && !matchTur && !matchIl && !matchIlce && !matchMahalle && !matchUzman) {
+        return false;
+      }
     }
     return true;
   });
@@ -851,8 +1221,73 @@ export default function App() {
                     <input type="password" className="w-full text-xs p-2 rounded-xl bg-zinc-50 border-none focus:outline-none" placeholder="En az 6 karakter" value={regPassword} onChange={e => setRegPassword(e.target.value)} required />
                   </div>
 
+                  {/* Abonelik Paketi Seçimi */}
+                  <div className="flex flex-col gap-2 my-1">
+                    <label className="text-[10px] font-extrabold text-zinc-500 uppercase block tracking-wider">Abonelik Paketi Seçin</label>
+                    
+                    {/* Period Switcher (Aylık / Yıllık) */}
+                    {regPaketTipi !== 'DENEME' && (
+                      <div className="flex bg-zinc-100 p-1 rounded-xl mb-1">
+                        <button 
+                          type="button" 
+                          onClick={() => setRegAbonelikTipi('AYLIK')}
+                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${
+                            regAbonelikTipi === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
+                          }`}
+                        >
+                          Aylık Ödeme
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setRegAbonelikTipi('YILLIK')}
+                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${
+                            regAbonelikTipi === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
+                          }`}
+                        >
+                          Yıllık Ödeme (%20 İndirimli)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Package Cards */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <div 
+                        onClick={() => setRegPaketTipi('DENEME')}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                          regPaketTipi === 'DENEME' ? 'border-charcoal bg-[#FEF08A]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold block">Deneme</span>
+                        <span className="text-[9px] text-zinc-600 block mt-0.5">30 Gün Ücretsiz</span>
+                        <span className="text-[8px] font-bold text-zinc-500 mt-1 block">4 Danışman</span>
+                      </div>
+
+                      <div 
+                        onClick={() => setRegPaketTipi('BASIC')}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                          regPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold block">Basic</span>
+                        <span className="text-[9px] text-zinc-600 block mt-0.5">Standart Paket</span>
+                        <span className="text-[8px] font-bold text-zinc-500 mt-1 block">4 Danışman</span>
+                      </div>
+
+                      <div 
+                        onClick={() => setRegPaketTipi('PREMIUM')}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                          regPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold block">Premium</span>
+                        <span className="text-[9px] text-zinc-600 block mt-0.5">Tam Sınırsız</span>
+                        <span className="text-[8px] font-bold text-zinc-500 mt-1 block">Sınırsız Danışman</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <button type="submit" className="w-full py-2.5 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none mt-2">
-                    Kaydol ve Denemeyi Başlat
+                    {regPaketTipi === 'DENEME' ? 'Kaydol ve 30 Gün Ücretsiz Başlat' : `Kaydol (${regPaketTipi} Paket - ${regAbonelikTipi === 'YILLIK' ? 'Yıllık' : 'Aylık'})`}
                   </button>
                 </form>
               )}
@@ -924,91 +1359,133 @@ export default function App() {
   // RENDER 3: FULL COMPLETED DASHBOARD AND APPLICATION
   return (
     <div className="min-h-screen bg-cream text-charcoal flex font-sans">
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold transition-all animate-bounce-in border-none ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.type === 'success'
+            ? <Check size={16} className="shrink-0" />
+            : <AlertTriangle size={16} className="shrink-0" />
+          }
+          {toast.message}
+        </div>
+      )}
       
       {/* LEFT SIDEBAR */}
-      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 p-6 z-40 border-r-4 border-charcoal shrink-0 ${
-        sidebarCollapsed ? 'w-20' : 'w-72'
+      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 z-40 border-r-4 border-charcoal shrink-0 ${
+        sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-72 p-6'
       }`}>
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && (
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+            {!sidebarCollapsed ? (
               <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
                 HOMEY
+              </span>
+            ) : (
+              <span className="text-xl font-extrabold bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
+                H
               </span>
             )}
             <button 
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-1 rounded-lg hover:bg-zinc-800 transition-colors text-white ml-auto"
+              className={`p-1.5 rounded-lg hover:bg-zinc-800 transition-colors text-white ${sidebarCollapsed ? 'mt-2' : 'ml-auto'}`}
+              title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
             >
               <Menu size={20} />
             </button>
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              {!sidebarCollapsed && <span className="text-xs font-bold text-zinc-500 tracking-widest pl-4">GENEL</span>}
+          <nav className="flex flex-col gap-6 w-full">
+            <div className="flex flex-col gap-2 w-full">
+              {!sidebarCollapsed ? (
+                <span className="text-xs font-bold text-zinc-500 tracking-widest pl-4">GENEL</span>
+              ) : (
+                <div className="w-full border-t border-zinc-800 my-1" title="GENEL" />
+              )}
               <button 
                 onClick={() => setActiveTab('dashboard')} 
-                className={`sidebar-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+                title="Ana Sayfa"
+                className={`sidebar-link ${activeTab === 'dashboard' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
-                <Home size={18} />
+                <Home size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Ana Sayfa</span>}
               </button>
               <button 
                 onClick={() => setActiveTab('portfolios')} 
-                className={`sidebar-link ${activeTab === 'portfolios' ? 'active' : ''}`}
+                title="Portföyler"
+                className={`sidebar-link ${activeTab === 'portfolios' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
-                <Building size={18} />
+                <Building size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Portföyler</span>}
               </button>
               <button 
                 onClick={() => setActiveTab('appointments')} 
-                className={`sidebar-link ${activeTab === 'appointments' ? 'active' : ''}`}
+                title="Randevular"
+                className={`sidebar-link ${activeTab === 'appointments' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
-                <Calendar size={18} />
+                <Calendar size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Randevular</span>}
               </button>
               <button 
                 onClick={() => setActiveTab('clients')} 
-                className={`sidebar-link ${activeTab === 'clients' ? 'active' : ''}`}
+                title="Müşteriler"
+                className={`sidebar-link ${activeTab === 'clients' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
-                <User size={18} />
+                <User size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Müşteriler</span>}
               </button>
               <button 
                 onClick={() => setActiveTab('calculator')} 
-                className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''}`}
+                title="Hesaplayıcı"
+                className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
-                <Calculator size={18} />
+                <Calculator size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Hesaplayıcı</span>}
               </button>
             </div>
 
             {/* Admin Management Section - Only visible to YETKILI (Broker) */}
             {user?.rol === 'YETKILI' && (
-              <div className="flex flex-col gap-2">
-                {!sidebarCollapsed && <span className="text-xs font-bold text-zinc-500 tracking-widest pl-4">YÖNETİM</span>}
+              <div className="flex flex-col gap-2 w-full">
+                {!sidebarCollapsed ? (
+                  <span className="text-xs font-bold text-zinc-500 tracking-widest pl-4">YÖNETİM</span>
+                ) : (
+                  <div className="w-full border-t border-zinc-800 my-1" title="YÖNETİM" />
+                )}
                 <button 
                   onClick={() => setActiveTab('analytics')} 
-                  className={`sidebar-link ${activeTab === 'analytics' ? 'active' : ''}`}
+                  title="Ciro Raporları"
+                  className={`sidebar-link ${activeTab === 'analytics' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
-                  <TrendingUp size={18} />
+                  <TrendingUp size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Ciro Raporları</span>}
                 </button>
                 <button 
                   onClick={() => setActiveTab('team')} 
-                  className={`sidebar-link ${activeTab === 'team' ? 'active' : ''}`}
+                  title="Danışman Yönetimi"
+                  className={`sidebar-link ${activeTab === 'team' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
-                  <Users size={18} />
+                  <Users size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Danışman Yönetimi</span>}
                 </button>
                 <button 
-                  onClick={() => setActiveTab('settings')} 
-                  className={`sidebar-link ${activeTab === 'settings' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('subscription')} 
+                  title="Abonelik Yönetimi"
+                  className={`sidebar-link ${activeTab === 'subscription' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
-                  <Percent size={18} />
+                  <Shield size={20} className="shrink-0" />
+                  {!sidebarCollapsed && <span>Abonelik Yönetimi</span>}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('settings')} 
+                  title="Komisyon Ayarları"
+                  className={`sidebar-link ${activeTab === 'settings' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <Percent size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Komisyon Ayarları</span>}
                 </button>
               </div>
@@ -1017,66 +1494,286 @@ export default function App() {
         </div>
 
         {/* Sidebar Footer / User info & Logout */}
-        <div className="flex flex-col gap-4">
-          <div className="border-t border-zinc-800 pt-4 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">
-                {user?.ad ? user.ad[0] : 'C'}{user?.soyad ? user.soyad[0] : 'Y'}
-              </div>
-              {!sidebarCollapsed && (
-                <div className="flex flex-col leading-none">
-                  <span className="text-sm font-semibold">{user?.ad} {user?.soyad}</span>
-                  <span className="text-xs text-zinc-500 mt-1">{user?.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'}</span>
-                </div>
-              )}
+        <div className="flex flex-col gap-4 w-full">
+          <div className={`border-t border-zinc-800 pt-4 flex gap-2 ${sidebarCollapsed ? 'justify-center' : 'items-center'}`}>
+            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0" title={`${user?.ad || ''} ${user?.soyad || ''}`}>
+              {user?.ad ? user.ad[0] : 'C'}{user?.soyad ? user.soyad[0] : 'Y'}
             </div>
+            {!sidebarCollapsed && (
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-semibold">{user?.ad} {user?.soyad}</span>
+                <span className="text-xs text-zinc-500 mt-1">{user?.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'}</span>
+              </div>
+            )}
           </div>
-          <button onClick={handleLogout} className="sidebar-link text-red-400 hover:text-red-300 hover:bg-red-950/20 border-none justify-start">
-            <LogOut size={18} />
+          <button 
+            onClick={handleLogout} 
+            title="Çıkış Yap"
+            className={`sidebar-link text-red-400 hover:text-red-300 hover:bg-red-950/20 border-none ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
+          >
+            <LogOut size={20} className="shrink-0" />
             {!sidebarCollapsed && <span>Çıkış Yap</span>}
           </button>
         </div>
       </aside>
 
-      {/* MIDDLE MAIN DASHBOARD */}
-      <main className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto max-w-[1000px]">
-        
-        {/* Top greeting bar and filters */}
-        <header className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-extrabold text-charcoal">İyi günler, {user?.ad || 'Can'} 👋</h1>
-              <p className="text-zinc-500 text-sm mt-1">Bugün ofis genelinde 3 aktif randevu ve 1 bekleyen teklif bulunuyor.</p>
-            </div>
-            
-            {/* Search input */}
-            <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Portföy ara..." 
-                className="bg-white border-2 border-charcoal rounded-full px-5 py-2 pl-11 text-sm focus:outline-none transition-all w-64"
-              />
-              <Search size={16} className="absolute left-4 top-3 text-zinc-500" />
-            </div>
-          </div>
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto flex flex-col gap-6">
 
-          {/* Pill filters tags */}
-          <div className="flex gap-2">
-            {['Tümü', 'Satılık', 'Kiralık', 'Konut', 'Arsa'].map((tag) => (
-              <button 
-                key={tag}
-                onClick={() => { setFilterTag(tag); setActiveTab('portfolios'); }}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${
-                  filterTag === tag 
-                    ? 'bg-charcoal text-white shadow-none' 
-                    : 'bg-white text-charcoal hover:bg-zinc-50'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </header>
+          {/* Global Top Header Bar with Autocomplete */}
+          <header className="flex items-center w-full gap-4">
+            {activeTab === 'dashboard' && (
+              <div className="shrink-0">
+                <h1 className="text-3xl font-extrabold text-charcoal">İyi günler, {user?.ad || 'Can'} 👋</h1>
+                <p className="text-zinc-500 text-sm mt-1">Bugün ofis genelinde 3 aktif randevu ve 1 bekleyen teklif bulunuyor.</p>
+              </div>
+            )}
+            
+            {/* Global Smart Search with Autocomplete */}
+            <div
+              ref={searchContainerRef}
+              className={`relative transition-all duration-300 ${
+                activeTab === 'dashboard' ? 'w-64 ml-auto' : 'w-full'
+              }`}
+            >
+              {/* Search Input */}
+              <input
+                type="text"
+                placeholder="Portföy, müşteri, danışman veya sayfa ara..."
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value.trim().length >= 2) setShowSearchDropdown(true);
+                }}
+                onFocus={() => { if (searchQuery.trim().length >= 2) setShowSearchDropdown(true); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    setActiveTab('portfolios');
+                    setShowSearchDropdown(false);
+                  }
+                }}
+                className="w-full bg-white border-2 border-charcoal rounded-full px-5 py-2.5 pl-11 pr-10 text-sm focus:outline-none transition-all shadow-none"
+              />
+              {/* Search Icon or Loader */}
+              {isSearchLoading
+                ? <Loader2 size={16} className="absolute left-4 top-3.5 text-zinc-500 animate-spin" />
+                : <Search size={16} className="absolute left-4 top-3.5 text-zinc-500" />
+              }
+              {/* Clear button */}
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); setSearchResults(null); setShowSearchDropdown(false); }}
+                  className="absolute right-4 top-3 text-zinc-400 hover:text-zinc-700 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+
+              {/* Autocomplete Dropdown Panel */}
+              {showSearchDropdown && (
+                <div className="absolute top-full mt-2 left-0 right-0 bg-white border-2 border-charcoal rounded-3xl shadow-xl z-50 overflow-hidden max-h-[480px] overflow-y-auto">
+                  {isSearchLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-8 text-zinc-500 text-sm">
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Aranıyor...</span>
+                    </div>
+                  ) : searchResults ? (
+                    <>
+                      {/* No results at all */}
+                      {!searchResults.portfolios.length && !searchResults.clients.length && !searchResults.employees.length && !searchResults.appointments.length && !searchResults.pages.length ? (
+                        <div className="py-10 text-center">
+                          <Search size={28} className="mx-auto text-zinc-300 mb-2" />
+                          <p className="text-zinc-500 text-sm font-medium">"{searchQuery}" için sonuç bulunamadı.</p>
+                          <button
+                            onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
+                            className="mt-3 text-xs text-blue-600 hover:underline font-semibold"
+                          >
+                            Tüm portföyleri görüntüle →
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-zinc-100">
+
+                          {/* Portföyler Category */}
+                          {searchResults.portfolios.length > 0 && (
+                            <div>
+                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                                <Building size={13} className="text-zinc-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Portföyler</span>
+                              </div>
+                              {searchResults.portfolios.map((p: any) => (
+                                <button
+                                  key={`port-${p.id}`}
+                                  onClick={() => handleSelectSearchResult('portfolio', p)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                                >
+                                  <div className="w-8 h-8 rounded-xl bg-[#FEF08A] flex items-center justify-center shrink-0">
+                                    <Home size={14} className="text-charcoal" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-charcoal truncate">{p.tip} — {p.tur}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{p.mahalle}, {p.ilce} / {p.il} · {p.fiyat?.toLocaleString('tr-TR')} ₺</p>
+                                  </div>
+                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Müşteriler Category */}
+                          {searchResults.clients.length > 0 && (
+                            <div>
+                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                                <User size={13} className="text-zinc-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Müşteriler</span>
+                              </div>
+                              {searchResults.clients.map((c: any) => (
+                                <button
+                                  key={`cli-${c.id}`}
+                                  onClick={() => handleSelectSearchResult('client', c)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                                >
+                                  <div className="w-8 h-8 rounded-xl bg-[#BAE6FD] flex items-center justify-center shrink-0">
+                                    <User size={14} className="text-charcoal" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-charcoal truncate">{c.ad}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{c.musteriTipi} · {c.telefon}</p>
+                                  </div>
+                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Danışmanlar Category */}
+                          {searchResults.employees.length > 0 && (
+                            <div>
+                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                                <Briefcase size={13} className="text-zinc-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Danışman Kadrosu</span>
+                              </div>
+                              {searchResults.employees.map((e: any) => (
+                                <button
+                                  key={`emp-${e.id}`}
+                                  onClick={() => handleSelectSearchResult('employee', e)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                                >
+                                  <div className="w-8 h-8 rounded-xl bg-[#BBF7D0] flex items-center justify-center shrink-0">
+                                    <Users size={14} className="text-charcoal" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-charcoal truncate">{e.ad} {e.soyad}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{e.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'} · {e.eposta}</p>
+                                  </div>
+                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Randevular Category */}
+                          {searchResults.appointments.length > 0 && (
+                            <div>
+                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                                <Clock size={13} className="text-zinc-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Randevular</span>
+                              </div>
+                              {searchResults.appointments.map((a: any) => (
+                                <button
+                                  key={`app-${a.id}`}
+                                  onClick={() => handleSelectSearchResult('appointment', a)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                                >
+                                  <div className="w-8 h-8 rounded-xl bg-[#E9D5FF] flex items-center justify-center shrink-0">
+                                    <Calendar size={14} className="text-charcoal" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-charcoal truncate">{a.portfoyTip} — {a.ilce}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{a.musteri} · {new Date(a.randevuZamani).toLocaleDateString('tr-TR')} · <span className={a.durum === 'APPROVED' ? 'text-emerald-600' : a.durum === 'REJECTED' ? 'text-red-500' : 'text-amber-600'}>{a.durum}</span></p>
+                                  </div>
+                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Sistem Sayfaları Category */}
+                          {searchResults.pages.length > 0 && (
+                            <div>
+                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                                <LayoutDashboard size={13} className="text-zinc-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Sistem Sayfaları</span>
+                              </div>
+                              {searchResults.pages.map((pg: any) => (
+                                <button
+                                  key={`pg-${pg.id}`}
+                                  onClick={() => handleSelectSearchResult('page', pg)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                                >
+                                  <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
+                                    <FileText size={14} className="text-zinc-500" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-charcoal truncate">{pg.title}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{pg.description}</p>
+                                  </div>
+                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Footer: Show all results */}
+                          <div className="px-4 py-3 bg-zinc-50">
+                            <button
+                              onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
+                              className="w-full text-xs text-center font-semibold text-zinc-500 hover:text-charcoal transition-colors"
+                            >
+                              Tüm sonuçları portföylerde gör →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </header>
+
+
+          {/* Subscription Expiration / Scheduled Package Warning Alert Banner */}
+          {subInfo && (subInfo.kalanGun <= 7 || subInfo.gelecekPaket) && (
+            <div className="bg-[#FEF08A] border-2 border-charcoal text-charcoal px-6 py-4 rounded-3xl flex justify-between items-center shadow-none">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-amber-800 shrink-0" size={22} />
+                <div className="text-xs font-medium leading-relaxed">
+                  {subInfo.kalanGun <= 7 ? (
+                    <span>
+                      <strong className="font-extrabold text-sm block mb-0.5 text-amber-950">Abonelik Döneminizin Bitmesine {subInfo.kalanGun} Gün Kaldı!</strong>
+                      {subInfo.gelecekPaket 
+                        ? `Süre dolduğunda (${new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}) otomatik olarak ${subInfo.gelecekPaket.paketAdi} (${subInfo.gelecekPaket.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'}) paketine geçiş yapılacaktır.` 
+                        : 'Paketiniz bitmeden kesintisiz devam etmek için Danışman Yönetimi alanından gelecek döneminizi planlayabilirsiniz.'}
+                    </span>
+                  ) : (
+                    <span>
+                      <strong className="font-extrabold text-sm block mb-0.5 text-charcoal">Gelecek Paket Değişimi Planlandı!</strong>
+                      Mevcut paketiniz sona erdiğinde ({new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}), hesabınız otomatik olarak <strong>{subInfo.gelecekPaket?.paketAdi} ({subInfo.gelecekPaket?.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'})</strong> paketine yükseltilecektir.
+                    </span>
+                  )}
+                </div>
+              </div>
+              {user?.rol === 'YETKILI' && (
+                <button 
+                  onClick={() => setActiveTab('subscription')} 
+                  className="px-4 py-2 bg-charcoal text-white rounded-full text-xs font-extrabold hover:bg-black transition-colors shrink-0 border-none ml-4 cursor-pointer"
+                >
+                  Aboneliği Yönet
+                </button>
+              )}
+            </div>
+          )}
 
         {/* Tab 1: Bento Dashboard */}
         {activeTab === 'dashboard' && (
@@ -1230,15 +1927,15 @@ export default function App() {
                             {p.tur}
                           </span>
                         </td>
-                        <td className="py-3.5 text-zinc-500">{p.il} / {p.ilce}</td>
-                        <td className="py-3.5 text-right font-extrabold">{p.fiyat.toLocaleString('tr-TR')} TL</td>
-                        <td className="py-3.5 font-medium">{p.gorevliUzman}</td>
+                        <td className="py-3.5 text-zinc-500">{p.il || ''} / {p.ilce || ''}</td>
+                        <td className="py-3.5 text-right font-extrabold">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</td>
+                        <td className="py-3.5 font-medium">{p.gorevliUzman || ''}</td>
                         <td className="py-3.5 text-right">
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-charcoal ${
                             p.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-900' :
-                            p.durum === 'KAPARO_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
+                            p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
                           }`}>
-                            {p.durum.replace('_', ' ')}
+                            {(p.durum || 'BOSTA').replace('_', ' ')}
                           </span>
                         </td>
                       </tr>
@@ -1246,6 +1943,88 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Ofis Durumu (Presence) Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Kendi Durumum: Toggle Switch Card */}
+              <div className="bento-card bg-charcoal text-white flex flex-col justify-between min-h-[160px]">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/50 mb-1">Ofis Durumum</p>
+                  <h3 className="text-2xl font-extrabold leading-tight">
+                    {isOfisteMi ? 'Ofisteyim 🏢' : 'Ofiste Değilim 🏠'}
+                  </h3>
+                  <p className="text-xs text-white/50 mt-1">
+                    {isOfisteMi ? 'Ekip arkadaşların seni ofiste görüyor.' : 'Konumunuz diğerlerine görünmüyor.'}
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white/60">
+                    {isOfisteMi ? '✓ Aktif' : '○ Pasif'}
+                  </span>
+                  {/* Toggle Switch */}
+                  <button
+                    onClick={handleToggleOfficeStatus}
+                    disabled={presenceLoading}
+                    className={`relative inline-flex items-center w-14 h-7 rounded-full transition-all duration-300 focus:outline-none border-none ${
+                      isOfisteMi ? 'bg-emerald-400' : 'bg-white/20'
+                    } ${presenceLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                    title={isOfisteMi ? 'Ofisten Ayrılıyorum' : 'Ofise Geldim'}
+                  >
+                    <span
+                      className={`inline-block w-5 h-5 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${
+                        isOfisteMi ? 'translate-x-8' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Bugün Ofistekiler Paneli */}
+              <div className="bento-card bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-extrabold text-charcoal flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    Bugün Ofistekiler
+                  </h3>
+                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {officeUsers.length} Kişi
+                  </span>
+                </div>
+                {officeUsers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-zinc-400">
+                    <Users size={28} className="mb-2 opacity-30" />
+                    <p className="text-xs font-medium">Şu an ofiste kimse yok.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {officeUsers.map(u => (
+                      <div key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 transition-colors">
+                        {/* Avatar with pulsing online dot */}
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[#BBF7D0] flex items-center justify-center text-xs font-extrabold text-charcoal">
+                            {(u.ad || 'U')[0]}{(u.soyad || '')[0] || ''}
+                          </div>
+                          <span className="absolute bottom-0 right-0 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border-2 border-white"></span>
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-charcoal truncate">{u.ad} {u.soyad}</p>
+                          <p className="text-xs text-zinc-500">{u.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'}</p>
+                        </div>
+                        <span className="ml-auto text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">Ofiste</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
 
           </div>
@@ -1264,6 +2043,23 @@ export default function App() {
                 >
                   <Plus size={14} /> Yeni Portföy Ekle
                 </button>
+              </div>
+
+              {/* Category Filter Pills (Sadece Portföyler sayfasında) */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {['Tümü', 'Satılık', 'Kiralık', 'Konut', 'Arsa'].map((tag) => (
+                  <button 
+                    key={tag}
+                    onClick={() => setFilterTag(tag)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${
+                      filterTag === tag 
+                        ? 'bg-charcoal text-white shadow-none' 
+                        : 'bg-white text-charcoal hover:bg-zinc-50'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
               </div>
               
               {/* Scope Switcher: Portföyler vs Portföylerim */}
@@ -1304,16 +2100,16 @@ export default function App() {
                         <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${
                           p.durum === 'BOSTA' ? 'bg-[#BBF7D0]' : 'bg-[#FEF08A]'
                         }`}>
-                          {p.durum.replace('_', ' ')}
+                          {(p.durum || 'BOSTA').replace('_', ' ')}
                         </span>
                       </div>
                       <div className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
-                        <MapPin size={12} /> {p.il} / {p.ilce} - {p.mahalle}
+                        <MapPin size={12} /> {p.il || ''} / {p.ilce || ''} - {p.mahalle || ''}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-extrabold text-md text-charcoal">{p.fiyat.toLocaleString('tr-TR')} TL</div>
-                      <span className="text-[10px] text-zinc-400 font-semibold mt-1 block">Uzman: {p.gorevliUzman}</span>
+                      <div className="font-extrabold text-md text-charcoal">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</div>
+                      <span className="text-[10px] text-zinc-400 font-semibold mt-1 block">Uzman: {p.gorevliUzman || ''}</span>
                     </div>
                   </div>
                 ))}
@@ -1521,8 +2317,8 @@ export default function App() {
                         </div>
                       )}
                       <div className="flex justify-between py-2 border-b border-zinc-200">
-                        <span className="text-zinc-500">Kaparo / Depozito:</span>
-                        <strong className="font-semibold">{selectedPortfolio.kaparo.toLocaleString('tr-TR')} TL / {selectedPortfolio.depozito.toLocaleString('tr-TR')} TL</strong>
+                        <span className="text-zinc-500">Kapora / Depozito:</span>
+                        <strong className="font-semibold">{(selectedPortfolio.kapora || 0).toLocaleString('tr-TR')} TL / {selectedPortfolio.depozito.toLocaleString('tr-TR')} TL</strong>
                       </div>
                       <div className="flex justify-between py-2 border-b border-zinc-200">
                         <span className="text-zinc-500">Portföy Danışmanı:</span>
@@ -1553,7 +2349,7 @@ export default function App() {
                           <Calendar size={16} /> Randevu Teklifi Gönder
                         </h4>
                         
-                        {selectedPortfolio.durum === 'KAPARO_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
+                        {selectedPortfolio.durum === 'KAPORA_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
                           <div className="flex items-center gap-1.5 text-xs text-red-700 font-medium">
                             <AlertTriangle size={14} />
                             <span>Bu portföyün durumundan dolayı randevu alınamaz!</span>
@@ -1587,11 +2383,122 @@ export default function App() {
                     {(user?.rol === 'YETKILI' || selectedPortfolio.gorevliUzmanId === user?.id) && (
                       <button 
                         onClick={() => startEditPortfolio(selectedPortfolio)}
-                        className="w-full py-2.5 bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal text-xs font-bold rounded-full transition-colors border-none"
+                        className="w-full py-2.5 bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
                       >
                         Portföyü Düzenle
                       </button>
                     )}
+
+                    {/* Specific Property Appointments Calendar Section */}
+                    <div className="p-5 rounded-3xl bg-cream border-2 border-charcoal/10 flex flex-col gap-4 mt-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">ÖZEL RANDEVU TAKVİMİ</span>
+                          <h4 className="font-extrabold text-sm text-charcoal">Bu İlana Ait Gösterimler</h4>
+                        </div>
+                        <span className="text-xs font-extrabold px-2.5 py-1 bg-white border border-charcoal rounded-full text-indigo-700">
+                          {popAppointments.length} Toplam
+                        </span>
+                      </div>
+
+                      {/* Pop-Up Mini Calendar Controls & Grid */}
+                      <div className="bg-white p-4 rounded-2xl border border-zinc-200">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-extrabold text-xs capitalize">{popMonthName}</span>
+                          <div className="flex gap-1 items-center">
+                            <button 
+                              type="button"
+                              onClick={handlePopToday}
+                              className="px-2 py-0.5 text-[9px] font-extrabold border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Bugüne Git"
+                            >
+                              Bugün
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={handlePopPrevMonth}
+                              className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Önceki Ay"
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={handlePopNextMonth}
+                              className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Sonraki Ay"
+                            >
+                              <ChevronLeft className="rotate-180" size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Grid */}
+                        <div className="grid grid-cols-7 gap-1 text-[9px] text-center font-bold">
+                          {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
+                            <span key={d} className="text-zinc-400">{d}</span>
+                          ))}
+                          {popBlankDays.map((_, i) => (
+                            <span key={`pop-blank-${i}`} className="p-1"></span>
+                          ))}
+                          {popDaysArray.map(day => {
+                            const hasApp = popAppointments.some((a: any) => Number(a.gun) === day && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => setPopSelectedDay(day)}
+                                className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center cursor-pointer ${
+                                  popSelectedDay === day ? 'bg-charcoal text-white font-extrabold' : 'hover:bg-zinc-100'
+                                }`}
+                              >
+                                <span>{day}</span>
+                                {hasApp && (
+                                  <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${
+                                    popSelectedDay === day ? 'bg-pastelYellow' : 'bg-indigo-600'
+                                  }`} />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Selected Day Timeline for this Property */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-extrabold uppercase text-zinc-500">
+                          {popSelectedDay} {popMonthName} Randevu Akışı
+                        </span>
+                        {(() => {
+                          const dayApps = popAppointments.filter((a: any) => Number(a.gun) === popSelectedDay && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
+                          if (dayApps.length === 0) {
+                            return (
+                              <span className="text-xs text-zinc-400 italic p-2.5 bg-white rounded-xl text-center border border-zinc-200">
+                                Bu tarihte bu ev için henüz randevu alınmamıştır.
+                              </span>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col gap-2">
+                              {dayApps.map((app: any) => (
+                                <div key={app.id} className="p-3 rounded-xl bg-white border border-zinc-200 flex justify-between items-center text-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-extrabold text-charcoal">{app.zaman || '12:00'} - Gösterim</span>
+                                    <span className="text-zinc-500 text-[10px]">Uzman: {app.talepEden} | Müşteri: {app.musteri}</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${
+                                    app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950' : 
+                                    app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950' : 'bg-[#FBCFE8] text-red-950'
+                                  }`}>
+                                    {app.durum}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
 
                     <button className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none" onClick={() => setSelectedPortfolio(null)}>
                       Kapat
@@ -2230,45 +3137,189 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              /* Package details / Subscription */
+              /* Default Consultant Info Card when no employee is selected */
               <div className="bento-card bg-white flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-extrabold mb-3">Abonelik & Lisans Yönetimi</h3>
-                  <p className="text-xs text-zinc-500 mb-4 leading-relaxed">BASIC plan dahilinde en fazla 4 gayrimenkul uzmanı ekleyebilirsiniz. PREMIUM planda ise herhangi bir lisans sınırlaması bulunmamaktadır.</p>
-                  
-                  <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 text-xs mb-4 border-none">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest block">Danışman Yönetimi</span>
+                      <h3 className="text-xl font-extrabold text-charcoal mt-0.5">Ofis Ekip Özeti</h3>
+                    </div>
+                    <span className="px-3 py-1 bg-pastelYellow border border-charcoal rounded-full text-xs font-extrabold uppercase">
+                      {employees.length} Aktif Uzman
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+                    Sol taraftaki listeden bir danışman seçerek detaylarını inceleyebilir, şifresini sıfırlayabilir veya performansını takip edebilirsiniz.
+                  </p>
+
+                  <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 text-xs border-none mb-4">
                     <div className="flex justify-between items-center">
-                      <span>Mevcut Lisans Durumu:</span>
-                      <strong className="font-extrabold">{employees.length} / 4 Kullanıcı</strong>
+                      <span>Mevcut Danışman Sayısı:</span>
+                      <strong className="font-extrabold">{employees.length} Kullanıcı</strong>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span>Abonelik Dönemi:</span>
-                      <strong className="font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">Yıllık Abonelik</strong>
+                      <span>Mevcut Lisans Limiti:</span>
+                      <strong className="font-extrabold text-indigo-700">
+                        {subInfo?.mevcutPaket?.calisanKotasi ? `${subInfo.mevcutPaket.calisanKotasi} Kişi (BASIC)` : 'Sınırsız (PREMIUM)'}
+                      </strong>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => { setPackageType('BASIC'); setEmpError(null); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
-                      packageType === 'BASIC' ? 'bg-[#FEF08A]' : 'bg-white hover:bg-zinc-50'
-                    }`}
-                  >
-                    BASIC Paket
-                  </button>
-                  <button 
-                    onClick={() => { setPackageType('PREMIUM'); setEmpError(null); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
-                      packageType === 'PREMIUM' ? 'bg-pastelGreen' : 'bg-white hover:bg-zinc-50'
-                    }`}
-                  >
-                    PREMIUM Paket
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setActiveTab('subscription')}
+                  className="w-full py-2.5 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none"
+                >
+                  Abonelik ve Paket Detaylarını Gör →
+                </button>
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* Tab 8: Dedicated Subscription & License Management Page (YETKILI only) */}
+        {activeTab === 'subscription' && user?.rol === 'YETKILI' && (
+          <div className="bento-card bg-white">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Lisans ve Paket Yönetimi</span>
+                <h2 className="text-2xl font-extrabold text-charcoal mt-1">Abonelik & Lisans Yönetimi</h2>
+              </div>
+              <span className="px-4 py-1.5 bg-[#FEF08A] border-2 border-charcoal rounded-full text-xs font-extrabold uppercase tracking-wide">
+                {subInfo?.mevcutPaket?.paketAdi || packageType} PAKET
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Left Box: Active Subscription Details & Remaining Days Progress Bar */}
+              <div className="p-6 rounded-3xl bg-cream border-none flex flex-col justify-between gap-6">
+                <div>
+                  <h3 className="text-lg font-extrabold text-charcoal mb-2">Aktif Abonelik Durumu</h3>
+                  <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+                    BASIC planda en fazla 4 gayrimenkul uzmanı ekleyebilirsiniz. PREMIUM planda ise sınırsız danışman lisansı tanımlanır.
+                  </p>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex justify-between items-center text-sm font-extrabold">
+                      <span className="text-zinc-600">Abonelik Dönemi Kalan Süre:</span>
+                      <span className="text-charcoal text-base">{subInfo?.kalanGun ?? 30} Gün</span>
+                    </div>
+
+                    {/* Progress Bar Container */}
+                    <div className="w-full bg-zinc-200 h-4 rounded-full overflow-hidden border border-charcoal/30 relative">
+                      <div 
+                        className="h-full bg-gradient-to-r from-pastelYellow via-pastelBlue to-pastelGreen transition-all duration-500"
+                        style={{ width: `${subInfo?.ilerlemeYuzdesi ?? 10}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs text-zinc-500 font-semibold">
+                      <span>Başlangıç: {subInfo?.mevcutPaket?.baslangicTarihi ? new Date(subInfo.mevcutPaket.baslangicTarihi).toLocaleDateString('tr-TR') : 'Bugün'}</span>
+                      <span>Bitiş: {subInfo?.mevcutPaket?.bitisTarihi ? new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR') : '30 Gün Sonra'}</span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white border-none flex flex-col gap-2 mt-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-zinc-500">Mevcut Ödeme Periyodu:</span>
+                        <strong className="font-extrabold">{subInfo?.mevcutPaket?.periyot === 'Yillik' ? 'Yıllık Abonelik' : subInfo?.mevcutPaket?.periyot === 'Aylik' ? 'Aylık Abonelik' : 'Deneme Süreci'}</strong>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2">
+                        <span className="text-zinc-500">Mevcut Danışman Kullanımı:</span>
+                        <strong className="font-extrabold">{employees.length} / {subInfo?.mevcutPaket?.calisanKotasi ?? (subInfo?.mevcutPaket?.paketAdi === 'Premium' ? 'Sınırsız' : 4)} Kullanıcı</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Box: Scheduled Package Selector / Current Schedule Badge */}
+              <div className="p-6 rounded-3xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between gap-6">
+                <div>
+                  <h3 className="text-lg font-extrabold text-charcoal mb-2">Gelecek Dönem Paket Planlayıcı</h3>
+                  <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+                    O anki paketinizin süresi dolana kadar kesinti yaşanmaz. Seçtiğiniz yeni paket mevcut abonelik bitiminde otomatik aktifleşir.
+                  </p>
+
+                  {/* Scheduled Future Package Notification if scheduled */}
+                  {subInfo?.gelecekPaket ? (
+                    <div className="p-5 rounded-2xl bg-[#BBF7D0]/60 border-2 border-emerald-600 flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-extrabold text-emerald-950 uppercase tracking-wide">✓ Gelecek Paket Planlandı</span>
+                        <button 
+                          onClick={handleCancelScheduledChange}
+                          className="text-xs font-bold text-red-700 underline hover:text-red-900 border-none bg-transparent cursor-pointer"
+                        >
+                          Planı İptal Et
+                        </button>
+                      </div>
+                      <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+                        Mevcut paketinizin süresi dolduğunda ({new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}), hesabınız otomatik olarak <strong>{subInfo.gelecekPaket.paketAdi} ({subInfo.gelecekPaket.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'})</strong> paketine geçecektir.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Future Package Change Selector Form */
+                    <div className="flex flex-col gap-4">
+                      {/* Billing Period Switcher for Next Term */}
+                      <div className="flex bg-zinc-200/80 p-1 rounded-xl">
+                        <button 
+                          type="button" 
+                          onClick={() => setSchedPeriyot('AYLIK')}
+                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${
+                            schedPeriyot === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
+                          }`}
+                        >
+                          Aylık Ödeme
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setSchedPeriyot('YILLIK')}
+                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${
+                            schedPeriyot === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
+                          }`}
+                        >
+                          Yıllık Ödeme (%20 İndirimli)
+                        </button>
+                      </div>
+
+                      {/* Target Package Selection Cards */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div 
+                          onClick={() => setSchedPaketTipi('BASIC')}
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${
+                            schedPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                          }`}
+                        >
+                          <span className="text-xs font-extrabold block">BASIC Paket</span>
+                          <span className="text-[10px] text-zinc-600 block mt-1">4 Danışman Kotası</span>
+                        </div>
+
+                        <div 
+                          onClick={() => setSchedPaketTipi('PREMIUM')}
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${
+                            schedPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                          }`}
+                        >
+                          <span className="text-xs font-extrabold block">PREMIUM Paket</span>
+                          <span className="text-[10px] text-zinc-600 block mt-1">Sınırsız Danışman</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => handleSchedulePackageChange(schedPaketTipi, schedPeriyot)}
+                        className="w-full py-3 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none mt-2 cursor-pointer"
+                      >
+                        Mevcut Paket Bitiminde {schedPaketTipi} Pakete Geç ({schedPeriyot === 'YILLIK' ? 'Yıllık' : 'Aylık'})
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
           </div>
         )}
 
@@ -2339,8 +3390,8 @@ export default function App() {
 
       </main>
 
-      {/* RIGHT PANEL (Widgets & Schedule) */}
-      <aside className={`bg-white border-l-4 border-charcoal flex flex-col transition-all duration-300 z-10 shrink-0 ${
+      {/* RIGHT PANEL (Widgets & Schedule / Ajanda) */}
+      <aside className={`bg-cream border-none flex flex-col transition-all duration-300 z-10 shrink-0 ${
         rightPanelCollapsed ? 'w-20 p-4 items-center gap-6' : 'w-80 p-6 gap-6'
       } overflow-y-auto`}>
         
@@ -2349,7 +3400,7 @@ export default function App() {
           {!rightPanelCollapsed && <span className="text-xs font-bold text-zinc-500 tracking-widest uppercase">Ajanda</span>}
           <button 
             onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            className="p-1 rounded-lg hover:bg-zinc-100 border border-charcoal text-charcoal ml-auto"
+            className="p-1 rounded-lg hover:bg-zinc-200 border border-charcoal text-charcoal ml-auto"
           >
             {rightPanelCollapsed ? <ChevronLeft className="rotate-180" size={16} /> : <ChevronLeft size={16} />}
           </button>
@@ -2360,7 +3411,7 @@ export default function App() {
             {/* Collapsed Calendar Icon representing calendar */}
             <button 
               onClick={() => setRightPanelCollapsed(false)}
-              className="p-3 rounded-full bg-cream hover:bg-zinc-100 shadow-none transition-all border-none"
+              className="p-3 rounded-full bg-white hover:bg-zinc-100 border border-charcoal shadow-none transition-all"
             >
               <Calendar size={18} />
             </button>
@@ -2376,12 +3427,31 @@ export default function App() {
         ) : (
           <>
             {/* Top: Mini Interactive Calendar */}
-            <div className="rounded-3xl p-4 bg-cream shadow-none border-none">
+            <div className="rounded-3xl p-4 bg-white shadow-none border-none">
               <div className="flex justify-between items-center mb-3">
-                <span className="font-extrabold text-sm">Temmuz 2026</span>
-                <div className="flex gap-1">
-                  <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft size={14} /></button>
-                  <button className="p-0.5 border border-charcoal rounded hover:bg-zinc-200"><ChevronLeft className="rotate-180" size={14} /></button>
+                <span className="font-extrabold text-sm capitalize">{calendarMonthName}</span>
+                <div className="flex gap-1 items-center">
+                  <button 
+                    onClick={handleToday}
+                    className="px-2 py-1 text-[10px] font-extrabold border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
+                    title="Bugüne Git"
+                  >
+                    Bugün
+                  </button>
+                  <button 
+                    onClick={handlePrevMonth}
+                    className="p-1 border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
+                    title="Önceki Ay"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button 
+                    onClick={handleNextMonth}
+                    className="p-1 border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
+                    title="Sonraki Ay"
+                  >
+                    <ChevronLeft className="rotate-180" size={14} />
+                  </button>
                 </div>
               </div>
               
@@ -2390,22 +3460,37 @@ export default function App() {
                 {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
                   <span key={d} className="text-zinc-400">{d}</span>
                 ))}
-                {/* Blank leading days (July 2026 starts on Wednesday/Çarşamba, so 2 blank days) */}
-                <span className="p-1"></span>
-                <span className="p-1"></span>
-                {daysInMonth.map(day => (
-                  <button 
-                    key={day}
-                    onClick={() => setSelectedCalendarDay(day)}
-                    className={`p-1 rounded transition-colors ${
-                      selectedCalendarDay === day 
-                        ? 'bg-charcoal text-white' 
-                        : 'hover:bg-zinc-200'
-                    }`}
-                  >
-                    {day}
-                  </button>
+                {/* Dynamic Blank leading days */}
+                {blankLeadingDays.map((_, i) => (
+                  <span key={`blank-${i}`} className="p-1"></span>
                 ))}
+                {/* Dynamic days in month */}
+                {daysInMonthArray.map(day => {
+                  const hasAppointments = appointments.some((app: any) => {
+                    if (app.gun && app.ay && app.yil) {
+                      return Number(app.gun) === day && Number(app.ay) === (calendarMonth + 1) && Number(app.yil) === calendarYear;
+                    }
+                    return false;
+                  });
+                  return (
+                    <button 
+                      key={day}
+                      onClick={() => setSelectedCalendarDay(day)}
+                      className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center cursor-pointer ${
+                        selectedCalendarDay === day 
+                          ? 'bg-charcoal text-white font-extrabold' 
+                          : 'hover:bg-zinc-200'
+                      }`}
+                    >
+                      <span>{day}</span>
+                      {hasAppointments && (
+                        <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${
+                          selectedCalendarDay === day ? 'bg-pastelYellow' : 'bg-indigo-600'
+                        }`} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -2417,39 +3502,81 @@ export default function App() {
               <Plus size={16} /> Yeni Portföy / Randevu
             </button>
 
-            {/* Bottom: "Bugünün Randevu Akışı" Timeline */}
+            {/* Bottom: "Seçilen Günün Randevu Akışı" Timeline */}
             <div className="flex flex-col gap-4">
-              <h4 className="font-extrabold text-sm uppercase tracking-wider text-zinc-500">Bugünün Randevu Akışı</h4>
+              <h4 className="font-extrabold text-xs uppercase tracking-wider text-zinc-500">
+                {selectedCalendarDay} {calendarMonthName} Randevu Akışı
+              </h4>
               
-              <div className="relative border-l-2 border-charcoal ml-2.5 pl-5 flex flex-col gap-6">
-                
-                {/* Timeline item 1 */}
-                <div className="relative">
-                  <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#FEF08A] border-none"></span>
-                  <div className="text-xs">
-                    <span className="font-extrabold block text-charcoal">11:30 - Sarıyer Daire Gösterimi</span>
-                    <span className="text-zinc-500 block mt-0.5">Uzman: Can Yılmaz</span>
-                    <span className="text-zinc-500 block">Müşteri: Murat Demir</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-[#FEF08A] inline-block mt-2">
-                      PENDING
-                    </span>
-                  </div>
-                </div>
+              {(() => {
+                const dayAppointments = appointments.filter((app: any) => {
+                  if (app.gun && app.ay && app.yil) {
+                    return Number(app.gun) === selectedCalendarDay && Number(app.ay) === (calendarMonth + 1) && Number(app.yil) === calendarYear;
+                  }
+                  return false;
+                });
 
-                {/* Timeline item 2 */}
-                <div className="relative">
-                  <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#BBF7D0] border-none"></span>
-                  <div className="text-xs">
-                    <span className="font-extrabold block text-charcoal">14:00 - Caferağa Villa Tanıtımı</span>
-                    <span className="text-zinc-500 block mt-0.5">Uzman: Elif Kaya</span>
-                    <span className="text-zinc-500 block">Müşteri: Zeynep Öztürk</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal bg-[#BBF7D0] inline-block mt-2">
-                      APPROVED
-                    </span>
-                  </div>
-                </div>
+                if (dayAppointments.length === 0) {
+                  return (
+                    <div className="p-4 rounded-2xl bg-zinc-50 text-center flex flex-col items-center justify-center gap-2 border border-zinc-200">
+                      <Calendar className="text-zinc-400" size={24} />
+                      <span className="text-xs font-semibold text-zinc-500 leading-relaxed">
+                        {selectedCalendarDay} {calendarMonthName} tarihinde henüz randevu planlanmadı.
+                      </span>
+                      <button 
+                        onClick={() => setActiveTab('appointments')}
+                        className="text-[11px] text-indigo-600 font-extrabold underline hover:text-indigo-800 border-none bg-transparent cursor-pointer"
+                      >
+                        Tüm Randevulara Git →
+                      </button>
+                    </div>
+                  );
+                }
 
-              </div>
+                return (
+                  <div className="relative border-l-2 border-charcoal ml-2.5 pl-5 flex flex-col gap-6">
+                    {dayAppointments.map((app: any) => (
+                      <div key={app.id} className="relative">
+                        <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${
+                          app.durum === 'APPROVED' ? 'bg-[#BBF7D0]' :
+                          app.durum === 'PENDING' ? 'bg-[#FEF08A]' : 'bg-[#FBCFE8]'
+                        }`} />
+                        <div className="text-xs flex flex-col gap-0.5">
+                          <span className="font-extrabold text-charcoal">
+                            {app.zaman || '12:00'} - {app.portfoyTip || 'Portföy'} Gösterimi
+                          </span>
+                          <span className="text-zinc-500">Uzman: {app.talepEden}</span>
+                          <span className="text-zinc-500">Müşteri: {app.musteri}</span>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${
+                              app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950' : 
+                              app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950' : 'bg-[#FBCFE8] text-red-950'
+                            }`}>
+                              {app.durum}
+                            </span>
+                            {app.durum === 'PENDING' && (
+                              <div className="flex gap-1">
+                                <button 
+                                  onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
+                                  className="px-2 py-0.5 bg-[#BBF7D0] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer"
+                                >
+                                  Onayla
+                                </button>
+                                <button 
+                                  onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
+                                  className="px-2 py-0.5 bg-[#FBCFE8] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer"
+                                >
+                                  Reddet
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}

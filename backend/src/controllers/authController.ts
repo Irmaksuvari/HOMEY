@@ -7,11 +7,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'homey_super_secret_jwt_key_2026_ch
 
 // Broker & Firma Kayıt (POST /api/auth/register-broker)
 export const registerBroker = async (req: Request, res: Response) => {
-  const { firmaAdi, vergiNo, sehir, ad, soyad, eposta, sifre, telefon } = req.body;
+  const { firmaAdi, vergiNo, sehir, ad, soyad, eposta, sifre, telefon, paketTipi, abonelikTipi } = req.body;
 
   if (!firmaAdi || !vergiNo || !sehir || !ad || !soyad || !eposta || !sifre) {
     return res.status(400).json({ message: 'Lütfen zorunlu tüm alanları doldurunuz.' });
   }
+
+  const selectedPaketTipi = (paketTipi || 'DENEME').toUpperCase(); // 'DENEME', 'BASIC', 'PREMIUM'
+  const selectedAbonelikTipi = (abonelikTipi || 'AYLIK').toUpperCase(); // 'AYLIK', 'YILLIK'
 
   try {
     const pool = await poolPromise;
@@ -34,24 +37,59 @@ export const registerBroker = async (req: Request, res: Response) => {
     await transaction.begin();
 
     try {
-      // 1. Firmayı kaydet (Deneme aboneliği 30 gün)
+      // 1. Abonelik bitiş tarihi ve periyot belirleme
       const bitisTarihi = new Date();
-      bitisTarihi.setDate(bitisTarihi.getDate() + 30);
+      let dbPeriyot: string | null = null;
 
+      if (selectedPaketTipi === 'DENEME') {
+        bitisTarihi.setDate(bitisTarihi.getDate() + 30);
+        dbPeriyot = null;
+      } else if (selectedAbonelikTipi === 'YILLIK') {
+        bitisTarihi.setFullYear(bitisTarihi.getFullYear() + 1);
+        dbPeriyot = 'Yillik';
+      } else { // AYLIK
+        bitisTarihi.setMonth(bitisTarihi.getMonth() + 1);
+        dbPeriyot = 'Aylik';
+      }
+
+      // Firmayı kaydet
       const insertFirmaResult = await transaction.request()
         .input('firmaAdi', sql.NVarChar, firmaAdi)
         .input('vergiNo', sql.NVarChar, vergiNo)
         .input('sehir', sql.NVarChar, sehir)
+        .input('paketTipi', sql.NVarChar, selectedPaketTipi)
+        .input('abonelikTipi', sql.NVarChar, selectedAbonelikTipi)
         .input('bitisTarihi', sql.DateTime, bitisTarihi)
         .query(`
           INSERT INTO Firmalar (FirmaAdi, VergiNo, Sehir, PaketTipi, AbonelikTipi, AbonelikBitisTarihi)
           OUTPUT inserted.Id
-          VALUES (@firmaAdi, @vergiNo, @sehir, 'DENEME', 'AYLIK', @bitisTarihi)
+          VALUES (@firmaAdi, @vergiNo, @sehir, @paketTipi, @abonelikTipi, @bitisTarihi)
         `);
 
       const newFirmaId = insertFirmaResult.recordset[0].Id;
 
-      // 2. Broker Kullanıcısını kaydet (Rol: YETKILI, IlkGirisMi: 0 çünkü kendisi şifre seçti)
+      // 2. AbonelikPaketleri tablosundan PaketID bul ve FirmaAbonelikleri tablosuna ekle
+      const dbPaketAdi = selectedPaketTipi === 'DENEME' ? 'Deneme' : selectedPaketTipi === 'BASIC' ? 'Basic' : 'Premium';
+      const paketResult = await transaction.request()
+        .input('paketAdi', sql.NVarChar, dbPaketAdi)
+        .query('SELECT PaketID FROM AbonelikPaketleri WHERE PaketAdi = @paketAdi');
+
+      let paketId = 1; // Fallback
+      if (paketResult.recordset.length > 0) {
+        paketId = paketResult.recordset[0].PaketID;
+      }
+
+      await transaction.request()
+        .input('firmaId', sql.UniqueIdentifier, newFirmaId)
+        .input('paketId', sql.Int, paketId)
+        .input('periyot', sql.NVarChar, dbPeriyot)
+        .input('bitisTarihi', sql.DateTime, bitisTarihi)
+        .query(`
+          INSERT INTO FirmaAbonelikleri (FirmaID, PaketID, Periyot, BaslangicTarihi, BitisTarihi, Durum)
+          VALUES (@firmaId, @paketId, @periyot, GETDATE(), @bitisTarihi, 'Aktif')
+        `);
+
+      // 3. Broker Kullanıcısını kaydet (Rol: YETKILI, IlkGirisMi: 0 çünkü kendisi şifre seçti)
       const insertUserResult = await transaction.request()
         .input('firmaId', sql.UniqueIdentifier, newFirmaId)
         .input('ad', sql.NVarChar, ad)
@@ -67,7 +105,7 @@ export const registerBroker = async (req: Request, res: Response) => {
 
       const newUserId = insertUserResult.recordset[0].Id;
 
-      // 3. Varsayılan Komisyon Ayarlarını tohumla (seed)
+      // 4. Varsayılan Komisyon Ayarlarını tohumla (seed)
       await transaction.request()
         .input('firmaId', sql.UniqueIdentifier, newFirmaId)
         .query(`
@@ -80,9 +118,11 @@ export const registerBroker = async (req: Request, res: Response) => {
       await transaction.commit();
 
       res.status(201).json({
-        message: 'Firma ve Broker kaydı başarıyla oluşturuldu. 30 günlük ücretsiz deneme başlatıldı.',
+        message: 'Firma ve Broker kaydı başarıyla oluşturuldu. Abonelik başlatıldı.',
         firmaId: newFirmaId,
-        userId: newUserId
+        userId: newUserId,
+        paketTipi: selectedPaketTipi,
+        abonelikTipi: selectedAbonelikTipi
       });
 
     } catch (innerErr) {
