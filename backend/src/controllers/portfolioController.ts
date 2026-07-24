@@ -5,7 +5,8 @@ import { poolPromise, sql } from '../config/db';
 export const addPortfolio = async (req: any, res: Response) => {
   const { 
     tip, tur, fiyat, metrekare, odaSayisi, 
-    il, ilce, mahalle, evSahibiAdi, evSahibiTelefon 
+    il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
+    kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari
   } = req.body;
   const { firmaId, userId } = req.user; // Token'dan çözülen FirmaId ve KullanıcıId
 
@@ -18,8 +19,15 @@ export const addPortfolio = async (req: any, res: Response) => {
 
     // Varsayılan kapora ve depozito oranları hesaplaması
     const fiyatNum = Number(fiyat);
-    const kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
-    const depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
+    let kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
+    let depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
+
+    if (reqKaporaMiktari !== undefined && reqKaporaMiktari !== null && reqKaporaMiktari !== '') {
+      kaporaMiktari = Number(reqKaporaMiktari);
+    }
+    if (reqDepozitoMiktari !== undefined && reqDepozitoMiktari !== null && reqDepozitoMiktari !== '') {
+      depozitoMiktari = Number(reqDepozitoMiktari);
+    }
 
     const result = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
@@ -34,18 +42,21 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('il', sql.NVarChar, il)
       .input('ilce', sql.NVarChar, ilce)
       .input('mahalle', sql.NVarChar, mahalle || '')
+      .input('semt', sql.NVarChar, semt || '')
+      .input('cadde', sql.NVarChar, cadde || '')
+      .input('sokak', sql.NVarChar, sokak || '')
       .input('evSahibiAdi', sql.NVarChar, evSahibiAdi)
       .input('evSahibiTelefon', sql.NVarChar, evSahibiTelefon)
       .query(`
         INSERT INTO Portfoyler (
           FirmaId, GorevliUzmanId, Tip, Tur, Fiyat, Metrekare, OdaSayisi,
-          KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, 
+          KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, Semt, Cadde, Sokak,
           EvSahibiAdi, EvSahibiTelefon, Durum
         )
         OUTPUT inserted.Id
         VALUES (
           @firmaId, @gorevliUzmanId, @tip, @tur, @fiyat, @metrekare, @odaSayisi,
-          @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle,
+          @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle, @semt, @cadde, @sokak,
           @evSahibiAdi, @evSahibiTelefon, 'BOSTA'
         )
       `);
@@ -184,5 +195,92 @@ export const editPortfolio = async (req: any, res: Response) => {
   } catch (error: any) {
     console.error('[HOMEY API] editPortfolio Error:', error);
     res.status(500).json({ message: 'Portföy güncellenirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+// İşlemi Kapat / Satıldı - Kiralandı Yap (POST /api/portfolios/:id/satis-kapat or /api/portfoyler/:id/satis-kapat)
+export const closePortfolioTransaction = async (req: any, res: Response) => {
+  const { id: portfoyId } = req.params;
+  const { islemTuru, islemBedeli, hizmetBedeliCiro, islemTarihi, aciklama } = req.body;
+  const { userId, firmaId, role } = req.user;
+
+  if (!portfoyId) {
+    return res.status(400).json({ message: 'Portföy ID zorunludur.' });
+  }
+
+  if (!islemTuru || islemBedeli === undefined || hizmetBedeliCiro === undefined) {
+    return res.status(400).json({ message: 'İşlem türü, işlem bedeli ve ciro tutarı zorunludur.' });
+  }
+
+  const pool = await poolPromise;
+
+  try {
+    // 1. Portföy varlık ve yetki kontrolü
+    const checkResult = await pool.request()
+      .input('portfoyId', sql.UniqueIdentifier, portfoyId)
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query('SELECT Id, GorevliUzmanId, Tur FROM Portfoyler WHERE Id = @portfoyId AND FirmaId = @firmaId');
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({ message: 'Portföy bulunamadı veya bu işlem için yetkiniz yok.' });
+    }
+
+    const portfolio = checkResult.recordset[0];
+    const isOwner = portfolio.GorevliUzmanId === userId;
+    const isYetkili = role === 'YETKILI';
+
+    if (!isOwner && !isYetkili) {
+      return res.status(403).json({ message: 'Bu portföy işlemini kapatmak için yetkiniz bulunmamaktadır. Sadece ilgili uzman veya yetkili kapatabilir.' });
+    }
+
+    const finalDurum = (islemTuru.toUpperCase() === 'KIRALAMA' || portfolio.Tur === 'KIRALIK') ? 'KIRALANDI' : 'SATILDI';
+    const closingDate = islemTarihi ? new Date(islemTarihi) : new Date();
+
+    // 2. Transaction başlatma
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // a. Update dbo.Portfoyler.Durum to 'SATILDI' or 'KIRALANDI'
+      await transaction.request()
+        .input('portfoyId', sql.UniqueIdentifier, portfoyId)
+        .input('durum', sql.NVarChar, finalDurum)
+        .query(`
+          UPDATE Portfoyler
+          SET Durum = @durum
+          WHERE Id = @portfoyId
+        `);
+
+      // b. Insert new record into dbo.SatisIslemleri
+      await transaction.request()
+        .input('portfoyId', sql.UniqueIdentifier, portfoyId)
+        .input('danismanId', sql.UniqueIdentifier, userId)
+        .input('islemTuru', sql.NVarChar, islemTuru.toUpperCase())
+        .input('islemBedeli', sql.Decimal(18, 2), Number(islemBedeli))
+        .input('hizmetBedeliCiro', sql.Decimal(18, 2), Number(hizmetBedeliCiro))
+        .input('islemTarihi', sql.DateTime, closingDate)
+        .input('aciklama', sql.NVarChar, aciklama || null)
+        .query(`
+          INSERT INTO SatisIslemleri (PortfoyID, DanismanID, IslemTuru, IslemBedeli, HizmetBedeliCiro, IslemTarihi, Aciklama)
+          VALUES (@portfoyId, @danismanId, @islemTuru, @islemBedeli, @hizmetBedeliCiro, @islemTarihi, @aciklama)
+        `);
+
+      await transaction.commit();
+
+      res.json({
+        message: `Portföy başarıyla '${finalDurum}' olarak kapatıldı ve ciro kaydı işlendi.`,
+        durum: finalDurum,
+        islemBedeli: Number(islemBedeli),
+        hizmetBedeliCiro: Number(hizmetBedeliCiro)
+      });
+
+    } catch (txErr: any) {
+      await transaction.rollback().catch(() => {});
+      throw txErr;
+    }
+
+  } catch (error: any) {
+    console.error('[HOMEY API] closePortfolioTransaction Error:', error);
+    res.status(500).json({ message: 'Portföy işlemi kapatılırken hata oluştu.', error: error.message });
   }
 };

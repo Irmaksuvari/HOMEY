@@ -20,15 +20,35 @@ const dbConfig: sql.config = {
   },
 };
 
-export const poolPromise = new sql.ConnectionPool(dbConfig)
-  .connect()
-  .then((pool) => {
-    console.log('Successfully connected to Azure SQL Database');
-    return pool;
-  })
-  .catch((err) => {
-    console.error('Database Connection Failed! Bad Config: ', err);
-    throw err;
-  });
+let globalPool: sql.ConnectionPool | null = null;
+let globalPoolPromise: Promise<sql.ConnectionPool> | null = null;
+
+export const getPool = async (): Promise<sql.ConnectionPool> => {
+  if (globalPool && globalPool.connected) {
+    return globalPool;
+  }
+  if (!globalPoolPromise) {
+    globalPoolPromise = new sql.ConnectionPool(dbConfig)
+      .connect()
+      .then((p) => {
+        globalPool = p;
+        console.log('Successfully connected to Azure SQL Database');
+        return p;
+      })
+      .catch((err) => {
+        globalPoolPromise = null;
+        globalPool = null;
+        console.error('Database Connection Failed! Bad Config: ', err);
+        throw err;
+      });
+  }
+  return globalPoolPromise;
+};
+
+export const poolPromise = {
+  then: (onfulfilled?: any, onrejected?: any) => getPool().then(onfulfilled, onrejected),
+  catch: (onrejected?: any) => getPool().catch(onrejected)
+} as Promise<sql.ConnectionPool>;
 
 export { sql };
+

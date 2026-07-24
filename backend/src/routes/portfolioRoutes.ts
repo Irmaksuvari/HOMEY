@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addPortfolio, listPortfolios, editPortfolio } from '../controllers/portfolioController';
+import { addPortfolio, listPortfolios, editPortfolio, closePortfolioTransaction } from '../controllers/portfolioController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
@@ -12,5 +12,8 @@ router.get('/list', authenticateJWT, listPortfolios);
 
 // Portföy Düzenleme (Sadece yetkili veya ilgili sorumlu uzman düzenleyebilir)
 router.put('/edit/:id', authenticateJWT, editPortfolio);
+
+// Portföy İşlemini Kapat (Satıldı / Kiralandı Yap)
+router.post('/:id/satis-kapat', authenticateJWT, closePortfolioTransaction);
 
 export default router;

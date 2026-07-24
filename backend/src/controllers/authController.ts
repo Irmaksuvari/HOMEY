@@ -138,24 +138,31 @@ export const registerBroker = async (req: Request, res: Response) => {
 
 // Kullanıcı Girişi (POST /api/auth/login)
 export const login = async (req: Request, res: Response) => {
-  const { eposta, sifre } = req.body;
+  const { eposta, sifre } = req.body || {};
 
   if (!eposta || !sifre) {
     return res.status(400).json({ message: 'E-posta ve şifre girilmelidir.' });
   }
 
+  const cleanEmail = typeof eposta === 'string' ? eposta.trim().toLowerCase() : '';
+  const cleanPassword = typeof sifre === 'string' ? sifre : String(sifre);
+
+  if (!cleanEmail || !cleanPassword) {
+    return res.status(400).json({ message: 'Geçersiz e-posta veya şifre formatı.' });
+  }
+
   try {
     const pool = await poolPromise;
 
-    // Kullanıcı ve ilişkili firma bilgilerini çekme
+    // Kullanıcı ve ilişkili firma bilgilerini çekme (LEFT JOIN if firma is missing)
     const result = await pool.request()
-      .input('eposta', sql.NVarChar, eposta)
+      .input('eposta', sql.NVarChar, cleanEmail)
       .query(`
         SELECT k.Id, k.FirmaId, k.Ad, k.Soyad, k.Eposta, k.SifreHash, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi,
                f.FirmaAdi, f.PaketTipi, f.AbonelikBitisTarihi
         FROM Kullanicilar k
-        INNER JOIN Firmalar f ON k.FirmaId = f.Id
-        WHERE k.Eposta = @eposta
+        LEFT JOIN Firmalar f ON k.FirmaId = f.Id
+        WHERE LOWER(TRIM(k.Eposta)) = LOWER(@eposta)
       `);
 
     if (result.recordset.length === 0) {
@@ -169,8 +176,20 @@ export const login = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Hesabınız askıya alınmıştır. Lütfen yöneticinizle irtibata geçin.' });
     }
 
-    // Şifre Doğrulama
-    const isMatch = await bcrypt.compare(sifre, user.SifreHash);
+    // Şifre Hash Kontrolü
+    if (!user.SifreHash || typeof user.SifreHash !== 'string') {
+      return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
+    }
+
+    // Safe Şifre Doğrulama (Bcrypt exception guard)
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(cleanPassword, user.SifreHash);
+    } catch (bcryptErr) {
+      console.warn('[HOMEY API] Bcrypt comparison error:', bcryptErr);
+      isMatch = false;
+    }
+
     if (!isMatch) {
       return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
     }
@@ -190,13 +209,13 @@ export const login = async (req: Request, res: Response) => {
       user: {
         id: user.Id,
         firmaId: user.FirmaId,
-        firmaAdi: user.FirmaAdi,
+        firmaAdi: user.FirmaAdi || 'HOMEY',
         ad: user.Ad,
         soyad: user.Soyad,
         eposta: user.Eposta,
         rol: user.Rol,
         ilkGirisMi: user.IlkGirisMi,
-        paketTipi: user.PaketTipi,
+        paketTipi: user.PaketTipi || 'DENEME',
         abonelikBitisTarihi: user.AbonelikBitisTarihi
       }
     });

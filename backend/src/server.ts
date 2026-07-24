@@ -12,6 +12,7 @@ import subscriptionRoutes from './routes/subscriptionRoutes';
 import appointmentRoutes from './routes/appointmentRoutes';
 import searchRoutes from './routes/searchRoutes';
 import presenceRoutes from './routes/presenceRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
 
 dotenv.config();
 
@@ -52,11 +53,13 @@ app.get('/api/profile', authenticateJWT, (req: AuthenticatedRequest, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/portfolios', portfolioRoutes);
+app.use('/api/portfoyler', portfolioRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/user', presenceRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Arayüz Statik Dosyalarını Sunma
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');

@@ -12,12 +12,14 @@ export const listAppointments = async (req: any, res: Response) => {
     let queryStr = `
       SELECT 
         r.Id, r.PortfoyId, r.TeklifEdenUzmanId, r.MusteriId, r.RandevuZamani, r.Durum, r.KayitTarihi,
-        p.Tip as PortfoyTip, p.Tur as PortfoyTur, p.Fiyat as PortfoyFiyat, p.Il, p.Ilce, p.Mahalle,
+        p.Tip as PortfoyTip, p.Tur as PortfoyTur, p.Fiyat as PortfoyFiyat, p.Il, p.Ilce, p.Mahalle, p.GorevliUzmanId as PortfoySahibiUzmanId,
         u.Ad as UzmanAd, u.Soyad as UzmanSoyad,
+        pu.Ad as PortfoySahibiAd, pu.Soyad as PortfoySahibiSoyad,
         m.Ad as MusteriAd, m.Soyad as MusteriSoyad, m.Telefon as MusteriTelefon
       FROM Randevular r
       INNER JOIN Portfoyler p ON r.PortfoyId = p.Id
       INNER JOIN Kullanicilar u ON r.TeklifEdenUzmanId = u.Id
+      LEFT JOIN Kullanicilar pu ON p.GorevliUzmanId = pu.Id
       INNER JOIN Musteriler m ON r.MusteriId = m.Id
       WHERE (u.FirmaId = @firmaId OR p.FirmaId = @firmaId)
     `;
@@ -52,6 +54,8 @@ export const listAppointments = async (req: any, res: Response) => {
         mahalle: r.Mahalle || '',
         talepEden: `${r.UzmanAd || ''} ${r.UzmanSoyad || ''}`.trim(),
         talepEdenId: r.TeklifEdenUzmanId,
+        portfoySahibi: `${r.PortfoySahibiAd || ''} ${r.PortfoySahibiSoyad || ''}`.trim(),
+        portfoySahibiId: r.PortfoySahibiUzmanId,
         musteri: `${r.MusteriAd || ''} ${r.MusteriSoyad || ''}`.trim(),
         musteriTelefon: r.MusteriTelefon || '',
         musteriId: r.MusteriId,
@@ -76,11 +80,13 @@ export const listAppointments = async (req: any, res: Response) => {
 // Yeni Randevu Ekle (POST /api/appointments/create)
 export const createAppointment = async (req: any, res: Response) => {
   const { userId } = req.user;
-  const { portfoyId, musteriId, randevuZamani } = req.body;
+  const { portfoyId, musteriId, randevuZamani, durum } = req.body;
 
   if (!portfoyId || !musteriId || !randevuZamani) {
     return res.status(400).json({ message: 'Portföy, müşteri ve randevu zamanı zorunludur.' });
   }
+
+  const initialStatus = durum ? durum.toUpperCase() : 'PENDING';
 
   try {
     const pool = await poolPromise;
@@ -90,7 +96,7 @@ export const createAppointment = async (req: any, res: Response) => {
       .input('teklifEdenUzmanId', sql.UniqueIdentifier, userId)
       .input('musteriId', sql.UniqueIdentifier, musteriId)
       .input('randevuZamani', sql.DateTime, new Date(randevuZamani))
-      .input('durum', sql.NVarChar, 'PENDING')
+      .input('durum', sql.NVarChar, initialStatus)
       .query(`
         INSERT INTO Randevular (PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, Durum)
         OUTPUT inserted.Id
@@ -100,7 +106,7 @@ export const createAppointment = async (req: any, res: Response) => {
     const newAppointmentId = result.recordset[0].Id;
 
     res.status(201).json({
-      message: 'Randevu talebi başarıyla kaydedildi.',
+      message: initialStatus === 'APPROVED' ? 'Randevu başarıyla oluşturuldu ve onaylandı.' : 'Randevu talebi başarıyla kaydedildi.',
       id: newAppointmentId
     });
 
@@ -112,25 +118,66 @@ export const createAppointment = async (req: any, res: Response) => {
 
 // Randevu Durumunu Güncelle (POST /api/appointments/update-status)
 export const updateAppointmentStatus = async (req: any, res: Response) => {
-  const { appointmentId, durum } = req.body; // 'APPROVED' veya 'REJECTED'
+  const { userId, role } = req.user;
+  const { appointmentId, durum } = req.body; // 'APPROVED', 'REJECTED', 'CANCELLED'
 
   if (!appointmentId || !durum) {
     return res.status(400).json({ message: 'Randevu ID ve yeni durum belirtilmelidir.' });
   }
 
+  const requestedStatus = durum.toUpperCase();
+
   try {
     const pool = await poolPromise;
 
+    // Randevunun ve bağlı portföyün sahibini kontrol et
+    const appCheck = await pool.request()
+      .input('appointmentId', sql.UniqueIdentifier, appointmentId)
+      .query(`
+        SELECT r.Id, r.PortfoyId, r.TeklifEdenUzmanId, p.GorevliUzmanId AS PortfoySahibiUzmanId
+        FROM Randevular r
+        LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
+        WHERE r.Id = @appointmentId
+      `);
+
+    if (appCheck.recordset.length === 0) {
+      return res.status(404).json({ message: 'Randevu kaydı bulunamadı.' });
+    }
+
+    const appointment = appCheck.recordset[0];
+    const isPortfolioOwner = appointment.PortfoySahibiUzmanId === userId;
+    const isRequester = appointment.TeklifEdenUzmanId === userId;
+    const isYetkili = role === 'YETKILI';
+
+    if (requestedStatus === 'CANCELLED' || requestedStatus === 'IPTAL') {
+      // İptal etme yetkisi: Talep eden, Portföy sahibi veya Yetkili
+      if (!isRequester && !isPortfolioOwner && !isYetkili) {
+        return res.status(403).json({ message: 'Bu randevu talebini iptal etme yetkiniz bulunmamaktadır.' });
+      }
+    } else if (requestedStatus === 'APPROVED' || requestedStatus === 'REJECTED') {
+      // Onaylama / Reddetme yetkisi: Sadece Portföy sahibi veya Yetkili (Talep eden onaylayamaz/reddedemez)
+      if (!isPortfolioOwner && !isYetkili) {
+        return res.status(403).json({ 
+          message: 'Gittiğiniz talebi onaylama veya reddetme yetkiniz yoktur. Yalnızca durumu gözlemleyebilir veya talebi iptal edebilirsiniz.' 
+        });
+      }
+    }
+
     await pool.request()
       .input('appointmentId', sql.UniqueIdentifier, appointmentId)
-      .input('durum', sql.NVarChar, durum.toUpperCase())
+      .input('durum', sql.NVarChar, requestedStatus)
       .query(`
         UPDATE Randevular
         SET Durum = @durum
         WHERE Id = @appointmentId
       `);
 
-    res.json({ message: `Randevu durumu '${durum}' olarak güncellendi.` });
+    let messageText = `Randevu durumu '${requestedStatus}' olarak güncellendi.`;
+    if (requestedStatus === 'CANCELLED') messageText = 'Randevu talebiniz iptal edildi.';
+    else if (requestedStatus === 'APPROVED') messageText = 'Randevu talebi onaylandı.';
+    else if (requestedStatus === 'REJECTED') messageText = 'Randevu talebi reddedildi.';
+
+    res.json({ message: messageText });
 
   } catch (error: any) {
     console.error('[HOMEY API] updateAppointmentStatus Error:', error);

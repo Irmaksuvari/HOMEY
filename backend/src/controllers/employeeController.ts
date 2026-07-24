@@ -94,15 +94,18 @@ export const listEmployees = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    // Şifre hash'i hariç tüm çalışan listesini çekme
+    // Şifre hash'i hariç tüm çalışan listesini çekme ve ciro tutarlarını hesaplama
     const result = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
       .query(`
-        SELECT Id, Ad, Soyad, Eposta, Telefon, Rol, IlkGirisMi, AktifMi, KayitTarihi,
-               (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = Kullanicilar.Id) as SozlesmeSayisi
-        FROM Kullanicilar
-        WHERE FirmaId = @firmaId
-        ORDER BY KayitTarihi ASC
+        SELECT k.Id, k.Ad, k.Soyad, k.Eposta, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, ISNULL(k.OfisteMi, 0) as OfisteMi, k.KayitTarihi,
+               (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = k.Id) as SozlesmeSayisi,
+               (SELECT ISNULL(SUM(CASE WHEN Tur = 'SATILIK' THEN Fiyat * 0.02 ELSE Fiyat END), 0) 
+                FROM Portfoyler 
+                WHERE GorevliUzmanId = k.Id AND (Durum = 'KIRALANDI_SATILDI' OR Durum = 'KAPORA_ASAMASINDA')) as KazanilanCiro
+        FROM Kullanicilar k
+        WHERE k.FirmaId = @firmaId
+        ORDER BY k.KayitTarihi ASC
       `);
 
     // Front-end'e uygun formatta verileri döndürme
@@ -115,8 +118,9 @@ export const listEmployees = async (req: any, res: Response) => {
       rol: emp.Rol || 'UZMAN',
       ilkGirisMi: emp.IlkGirisMi,
       sozlesmeSayisi: emp.SozlesmeSayisi || 0,
-      getirdigiPara: 0, // Analitiklerden toplanacak
-      durum: emp.AktifMi ? 'Ofiste' : 'Pasif'
+      getirdigiPara: Number(emp.KazanilanCiro || 0),
+      durum: !emp.AktifMi ? 'Pasif' : (emp.OfisteMi ? 'Ofiste' : 'Sahada'),
+      ofisteMi: !!emp.OfisteMi
     }));
 
     res.json(list);
