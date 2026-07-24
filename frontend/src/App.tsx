@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Calculator, Users, Home, Calendar, DollarSign, 
-  Percent, Shield, Plus, Lock, Check, X, Building, 
-  Search, AlertTriangle, TrendingUp, Menu, 
+import {
+  Calculator, Users, Home, Calendar, DollarSign,
+  Percent, Shield, Plus, Lock, Check, X, Building,
+  Search, AlertTriangle, TrendingUp, Menu,
   ChevronLeft, LogOut, MapPin, User, Briefcase,
   FileText, Clock, LayoutDashboard, Loader2,
   Trophy, Banknote, UserPlus, BadgeCheck, Building2
@@ -135,7 +135,7 @@ export default function App() {
   };
 
   const [portfolioScope, setPortfolioScope] = useState<'all' | 'mine'>('all');
-  
+
   // Add Portfolio Modal Form States
   const [showAddPortfolioModal, setShowAddPortfolioModal] = useState(false);
 
@@ -172,7 +172,7 @@ export default function App() {
   const [editPortMahalle, setEditPortMahalle] = useState('');
   const [editPortLandlordName, setEditPortLandlordName] = useState('');
   const [editPortLandlordPhone, setEditPortLandlordPhone] = useState('');
-  
+
   // Close Portfolio Transaction Modal States
   const [showCloseTransactionModal, setShowCloseTransactionModal] = useState(false);
   const [closePortPortfolio, setClosePortPortfolio] = useState<any>(null);
@@ -186,7 +186,7 @@ export default function App() {
   // Dashboard (Analytics) State
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  
+
   // Commission Settings
   const [commSettings, setCommSettings] = useState({
     aOfis: 40,
@@ -232,7 +232,7 @@ export default function App() {
   const [appointmentScope, setAppointmentScope] = useState<'all' | 'incoming' | 'outgoing'>('all');
   const [selectedMusteriId, setSelectedMusteriId] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  
+
   // Clients (Musteriler)
   const [clients, setClients] = useState<any[]>([]);
   const [newClientName, setNewClientName] = useState('');
@@ -247,10 +247,10 @@ export default function App() {
 
   const calendarYear = currentCalendarDate.getFullYear();
   const calendarMonth = currentCalendarDate.getMonth(); // 0-indexed (0 = Jan, 6 = Jul)
-  
+
   // Month Name in Turkish (e.g. "Temmuz 2026")
   const calendarMonthName = currentCalendarDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-  
+
   // First day of month (Monday = 0 ... Sunday = 6)
   const rawFirstDay = new Date(calendarYear, calendarMonth, 1).getDay();
   const firstDayOfWeek = (rawFirstDay + 6) % 7; // Monday = 0
@@ -319,7 +319,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setEmployees(Array.isArray(data) ? data : []);
-        
+
         // Sync selected employee state
         setSelectedEmployee((prev: any) => {
           if (!prev) return null;
@@ -1020,7 +1020,7 @@ export default function App() {
       if (res.ok) {
         alert("Portföy başarıyla veritabanında güncellendi!");
         setIsEditingPortfolio(false);
-        
+
         const updated = {
           ...selectedPortfolio,
           tip: editPortTip,
@@ -1343,7 +1343,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-6 font-sans">
         <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-          
+
           {/* Left Branding Panel */}
           <div className="bg-charcoal text-white rounded-3xl p-8 flex flex-col justify-between border-none shadow-none">
             <div>
@@ -1355,7 +1355,7 @@ export default function App() {
                 Ofisinizi, gayrimenkul danışmanlarınızı, müşteri taleplerinizi ve komisyon paylaşım senaryolarını tek merkezden yönetmenin en modern yolu.
               </p>
             </div>
-            
+
             <div className="mt-8 pt-8 border-t border-zinc-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-pastelYellow border-none flex items-center justify-center font-bold text-charcoal text-xs">
@@ -1374,19 +1374,17 @@ export default function App() {
             <div>
               {/* Tab Switcher */}
               <div className="flex gap-2 mb-6">
-                <button 
+                <button
                   onClick={() => { setAuthMode('login'); setLoginError(null); }}
-                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${
-                    authMode === 'login' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'login' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                    }`}
                 >
                   Giriş Yap
                 </button>
-                <button 
+                <button
                   onClick={() => { setAuthMode('register'); setRegError(null); }}
-                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${
-                    authMode === 'register' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'register' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                    }`}
                 >
                   Firma Kaydı
                 </button>
@@ -1402,7 +1400,7 @@ export default function App() {
               {authMode === 'login' ? (
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
                   <h3 className="text-2xl font-extrabold text-charcoal">Hesabınıza Giriş Yapın</h3>
-                  
+
                   {loginError && (
                     <div className="p-4 rounded-2xl bg-red-100 text-red-950 text-xs font-semibold border-none flex items-center gap-2">
                       <AlertTriangle size={16} />
@@ -1412,9 +1410,9 @@ export default function App() {
 
                   <div>
                     <label className="text-xs font-bold text-zinc-500 block mb-1">E-posta Adresi</label>
-                    <input 
-                      type="email" 
-                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none" 
+                    <input
+                      type="email"
+                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
                       placeholder="ad@ofisiniz.com"
                       value={loginEmail}
                       onChange={e => setLoginEmail(e.target.value)}
@@ -1424,9 +1422,9 @@ export default function App() {
 
                   <div>
                     <label className="text-xs font-bold text-zinc-500 block mb-1">Şifre</label>
-                    <input 
-                      type="password" 
-                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none" 
+                    <input
+                      type="password"
+                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={e => setLoginPassword(e.target.value)}
@@ -1496,25 +1494,23 @@ export default function App() {
                   {/* Abonelik Paketi Seçimi */}
                   <div className="flex flex-col gap-2 my-1">
                     <label className="text-[10px] font-extrabold text-zinc-500 uppercase block tracking-wider">Abonelik Paketi Seçin</label>
-                    
+
                     {/* Period Switcher (Aylık / Yıllık) */}
                     {regPaketTipi !== 'DENEME' && (
                       <div className="flex bg-zinc-100 p-1 rounded-xl mb-1">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setRegAbonelikTipi('AYLIK')}
-                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${
-                            regAbonelikTipi === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
-                          }`}
+                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${regAbonelikTipi === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
+                            }`}
                         >
                           Aylık Ödeme
                         </button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setRegAbonelikTipi('YILLIK')}
-                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${
-                            regAbonelikTipi === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
-                          }`}
+                          className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition-all border-none ${regAbonelikTipi === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-400 bg-transparent'
+                            }`}
                         >
                           Yıllık Ödeme (%20 İndirimli)
                         </button>
@@ -1523,33 +1519,30 @@ export default function App() {
 
                     {/* Package Cards */}
                     <div className="grid grid-cols-3 gap-1.5">
-                      <div 
+                      <div
                         onClick={() => setRegPaketTipi('DENEME')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
-                          regPaketTipi === 'DENEME' ? 'border-charcoal bg-[#FEF08A]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
-                        }`}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'DENEME' ? 'border-charcoal bg-[#FEF08A]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                          }`}
                       >
                         <span className="text-[10px] font-extrabold block">Deneme</span>
                         <span className="text-[9px] text-zinc-600 block mt-0.5">30 Gün Ücretsiz</span>
                         <span className="text-[8px] font-bold text-zinc-500 mt-1 block">4 Danışman</span>
                       </div>
 
-                      <div 
+                      <div
                         onClick={() => setRegPaketTipi('BASIC')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
-                          regPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
-                        }`}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                          }`}
                       >
                         <span className="text-[10px] font-extrabold block">Basic</span>
                         <span className="text-[9px] text-zinc-600 block mt-0.5">Standart Paket</span>
                         <span className="text-[8px] font-bold text-zinc-500 mt-1 block">4 Danışman</span>
                       </div>
 
-                      <div 
+                      <div
                         onClick={() => setRegPaketTipi('PREMIUM')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
-                          regPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
-                        }`}
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                          }`}
                       >
                         <span className="text-[10px] font-extrabold block">Premium</span>
                         <span className="text-[9px] text-zinc-600 block mt-0.5">Tam Sınırsız</span>
@@ -1593,9 +1586,9 @@ export default function App() {
           <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
             <div>
               <label className="text-xs font-bold text-zinc-500 block mb-1">Geçici Şifre (Size Verilen)</label>
-              <input 
-                type="password" 
-                className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none" 
+              <input
+                type="password"
+                className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
                 placeholder="Örn: Homey123!"
                 value={oldPassword}
                 onChange={e => setOldPassword(e.target.value)}
@@ -1605,9 +1598,9 @@ export default function App() {
 
             <div>
               <label className="text-xs font-bold text-zinc-500 block mb-1">Yeni Güvenli Şifre</label>
-              <input 
-                type="password" 
-                className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none" 
+              <input
+                type="password"
+                className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
                 placeholder="Yeni şifreniz"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -1634,9 +1627,8 @@ export default function App() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold transition-all animate-bounce-in border-none ${
-          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-        }`}>
+        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold transition-all animate-bounce-in border-none ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          }`}>
           {toast.type === 'success'
             ? <Check size={16} className="shrink-0" />
             : <AlertTriangle size={16} className="shrink-0" />
@@ -1644,11 +1636,10 @@ export default function App() {
           {toast.message}
         </div>
       )}
-      
+
       {/* LEFT SIDEBAR */}
-      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 z-40 border-r-4 border-charcoal shrink-0 ${
-        sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
-      }`}>
+      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
+        }`}>
         <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
@@ -1661,7 +1652,7 @@ export default function App() {
                 H
               </span>
             )}
-            <button 
+            <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className={`p-1.5 rounded-lg hover:bg-zinc-800 transition-colors text-white ${sidebarCollapsed ? 'mt-2' : 'ml-auto'}`}
               title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
@@ -1678,40 +1669,40 @@ export default function App() {
               ) : (
                 <div className="w-full border-t border-zinc-800 my-1" title="GENEL" />
               )}
-              <button 
-                onClick={() => setActiveTab('dashboard')} 
+              <button
+                onClick={() => setActiveTab('dashboard')}
                 title="Ana Sayfa"
                 className={`sidebar-link ${activeTab === 'dashboard' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Home size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Ana Sayfa</span>}
               </button>
-              <button 
-                onClick={() => setActiveTab('portfolios')} 
+              <button
+                onClick={() => setActiveTab('portfolios')}
                 title="Portföyler"
                 className={`sidebar-link ${activeTab === 'portfolios' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Building size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Portföyler</span>}
               </button>
-              <button 
-                onClick={() => setActiveTab('appointments')} 
+              <button
+                onClick={() => setActiveTab('appointments')}
                 title="Randevular"
                 className={`sidebar-link ${activeTab === 'appointments' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Calendar size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Randevular</span>}
               </button>
-              <button 
-                onClick={() => setActiveTab('clients')} 
+              <button
+                onClick={() => setActiveTab('clients')}
                 title="Müşteriler"
                 className={`sidebar-link ${activeTab === 'clients' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <User size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Müşteriler</span>}
               </button>
-              <button 
-                onClick={() => setActiveTab('calculator')} 
+              <button
+                onClick={() => setActiveTab('calculator')}
                 title="Hesaplayıcı"
                 className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
@@ -1728,32 +1719,32 @@ export default function App() {
                 ) : (
                   <div className="w-full border-t border-zinc-800 my-1" title="YÖNETİM" />
                 )}
-                <button 
-                  onClick={() => setActiveTab('analytics')} 
+                <button
+                  onClick={() => setActiveTab('analytics')}
                   title="Ciro Raporları"
                   className={`sidebar-link ${activeTab === 'analytics' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <TrendingUp size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Ciro Raporları</span>}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('team')} 
+                <button
+                  onClick={() => setActiveTab('team')}
                   title="Danışman Yönetimi"
                   className={`sidebar-link ${activeTab === 'team' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <Users size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Danışman Yönetimi</span>}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('subscription')} 
+                <button
+                  onClick={() => setActiveTab('subscription')}
                   title="Abonelik Yönetimi"
                   className={`sidebar-link ${activeTab === 'subscription' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <Shield size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Abonelik Yönetimi</span>}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('settings')} 
+                <button
+                  onClick={() => setActiveTab('settings')}
                   title="Komisyon Ayarları"
                   className={`sidebar-link ${activeTab === 'settings' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
@@ -1778,8 +1769,8 @@ export default function App() {
               </div>
             )}
           </div>
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             title="Çıkış Yap"
             className={`sidebar-link text-red-400 hover:text-red-300 hover:bg-red-950/20 border-none ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
           >
@@ -1789,280 +1780,279 @@ export default function App() {
         </div>
       </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden flex flex-col gap-6 min-w-0">
+      {/* Main Content Area */}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden flex flex-col gap-6 min-w-0">
 
-          {/* Global Top Header Bar with Autocomplete */}
-          <header className="flex justify-between items-center w-full gap-4">
-            {activeTab === 'dashboard' && (
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">İyi günler, {user?.ad || ''} 👋</h1>
-                {(() => {
-                  const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
-                  const approvedCount = userApps.filter(a => a.durum === 'APPROVED').length;
-                  const pendingCount = userApps.filter(a => a.durum === 'PENDING').length;
-                  return (
-                    <p className="text-zinc-500 text-sm mt-1">
-                      Bugün <strong className="text-charcoal">{approvedCount} onaylı randevunuz</strong> ve <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
-                    </p>
-                  );
-                })()}
-              </div>
-            )}
-            
-            {/* Global Smart Search with Autocomplete */}
-            <div
-              ref={searchContainerRef}
-              className={`relative transition-all duration-300 ${
-                activeTab === 'dashboard' ? 'w-64 sm:w-72 md:w-80 shrink-0' : 'w-full'
-              } min-w-0`}
-            >
-              {/* Search Input */}
-              <input
-                type="text"
-                placeholder="Portföy, müşteri, danışman veya sayfa ara..."
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  if (e.target.value.trim().length >= 2) setShowSearchDropdown(true);
-                }}
-                onFocus={() => { if (searchQuery.trim().length >= 2) setShowSearchDropdown(true); }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && searchQuery.trim()) {
-                    setActiveTab('portfolios');
-                    setShowSearchDropdown(false);
-                  }
-                }}
-                className="w-full bg-white border-2 border-charcoal rounded-full px-5 py-2.5 pl-11 pr-10 text-sm focus:outline-none transition-all shadow-none"
-              />
-              {/* Search Icon or Loader */}
-              {isSearchLoading
-                ? <Loader2 size={16} className="absolute left-4 top-3.5 text-zinc-500 animate-spin" />
-                : <Search size={16} className="absolute left-4 top-3.5 text-zinc-500" />
-              }
-              {/* Clear button */}
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchQuery(''); setSearchResults(null); setShowSearchDropdown(false); }}
-                  className="absolute right-4 top-3 text-zinc-400 hover:text-zinc-700 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              )}
-
-              {/* Autocomplete Dropdown Panel */}
-              {showSearchDropdown && (
-                <div className="absolute top-full mt-2 left-0 right-0 bg-white border-2 border-charcoal rounded-3xl shadow-xl z-50 overflow-hidden max-h-[480px] overflow-y-auto">
-                  {isSearchLoading ? (
-                    <div className="flex items-center justify-center gap-2 py-8 text-zinc-500 text-sm">
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>Aranıyor...</span>
-                    </div>
-                  ) : searchResults ? (
-                    <>
-                      {/* No results at all */}
-                      {!searchResults.portfolios.length && !searchResults.clients.length && !searchResults.employees.length && !searchResults.appointments.length && !searchResults.pages.length ? (
-                        <div className="py-10 text-center">
-                          <Search size={28} className="mx-auto text-zinc-300 mb-2" />
-                          <p className="text-zinc-500 text-sm font-medium">"{searchQuery}" için sonuç bulunamadı.</p>
-                          <button
-                            onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
-                            className="mt-3 text-xs text-blue-600 hover:underline font-semibold"
-                          >
-                            Tüm portföyleri görüntüle →
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-zinc-100">
-
-                          {/* Portföyler Category */}
-                          {searchResults.portfolios.length > 0 && (
-                            <div>
-                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                                <Building size={13} className="text-zinc-400" />
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Portföyler</span>
-                              </div>
-                              {searchResults.portfolios.map((p: any) => (
-                                <button
-                                  key={`port-${p.id}`}
-                                  onClick={() => handleSelectSearchResult('portfolio', p)}
-                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
-                                >
-                                  <div className="w-8 h-8 rounded-xl bg-[#FEF08A] flex items-center justify-center shrink-0">
-                                    <Home size={14} className="text-charcoal" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-charcoal truncate">{p.tip} — {p.tur}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{p.mahalle}, {p.ilce} / {p.il} · {p.fiyat?.toLocaleString('tr-TR')} ₺</p>
-                                  </div>
-                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Müşteriler Category */}
-                          {searchResults.clients.length > 0 && (
-                            <div>
-                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                                <User size={13} className="text-zinc-400" />
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Müşteriler</span>
-                              </div>
-                              {searchResults.clients.map((c: any) => (
-                                <button
-                                  key={`cli-${c.id}`}
-                                  onClick={() => handleSelectSearchResult('client', c)}
-                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
-                                >
-                                  <div className="w-8 h-8 rounded-xl bg-[#BAE6FD] flex items-center justify-center shrink-0">
-                                    <User size={14} className="text-charcoal" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-charcoal truncate">{c.ad}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{c.musteriTipi} · {c.telefon}</p>
-                                  </div>
-                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Danışmanlar Category */}
-                          {searchResults.employees.length > 0 && (
-                            <div>
-                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                                <Briefcase size={13} className="text-zinc-400" />
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Danışman Kadrosu</span>
-                              </div>
-                              {searchResults.employees.map((e: any) => (
-                                <button
-                                  key={`emp-${e.id}`}
-                                  onClick={() => handleSelectSearchResult('employee', e)}
-                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
-                                >
-                                  <div className="w-8 h-8 rounded-xl bg-[#BBF7D0] flex items-center justify-center shrink-0">
-                                    <Users size={14} className="text-charcoal" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-charcoal truncate">{e.ad} {e.soyad}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{e.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'} · {e.eposta}</p>
-                                  </div>
-                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Randevular Category */}
-                          {searchResults.appointments.length > 0 && (
-                            <div>
-                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                                <Clock size={13} className="text-zinc-400" />
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Randevular</span>
-                              </div>
-                              {searchResults.appointments.map((a: any) => (
-                                <button
-                                  key={`app-${a.id}`}
-                                  onClick={() => handleSelectSearchResult('appointment', a)}
-                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
-                                >
-                                  <div className="w-8 h-8 rounded-xl bg-[#E9D5FF] flex items-center justify-center shrink-0">
-                                    <Calendar size={14} className="text-charcoal" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-charcoal truncate">{a.portfoyTip} — {a.ilce}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{a.musteri} · {new Date(a.randevuZamani).toLocaleDateString('tr-TR')} · <span className={a.durum === 'APPROVED' ? 'text-emerald-600' : a.durum === 'REJECTED' ? 'text-red-500' : 'text-amber-600'}>{a.durum}</span></p>
-                                  </div>
-                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Sistem Sayfaları Category */}
-                          {searchResults.pages.length > 0 && (
-                            <div>
-                              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                                <LayoutDashboard size={13} className="text-zinc-400" />
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Sistem Sayfaları</span>
-                              </div>
-                              {searchResults.pages.map((pg: any) => (
-                                <button
-                                  key={`pg-${pg.id}`}
-                                  onClick={() => handleSelectSearchResult('page', pg)}
-                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
-                                >
-                                  <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
-                                    <FileText size={14} className="text-zinc-500" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-charcoal truncate">{pg.title}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{pg.description}</p>
-                                  </div>
-                                  <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Footer: Show all results */}
-                          <div className="px-4 py-3 bg-zinc-50">
-                            <button
-                              onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
-                              className="w-full text-xs text-center font-semibold text-zinc-500 hover:text-charcoal transition-colors"
-                            >
-                              Tüm sonuçları portföylerde gör →
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </header>
-
-
-          {/* Subscription Expiration / Scheduled Package Warning Alert Banner */}
-          {subInfo && (subInfo.kalanGun <= 7 || subInfo.gelecekPaket) && (
-            <div className="bg-[#FEF08A] border-2 border-charcoal text-charcoal px-6 py-4 rounded-3xl flex justify-between items-center shadow-none">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="text-amber-800 shrink-0" size={22} />
-                <div className="text-xs font-medium leading-relaxed">
-                  {subInfo.kalanGun <= 7 ? (
-                    <span>
-                      <strong className="font-extrabold text-sm block mb-0.5 text-amber-950">Abonelik Döneminizin Bitmesine {subInfo.kalanGun} Gün Kaldı!</strong>
-                      {subInfo.gelecekPaket 
-                        ? `Süre dolduğunda (${new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}) otomatik olarak ${subInfo.gelecekPaket.paketAdi} (${subInfo.gelecekPaket.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'}) paketine geçiş yapılacaktır.` 
-                        : 'Paketiniz bitmeden kesintisiz devam etmek için Danışman Yönetimi alanından gelecek döneminizi planlayabilirsiniz.'}
-                    </span>
-                  ) : (
-                    <span>
-                      <strong className="font-extrabold text-sm block mb-0.5 text-charcoal">Gelecek Paket Değişimi Planlandı!</strong>
-                      Mevcut paketiniz sona erdiğinde ({new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}), hesabınız otomatik olarak <strong>{subInfo.gelecekPaket?.paketAdi} ({subInfo.gelecekPaket?.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'})</strong> paketine yükseltilecektir.
-                    </span>
-                  )}
-                </div>
-              </div>
-              {user?.rol === 'YETKILI' && (
-                <button 
-                  onClick={() => setActiveTab('subscription')} 
-                  className="px-4 py-2 bg-charcoal text-white rounded-full text-xs font-extrabold hover:bg-black transition-colors shrink-0 border-none ml-4 cursor-pointer"
-                >
-                  Aboneliği Yönet
-                </button>
-              )}
+        {/* Global Top Header Bar with Autocomplete */}
+        <header className="flex justify-between items-center w-full gap-4">
+          {activeTab === 'dashboard' && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">İyi günler, {user?.ad || ''} 👋</h1>
+              {(() => {
+                const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
+                const approvedCount = userApps.filter(a => a.durum === 'APPROVED').length;
+                const pendingCount = userApps.filter(a => a.durum === 'PENDING').length;
+                return (
+                  <p className="text-zinc-500 text-sm mt-1">
+                    Bugün <strong className="text-charcoal">{approvedCount} onaylı randevunuz</strong> ve <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
+                  </p>
+                );
+              })()}
             </div>
           )}
+
+          {/* Global Smart Search with Autocomplete */}
+          <div
+            ref={searchContainerRef}
+            className={`relative transition-all duration-300 ${activeTab === 'dashboard' ? 'w-64 sm:w-72 md:w-80 shrink-0' : 'w-full'
+              } min-w-0`}
+          >
+            {/* Search Input */}
+            <input
+              type="text"
+              placeholder="Portföy, müşteri, danışman veya sayfa ara..."
+              value={searchQuery}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                if (e.target.value.trim().length >= 2) setShowSearchDropdown(true);
+              }}
+              onFocus={() => { if (searchQuery.trim().length >= 2) setShowSearchDropdown(true); }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  setActiveTab('portfolios');
+                  setShowSearchDropdown(false);
+                }
+              }}
+              className="w-full bg-white border-2 border-charcoal rounded-full px-5 py-2.5 pl-11 pr-10 text-sm focus:outline-none transition-all shadow-none"
+            />
+            {/* Search Icon or Loader */}
+            {isSearchLoading
+              ? <Loader2 size={16} className="absolute left-4 top-3.5 text-zinc-500 animate-spin" />
+              : <Search size={16} className="absolute left-4 top-3.5 text-zinc-500" />
+            }
+            {/* Clear button */}
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(''); setSearchResults(null); setShowSearchDropdown(false); }}
+                className="absolute right-4 top-3 text-zinc-400 hover:text-zinc-700 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+
+            {/* Autocomplete Dropdown Panel */}
+            {showSearchDropdown && (
+              <div className="absolute top-full mt-2 left-0 right-0 bg-white border-2 border-charcoal rounded-3xl shadow-xl z-50 overflow-hidden max-h-[480px] overflow-y-auto">
+                {isSearchLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-8 text-zinc-500 text-sm">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Aranıyor...</span>
+                  </div>
+                ) : searchResults ? (
+                  <>
+                    {/* No results at all */}
+                    {!searchResults.portfolios.length && !searchResults.clients.length && !searchResults.employees.length && !searchResults.appointments.length && !searchResults.pages.length ? (
+                      <div className="py-10 text-center">
+                        <Search size={28} className="mx-auto text-zinc-300 mb-2" />
+                        <p className="text-zinc-500 text-sm font-medium">"{searchQuery}" için sonuç bulunamadı.</p>
+                        <button
+                          onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
+                          className="mt-3 text-xs text-blue-600 hover:underline font-semibold"
+                        >
+                          Tüm portföyleri görüntüle →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-zinc-100">
+
+                        {/* Portföyler Category */}
+                        {searchResults.portfolios.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                              <Building size={13} className="text-zinc-400" />
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Portföyler</span>
+                            </div>
+                            {searchResults.portfolios.map((p: any) => (
+                              <button
+                                key={`port-${p.id}`}
+                                onClick={() => handleSelectSearchResult('portfolio', p)}
+                                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-[#FEF08A] flex items-center justify-center shrink-0">
+                                  <Home size={14} className="text-charcoal" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-charcoal truncate">{p.tip} — {p.tur}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{p.mahalle}, {p.ilce} / {p.il} · {p.fiyat?.toLocaleString('tr-TR')} ₺</p>
+                                </div>
+                                <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Müşteriler Category */}
+                        {searchResults.clients.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                              <User size={13} className="text-zinc-400" />
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Müşteriler</span>
+                            </div>
+                            {searchResults.clients.map((c: any) => (
+                              <button
+                                key={`cli-${c.id}`}
+                                onClick={() => handleSelectSearchResult('client', c)}
+                                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-[#BAE6FD] flex items-center justify-center shrink-0">
+                                  <User size={14} className="text-charcoal" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-charcoal truncate">{c.ad}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{c.musteriTipi} · {c.telefon}</p>
+                                </div>
+                                <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Danışmanlar Category */}
+                        {searchResults.employees.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                              <Briefcase size={13} className="text-zinc-400" />
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Danışman Kadrosu</span>
+                            </div>
+                            {searchResults.employees.map((e: any) => (
+                              <button
+                                key={`emp-${e.id}`}
+                                onClick={() => handleSelectSearchResult('employee', e)}
+                                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-[#BBF7D0] flex items-center justify-center shrink-0">
+                                  <Users size={14} className="text-charcoal" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-charcoal truncate">{e.ad} {e.soyad}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{e.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'} · {e.eposta}</p>
+                                </div>
+                                <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Randevular Category */}
+                        {searchResults.appointments.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                              <Clock size={13} className="text-zinc-400" />
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Randevular</span>
+                            </div>
+                            {searchResults.appointments.map((a: any) => (
+                              <button
+                                key={`app-${a.id}`}
+                                onClick={() => handleSelectSearchResult('appointment', a)}
+                                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-[#E9D5FF] flex items-center justify-center shrink-0">
+                                  <Calendar size={14} className="text-charcoal" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-charcoal truncate">{a.portfoyTip} — {a.ilce}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{a.musteri} · {new Date(a.randevuZamani).toLocaleDateString('tr-TR')} · <span className={a.durum === 'APPROVED' ? 'text-emerald-600' : a.durum === 'REJECTED' ? 'text-red-500' : 'text-amber-600'}>{a.durum}</span></p>
+                                </div>
+                                <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Sistem Sayfaları Category */}
+                        {searchResults.pages.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                              <LayoutDashboard size={13} className="text-zinc-400" />
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">Sistem Sayfaları</span>
+                            </div>
+                            {searchResults.pages.map((pg: any) => (
+                              <button
+                                key={`pg-${pg.id}`}
+                                onClick={() => handleSelectSearchResult('page', pg)}
+                                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
+                                  <FileText size={14} className="text-zinc-500" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-charcoal truncate">{pg.title}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{pg.description}</p>
+                                </div>
+                                <span className="ml-auto text-xs text-zinc-300 group-hover:text-zinc-500 shrink-0">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Footer: Show all results */}
+                        <div className="px-4 py-3 bg-zinc-50">
+                          <button
+                            onClick={() => { setActiveTab('portfolios'); setShowSearchDropdown(false); }}
+                            className="w-full text-xs text-center font-semibold text-zinc-500 hover:text-charcoal transition-colors"
+                          >
+                            Tüm sonuçları portföylerde gör →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </header>
+
+
+        {/* Subscription Expiration / Scheduled Package Warning Alert Banner */}
+        {subInfo && (subInfo.kalanGun <= 7 || subInfo.gelecekPaket) && (
+          <div className="bg-[#FEF08A] border-2 border-charcoal text-charcoal px-6 py-4 rounded-3xl flex justify-between items-center shadow-none">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="text-amber-800 shrink-0" size={22} />
+              <div className="text-xs font-medium leading-relaxed">
+                {subInfo.kalanGun <= 7 ? (
+                  <span>
+                    <strong className="font-extrabold text-sm block mb-0.5 text-amber-950">Abonelik Döneminizin Bitmesine {subInfo.kalanGun} Gün Kaldı!</strong>
+                    {subInfo.gelecekPaket
+                      ? `Süre dolduğunda (${new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}) otomatik olarak ${subInfo.gelecekPaket.paketAdi} (${subInfo.gelecekPaket.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'}) paketine geçiş yapılacaktır.`
+                      : 'Paketiniz bitmeden kesintisiz devam etmek için Danışman Yönetimi alanından gelecek döneminizi planlayabilirsiniz.'}
+                  </span>
+                ) : (
+                  <span>
+                    <strong className="font-extrabold text-sm block mb-0.5 text-charcoal">Gelecek Paket Değişimi Planlandı!</strong>
+                    Mevcut paketiniz sona erdiğinde ({new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}), hesabınız otomatik olarak <strong>{subInfo.gelecekPaket?.paketAdi} ({subInfo.gelecekPaket?.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'})</strong> paketine yükseltilecektir.
+                  </span>
+                )}
+              </div>
+            </div>
+            {user?.rol === 'YETKILI' && (
+              <button
+                onClick={() => setActiveTab('subscription')}
+                className="px-4 py-2 bg-charcoal text-white rounded-full text-xs font-extrabold hover:bg-black transition-colors shrink-0 border-none ml-4 cursor-pointer"
+              >
+                Aboneliği Yönet
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Tab 1: Bento Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="flex flex-col gap-6">
-            
+
             {/* Metric Bento Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
+
               {/* Card 1: Active Listings (Pastel Yellow) */}
               <div className="bento-card bg-[#FEF08A]">
                 <div className="flex justify-between items-start mb-4">
@@ -2127,7 +2117,7 @@ export default function App() {
               </div>
 
               {/* Card 3: Upcoming Showings (Pastel Purple) */}
-              <div 
+              <div
                 className="bento-card bg-[#E9D5FF] cursor-pointer hover:bg-[#E9D5FF]/90 transition-colors flex flex-col justify-between"
                 onClick={() => setActiveTab('appointments')}
               >
@@ -2146,7 +2136,7 @@ export default function App() {
                           <span className="text-3xl font-extrabold text-charcoal">
                             {approvedApps.length} Onaylı
                           </span>
-                          <span 
+                          <span
                             className="w-7 h-7 inline-flex items-center justify-center text-xs font-extrabold text-amber-950 bg-[#FEF08A] rounded-full border border-amber-300 cursor-default"
                             title={`${pendingApps.length} Bekleyen Randevu`}
                           >
@@ -2159,16 +2149,14 @@ export default function App() {
                             return (
                               <div key={`dash-app-${app.id}`} className="flex items-center justify-between gap-1">
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                    app.durum === 'APPROVED' ? 'bg-emerald-600' : app.durum === 'PENDING' ? 'bg-amber-600' : 'bg-red-500'
-                                  }`}></span>
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${app.durum === 'APPROVED' ? 'bg-emerald-600' : app.durum === 'PENDING' ? 'bg-amber-600' : 'bg-red-500'
+                                    }`}></span>
                                   <span className="truncate font-semibold text-[11px]">
                                     {app.zaman} · {app.portfoyTip} ({app.ilce || 'Lokasyon'})
                                   </span>
                                 </div>
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full shrink-0 border ${
-                                  isIncoming ? 'bg-indigo-100 text-indigo-950 border-indigo-300' : 'bg-amber-100 text-amber-950 border-amber-300'
-                                }`}>
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full shrink-0 border ${isIncoming ? 'bg-indigo-100 text-indigo-950 border-indigo-300' : 'bg-amber-100 text-amber-950 border-amber-300'
+                                  }`}>
                                   {isIncoming ? '📥 Gelen' : '📤 Giden'}
                                 </span>
                               </div>
@@ -2193,11 +2181,11 @@ export default function App() {
                 <h3 className="text-xl font-extrabold text-charcoal mb-4 flex items-center gap-2">
                   <Users stroke="var(--primary)" /> Danışman Durumları & Ciro Performansı
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {employees.length > 0 ? (
                     employees.map(emp => (
-                      <div 
+                      <div
                         key={emp.id}
                         onClick={() => { setSelectedEmployee(emp); setActiveTab('team'); }}
                         className="rounded-2xl p-4 bg-cream flex flex-col justify-between shadow-none border-none cursor-pointer hover:bg-zinc-100/60 transition-colors"
@@ -2233,7 +2221,7 @@ export default function App() {
             <div className="bento-card bg-white">
               <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h3 className="text-xl font-extrabold text-charcoal">Son Eklenen Portföyler</h3>
-                <button 
+                <button
                   onClick={() => setActiveTab('portfolios')}
                   className="text-xs font-bold text-charcoal underline hover:text-black"
                 >
@@ -2254,16 +2242,15 @@ export default function App() {
                   </thead>
                   <tbody>
                     {portfolios.slice(0, 3).map(p => (
-                      <tr 
-                        key={p.id} 
+                      <tr
+                        key={p.id}
                         onClick={() => { setSelectedPortfolio(p); setActiveTab('portfolios'); }}
                         className="border-b border-zinc-100 text-sm hover:bg-cream/40 cursor-pointer transition-colors"
                       >
                         <td className="py-3.5">
-                          <strong className="font-extrabold">{p.tip}</strong> 
-                          <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full border border-charcoal ${
-                            p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
-                          }`}>
+                          <strong className="font-extrabold">{p.tip}</strong>
+                          <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full border border-charcoal ${p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
+                            }`}>
                             {p.tur}
                           </span>
                         </td>
@@ -2271,10 +2258,9 @@ export default function App() {
                         <td className="py-3.5 text-right font-extrabold">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</td>
                         <td className="py-3.5 font-medium">{p.gorevliUzman || ''}</td>
                         <td className="py-3.5 text-right">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-charcoal ${
-                            p.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-900' :
-                            p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
-                          }`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-charcoal ${p.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-900' :
+                              p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
+                            }`}>
                             {(p.durum || 'BOSTA').replace('_', ' ')}
                           </span>
                         </td>
@@ -2307,15 +2293,13 @@ export default function App() {
                   <button
                     onClick={handleToggleOfficeStatus}
                     disabled={presenceLoading}
-                    className={`relative inline-flex items-center w-14 h-7 rounded-full transition-all duration-300 focus:outline-none border-none ${
-                      isOfisteMi ? 'bg-emerald-400' : 'bg-white/20'
-                    } ${presenceLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                    className={`relative inline-flex items-center w-14 h-7 rounded-full transition-all duration-300 focus:outline-none border-none ${isOfisteMi ? 'bg-emerald-400' : 'bg-white/20'
+                      } ${presenceLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                     title={isOfisteMi ? 'Ofisten Ayrılıyorum' : 'Ofise Geldim'}
                   >
                     <span
-                      className={`inline-block w-5 h-5 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${
-                        isOfisteMi ? 'translate-x-8' : 'translate-x-1'
-                      }`}
+                      className={`inline-block w-5 h-5 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${isOfisteMi ? 'translate-x-8' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                 </div>
@@ -2377,7 +2361,7 @@ export default function App() {
             <div className="bento-card bg-white">
               <div className="flex flex-wrap justify-between items-start mb-6 gap-3">
                 <h2 className="text-xl md:text-2xl font-extrabold min-w-0 break-words">Portföy Yönetimi</h2>
-                <button 
+                <button
                   onClick={() => setShowAddPortfolioModal(true)}
                   className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none"
                 >
@@ -2388,40 +2372,37 @@ export default function App() {
               {/* Category Filter Pills (Sadece Portföyler sayfasında) */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {['Tümü', 'Satılık', 'Kiralık', 'Konut', 'Arsa'].map((tag) => (
-                  <button 
+                  <button
                     key={tag}
                     onClick={() => setFilterTag(tag)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${
-                      filterTag === tag 
-                        ? 'bg-charcoal text-white shadow-none' 
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${filterTag === tag
+                        ? 'bg-charcoal text-white shadow-none'
                         : 'bg-white text-charcoal hover:bg-zinc-50'
-                    }`}
+                      }`}
                   >
                     {tag}
                   </button>
                 ))}
               </div>
-              
+
               {/* Scope Switcher: Portföyler vs Portföylerim */}
               <div className="flex gap-2 mb-6">
-                <button 
+                <button
                   onClick={() => setPortfolioScope('all')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
-                    portfolioScope === 'all' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'all' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                    }`}
                 >
                   Tüm Portföyler
                 </button>
-                <button 
+                <button
                   onClick={() => setPortfolioScope('mine')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${
-                    portfolioScope === 'mine' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'mine' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                    }`}
                 >
                   Portföylerim
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredPortfolios.map(p => (
                   <div
@@ -2432,14 +2413,12 @@ export default function App() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap gap-2 items-center">
                         <strong className="text-md font-bold text-charcoal">{p.tip}</strong>
-                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${
-                          p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
-                        }`}>
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
+                          }`}>
                           {p.tur}
                         </span>
-                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${
-                          p.durum === 'BOSTA' ? 'bg-[#BBF7D0]' : 'bg-[#FEF08A]'
-                        }`}>
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 border border-charcoal rounded-full uppercase ${p.durum === 'BOSTA' ? 'bg-[#BBF7D0]' : 'bg-[#FEF08A]'
+                          }`}>
                           {(p.durum || 'BOSTA').replace('_', ' ')}
                         </span>
                       </div>
@@ -2461,7 +2440,7 @@ export default function App() {
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-3 md:p-4 overflow-y-auto">
                 {isEditingPortfolio ? (
                   /* Edit Mode Form */
-                  <form 
+                  <form
                     onSubmit={handleSaveEditPortfolio}
                     className="bg-white rounded-3xl p-5 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto my-auto"
                   >
@@ -2470,9 +2449,9 @@ export default function App() {
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy Düzenle</span>
                         <h2 className="text-2xl font-extrabold text-charcoal mt-1">Bilgileri Güncelle</h2>
                       </div>
-                      <button 
+                      <button
                         type="button"
-                        className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" 
+                        className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal"
                         onClick={() => setIsEditingPortfolio(false)}
                       >
                         <X size={16} />
@@ -2482,9 +2461,9 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
-                        <select 
+                        <select
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortTip} 
+                          value={editPortTip}
                           onChange={e => setEditPortTip(e.target.value)}
                         >
                           <option value="DAIRE">Daire</option>
@@ -2493,12 +2472,12 @@ export default function App() {
                           <option value="ARSA">Arsa</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">İşlem Türü</label>
-                        <select 
+                        <select
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortTur} 
+                          value={editPortTur}
                           onChange={e => setEditPortTur(e.target.value)}
                         >
                           <option value="SATILIK">Satılık</option>
@@ -2510,20 +2489,20 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Fiyat (TL)</label>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortFiyat} 
+                          value={editPortFiyat}
                           onChange={e => setEditPortFiyat(e.target.value)}
                           required
                         />
                       </div>
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Metrekare (m²)</label>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortMetrekare} 
+                          value={editPortMetrekare}
                           onChange={e => setEditPortMetrekare(e.target.value)}
                           required
                         />
@@ -2533,9 +2512,9 @@ export default function App() {
                     {editPortTip !== 'ARSA' && (
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Oda Sayısı</label>
-                        <select 
+                        <select
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortOdaSayisi} 
+                          value={editPortOdaSayisi}
                           onChange={e => setEditPortOdaSayisi(e.target.value)}
                         >
                           <option value="1+0">1+0 (Stüdyo)</option>
@@ -2552,30 +2531,30 @@ export default function App() {
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">İl</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortIl} 
+                          value={editPortIl}
                           onChange={e => setEditPortIl(e.target.value)}
                           required
                         />
                       </div>
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">İlçe</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortIlce} 
+                          value={editPortIlce}
                           onChange={e => setEditPortIlce(e.target.value)}
                           required
                         />
                       </div>
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Mahalle</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortMahalle} 
+                          value={editPortMahalle}
                           onChange={e => setEditPortMahalle(e.target.value)}
                         />
                       </div>
@@ -2583,24 +2562,24 @@ export default function App() {
 
                     <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
                       <span className="text-[10px] text-zinc-500 font-bold uppercase block">Ev Sahibi (Mülk Sahibi) İletişim Bilgileri</span>
-                      
+
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-[10px] text-zinc-600 block mb-0.5">Adı Soyadı</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                            value={editPortLandlordName} 
+                            value={editPortLandlordName}
                             onChange={e => setEditPortLandlordName(e.target.value)}
                             required
                           />
                         </div>
                         <div>
                           <label className="text-[10px] text-zinc-600 block mb-0.5">Telefon</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                            value={editPortLandlordPhone} 
+                            value={editPortLandlordPhone}
                             onChange={e => setEditPortLandlordPhone(e.target.value)}
                             required
                           />
@@ -2609,14 +2588,14 @@ export default function App() {
                     </div>
 
                     <div className="flex gap-2 mt-2">
-                      <button 
+                      <button
                         type="submit"
                         className="flex-1 py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none"
                       >
                         Değişiklikleri Kaydet
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="flex-1 py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none"
                         onClick={() => setIsEditingPortfolio(false)}
                       >
@@ -2664,7 +2643,7 @@ export default function App() {
                         <span className="text-zinc-500">Portföy Danışmanı:</span>
                         <strong className="font-semibold">{selectedPortfolio.gorevliUzman}</strong>
                       </div>
-                      
+
                       {/* Landlord details privacy checks */}
                       <div className="mt-2 p-4 rounded-2xl bg-cream border-none leading-relaxed">
                         <span className="text-xs text-zinc-500 font-bold block mb-1">Ev Sahibi (Landlord) İletişim Bilgileri:</span>
@@ -2682,259 +2661,256 @@ export default function App() {
                       </div>
                     </div>
 
-                      {/* Edit & Close actions for owners/admins */}
-                      {(user?.rol === 'YETKILI' || selectedPortfolio.gorevliUzmanId === user?.id) && (
-                        <div className="flex flex-col gap-2">
-                          <button 
-                            onClick={() => startEditPortfolio(selectedPortfolio)}
-                            className="w-full py-2.5 bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
-                          >
-                            Portföyü Düzenle
-                          </button>
+                    {/* Edit & Close actions for owners/admins */}
+                    {(user?.rol === 'YETKILI' || selectedPortfolio.gorevliUzmanId === user?.id) && (
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => startEditPortfolio(selectedPortfolio)}
+                          className="w-full py-2.5 bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
+                        >
+                          Portföyü Düzenle
+                        </button>
 
-                          {selectedPortfolio.durum !== 'SATILDI' && selectedPortfolio.durum !== 'KIRALANDI' && (
-                            <button 
-                              onClick={() => openCloseTransactionModal(selectedPortfolio)}
-                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-full transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
-                            >
-                              <Check size={16} /> İşlemi Kapat / Satıldı-Kiralandı Yap
-                            </button>
+                        {selectedPortfolio.durum !== 'SATILDI' && selectedPortfolio.durum !== 'KIRALANDI' && (
+                          <button
+                            onClick={() => openCloseTransactionModal(selectedPortfolio)}
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-full transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Check size={16} /> İşlemi Kapat / Satıldı-Kiralandı Yap
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Dynamic Appointment Creation / Request Form (Placed ABOVE Special Property Calendar) */}
+                    {(() => {
+                      const isOwner = selectedPortfolio.gorevliUzmanId === user?.id;
+
+                      return (
+                        <div className={`p-5 rounded-3xl border-2 flex flex-col gap-4 mt-3 ${isOwner ? 'bg-[#BBF7D0]/20 border-emerald-300' : 'bg-[#E9D5FF]/20 border-indigo-300'
+                          }`}>
+                          <div className="flex justify-between items-center flex-wrap gap-2">
+                            <div>
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 block mb-0.5">
+                                {isOwner ? 'DOĞRUDAN RANDEVU OLUŞTUR' : 'RANDEVU TALEBİ OLUŞTUR'}
+                              </span>
+                              <h4 className="font-extrabold text-sm text-charcoal flex items-center gap-2">
+                                <Calendar size={16} />
+                                {isOwner ? 'İlanınıza Doğrudan Randevu Ekle' : 'İlan Sahibinden Randevu Talep Et'}
+                              </h4>
+                            </div>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${isOwner ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'
+                              }`}>
+                              {isOwner ? 'İlan Sahibisiniz' : `İlan Sahibi: ${selectedPortfolio.gorevliUzman || 'Uzman'}`}
+                            </span>
+                          </div>
+
+                          {selectedPortfolio.durum === 'KAPORA_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
+                            <div className="flex items-center gap-2 text-xs text-red-700 font-semibold p-3 bg-red-50 rounded-2xl border border-red-200">
+                              <AlertTriangle size={16} />
+                              <span>Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-3">
+                              {/* Katılacak Müşteri Seçimi */}
+                              <div>
+                                <label className="text-xs text-zinc-600 font-semibold block mb-1">
+                                  Katılacak Müşteri (Alıcı / Kiracı Adayı) <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none"
+                                  value={selectedMusteriId}
+                                  onChange={e => setSelectedMusteriId(e.target.value)}
+                                >
+                                  <option value="">-- Müşteri Listesinden Seçin --</option>
+                                  {clients.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.ad} {c.soyad} ({c.musteriTipi || c.tip}) - Tel: {c.telefon}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Randevu Tarihi ve Saati */}
+                              <div>
+                                <label className="text-xs text-zinc-600 font-semibold block mb-1">
+                                  Randevu Tarihi & Saati <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium"
+                                  value={selectedDate}
+                                  onChange={e => setSelectedDate(e.target.value)}
+                                />
+                              </div>
+
+                              {/* Dynamic Action Button */}
+                              <button
+                                type="button"
+                                className={`w-full py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${isOwner
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    : 'bg-charcoal hover:bg-black text-white'
+                                  }`}
+                                onClick={() => handleCreateOrRequestAppointment(selectedPortfolio, isOwner)}
+                              >
+                                {isOwner ? '➕ Randevu Oluştur (Doğrudan Takvime Ekle)' : '📤 Randevu Talebi Oluştur (İlan Sahibine Gönder)'}
+                              </button>
+                            </div>
                           )}
                         </div>
-                      )}
+                      );
+                    })()}
 
-                      {/* Dynamic Appointment Creation / Request Form (Placed ABOVE Special Property Calendar) */}
-                      {(() => {
-                        const isOwner = selectedPortfolio.gorevliUzmanId === user?.id;
-
-                        return (
-                          <div className={`p-5 rounded-3xl border-2 flex flex-col gap-4 mt-3 ${
-                            isOwner ? 'bg-[#BBF7D0]/20 border-emerald-300' : 'bg-[#E9D5FF]/20 border-indigo-300'
-                          }`}>
-                            <div className="flex justify-between items-center flex-wrap gap-2">
-                              <div>
-                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 block mb-0.5">
-                                  {isOwner ? 'DOĞRUDAN RANDEVU OLUŞTUR' : 'RANDEVU TALEBİ OLUŞTUR'}
-                                </span>
-                                <h4 className="font-extrabold text-sm text-charcoal flex items-center gap-2">
-                                  <Calendar size={16} /> 
-                                  {isOwner ? 'İlanınıza Doğrudan Randevu Ekle' : 'İlan Sahibinden Randevu Talep Et'}
-                                </h4>
-                              </div>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                                isOwner ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'
-                              }`}>
-                                {isOwner ? 'İlan Sahibisiniz' : `İlan Sahibi: ${selectedPortfolio.gorevliUzman || 'Uzman'}`}
-                              </span>
-                            </div>
-                            
-                            {selectedPortfolio.durum === 'KAPORA_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
-                              <div className="flex items-center gap-2 text-xs text-red-700 font-semibold p-3 bg-red-50 rounded-2xl border border-red-200">
-                                <AlertTriangle size={16} />
-                                <span>Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.</span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-3">
-                                {/* Katılacak Müşteri Seçimi */}
-                                <div>
-                                  <label className="text-xs text-zinc-600 font-semibold block mb-1">
-                                    Katılacak Müşteri (Alıcı / Kiracı Adayı) <span className="text-red-500">*</span>
-                                  </label>
-                                  <select 
-                                    className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none"
-                                    value={selectedMusteriId} 
-                                    onChange={e => setSelectedMusteriId(e.target.value)}
-                                  >
-                                    <option value="">-- Müşteri Listesinden Seçin --</option>
-                                    {clients.map(c => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.ad} {c.soyad} ({c.musteriTipi || c.tip}) - Tel: {c.telefon}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                
-                                {/* Randevu Tarihi ve Saati */}
-                                <div>
-                                  <label className="text-xs text-zinc-600 font-semibold block mb-1">
-                                    Randevu Tarihi & Saati <span className="text-red-500">*</span>
-                                  </label>
-                                  <input 
-                                    type="datetime-local" 
-                                    className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium" 
-                                    value={selectedDate} 
-                                    onChange={e => setSelectedDate(e.target.value)} 
-                                  />
-                                </div>
-
-                                {/* Dynamic Action Button */}
-                                <button 
-                                  type="button"
-                                  className={`w-full py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${
-                                    isOwner 
-                                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                                      : 'bg-charcoal hover:bg-black text-white'
-                                  }`} 
-                                  onClick={() => handleCreateOrRequestAppointment(selectedPortfolio, isOwner)}
-                                >
-                                  {isOwner ? '➕ Randevu Oluştur (Doğrudan Takvime Ekle)' : '📤 Randevu Talebi Oluştur (İlan Sahibine Gönder)'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Specific Property Appointments Calendar Section */}
-                      <div className="p-5 rounded-3xl bg-cream border-2 border-charcoal/10 flex flex-col gap-4 mt-2">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">ÖZEL RANDEVU TAKVİMİ</span>
-                            <h4 className="font-extrabold text-sm text-charcoal">Bu İlana Ait Gösterimler</h4>
-                          </div>
-                          <span className="text-xs font-extrabold px-2.5 py-1 bg-white border border-charcoal rounded-full text-indigo-700">
-                            {popAppointments.length} Toplam
-                          </span>
+                    {/* Specific Property Appointments Calendar Section */}
+                    <div className="p-5 rounded-3xl bg-cream border-2 border-charcoal/10 flex flex-col gap-4 mt-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">ÖZEL RANDEVU TAKVİMİ</span>
+                          <h4 className="font-extrabold text-sm text-charcoal">Bu İlana Ait Gösterimler</h4>
                         </div>
+                        <span className="text-xs font-extrabold px-2.5 py-1 bg-white border border-charcoal rounded-full text-indigo-700">
+                          {popAppointments.length} Toplam
+                        </span>
+                      </div>
 
-                        {/* Pop-Up Mini Calendar Controls & Grid */}
-                        <div className="bg-white p-4 rounded-2xl border border-zinc-200">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-extrabold text-xs capitalize">{popMonthName}</span>
-                            <div className="flex gap-1 items-center">
-                              <button 
-                                type="button"
-                                onClick={handlePopToday}
-                                className="px-2 py-0.5 text-[9px] font-extrabold border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
-                                title="Bugüne Git"
-                              >
-                                Bugün
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={handlePopPrevMonth}
-                                className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
-                                title="Önceki Ay"
-                              >
-                                <ChevronLeft size={12} />
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={handlePopNextMonth}
-                                className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
-                                title="Sonraki Ay"
-                              >
-                                <ChevronLeft className="rotate-180" size={12} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Grid */}
-                          <div className="grid grid-cols-7 gap-1 text-[9px] text-center font-bold">
-                            {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
-                              <span key={d} className="text-zinc-400">{d}</span>
-                            ))}
-                            {popBlankDays.map((_, i) => (
-                              <span key={`pop-blank-${i}`} className="p-1"></span>
-                            ))}
-                            {popDaysArray.map(day => {
-                              const hasApp = popAppointments.some((a: any) => Number(a.gun) === day && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
-                              return (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() => setPopSelectedDay(day)}
-                                  className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center cursor-pointer ${
-                                    popSelectedDay === day ? 'bg-charcoal text-white font-extrabold' : 'hover:bg-zinc-100'
-                                  }`}
-                                >
-                                  <span>{day}</span>
-                                  {hasApp && (
-                                    <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${
-                                      popSelectedDay === day ? 'bg-pastelYellow' : 'bg-indigo-600'
-                                    }`} />
-                                  )}
-                                </button>
-                              );
-                            })}
+                      {/* Pop-Up Mini Calendar Controls & Grid */}
+                      <div className="bg-white p-4 rounded-2xl border border-zinc-200">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-extrabold text-xs capitalize">{popMonthName}</span>
+                          <div className="flex gap-1 items-center">
+                            <button
+                              type="button"
+                              onClick={handlePopToday}
+                              className="px-2 py-0.5 text-[9px] font-extrabold border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Bugüne Git"
+                            >
+                              Bugün
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handlePopPrevMonth}
+                              className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Önceki Ay"
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handlePopNextMonth}
+                              className="p-1 border border-charcoal rounded-md hover:bg-zinc-200 transition-all cursor-pointer"
+                              title="Sonraki Ay"
+                            >
+                              <ChevronLeft className="rotate-180" size={12} />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Selected Day Timeline for this Property */}
-                        <div className="flex flex-col gap-2">
-                          <span className="text-[10px] font-extrabold uppercase text-zinc-500">
-                            {popSelectedDay} {popMonthName} Randevu Akışı
-                          </span>
-                          {(() => {
-                            const dayApps = popAppointments.filter((a: any) => Number(a.gun) === popSelectedDay && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
-                            if (dayApps.length === 0) {
-                              return (
-                                <span className="text-xs text-zinc-400 italic p-2.5 bg-white rounded-xl text-center border border-zinc-200">
-                                  Bu tarihte bu ev için henüz randevu alınmamıştır.
-                                </span>
-                              );
-                            }
+                        {/* Grid */}
+                        <div className="grid grid-cols-7 gap-1 text-[9px] text-center font-bold">
+                          {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
+                            <span key={d} className="text-zinc-400">{d}</span>
+                          ))}
+                          {popBlankDays.map((_, i) => (
+                            <span key={`pop-blank-${i}`} className="p-1"></span>
+                          ))}
+                          {popDaysArray.map(day => {
+                            const hasApp = popAppointments.some((a: any) => Number(a.gun) === day && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
+                            const isPastDate = new Date(popYear, popMonth, day) < new Date(new Date().setHours(0, 0, 0, 0));
                             return (
-                              <div className="flex flex-col gap-2">
-                                {dayApps.map((app: any) => {
-                                  const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id) || user?.rol === 'YETKILI';
-                                  const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
-
-                                  return (
-                                    <div key={app.id} className="p-3 rounded-xl bg-white border border-zinc-200 flex justify-between items-center text-xs">
-                                      <div className="flex flex-col gap-0.5">
-                                        <span className="font-extrabold text-charcoal">{app.zaman || '12:00'} - Gösterim</span>
-                                        <span className="text-zinc-500 text-[10px]">Uzman: {app.talepEden} | Müşteri: {app.musteri}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${
-                                          app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' : 
-                                          app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                          app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                          'bg-[#FBCFE8] text-red-950 border-red-300'
-                                        }`}>
-                                          {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                                           app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                                           app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
-                                        </span>
-
-                                        {app.durum === 'PENDING' && (
-                                          <>
-                                            {canManageAppointment && (
-                                              <div className="flex gap-1">
-                                                <button 
-                                                  onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
-                                                  className="px-2 py-0.5 bg-[#BBF7D0] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer"
-                                                >
-                                                  Onayla
-                                                </button>
-                                                <button 
-                                                  onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
-                                                  className="px-2 py-0.5 bg-[#FBCFE8] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer"
-                                                >
-                                                  Reddet
-                                                </button>
-                                              </div>
-                                            )}
-                                            {!canManageAppointment && canCancelAppointment && (
-                                              <button 
-                                                onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
-                                                className="px-2 py-0.5 bg-zinc-100 hover:bg-red-100 text-zinc-600 hover:text-red-700 border border-zinc-300 rounded-full text-[9px] font-extrabold transition-colors cursor-pointer"
-                                              >
-                                                İptal Et 🚫
-                                              </button>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => !isPastDate && setPopSelectedDay(day)}
+                                disabled={isPastDate}
+                                className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed hover:bg-transparent' :
+                                    popSelectedDay === day ? 'bg-charcoal text-white font-extrabold cursor-pointer' : 'hover:bg-zinc-100 cursor-pointer'
+                                  }`}
+                              >
+                                <span>{day}</span>
+                                {hasApp && (
+                                  <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${popSelectedDay === day ? 'bg-pastelYellow' : 'bg-indigo-600'
+                                    }`} />
+                                )}
+                              </button>
                             );
-                          })()}
+                          })}
                         </div>
                       </div>
+
+                      {/* Selected Day Timeline for this Property */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-extrabold uppercase text-zinc-500">
+                          {popSelectedDay} {popMonthName} Randevu Akışı
+                        </span>
+                        {(() => {
+                          const dayApps = popAppointments.filter((a: any) => Number(a.gun) === popSelectedDay && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear);
+                          if (dayApps.length === 0) {
+                            return (
+                              <span className="text-xs text-zinc-400 italic p-2.5 bg-white rounded-xl text-center border border-zinc-200">
+                                Bu tarihte bu ev için henüz randevu alınmamıştır.
+                              </span>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col gap-2">
+                              {dayApps.map((app: any) => {
+                                const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id) || user?.rol === 'YETKILI';
+                                const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
+
+                                return (
+                                  <div key={app.id} className="p-3 rounded-xl bg-white border border-zinc-200 flex justify-between items-center text-xs">
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-extrabold text-charcoal">{app.zaman || '12:00'} - Gösterim</span>
+                                      <span className="text-zinc-500 text-[10px]">Uzman: {app.talepEden} | Müşteri: {app.musteri}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
+                                          app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                            app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                              'bg-[#FBCFE8] text-red-950 border-red-300'
+                                        }`}>
+                                        {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
+                                          app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                            app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                      </span>
+
+                                      {app.durum === 'PENDING' && (
+                                        <>
+                                          {canManageAppointment && (
+                                            <div className="flex gap-1">
+                                              <button
+                                                onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
+                                                className="px-2 py-0.5 bg-[#BBF7D0] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer"
+                                              >
+                                                Onayla
+                                              </button>
+                                              <button
+                                                onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
+                                                className="px-2 py-0.5 bg-[#FBCFE8] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer"
+                                              >
+                                                Reddet
+                                              </button>
+                                            </div>
+                                          )}
+                                          {!canManageAppointment && canCancelAppointment && (
+                                            <button
+                                              onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
+                                              className="px-2 py-0.5 bg-zinc-100 hover:bg-red-100 text-zinc-600 hover:text-red-700 border border-zinc-300 rounded-full text-[9px] font-extrabold transition-colors cursor-pointer"
+                                            >
+                                              İptal Et 🚫
+                                            </button>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
 
                     <button className="w-full py-2.5 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none cursor-pointer mt-2" onClick={() => setSelectedPortfolio(null)}>
                       Kapat
@@ -2948,8 +2924,8 @@ export default function App() {
             {/* Add Portfolio Modal */}
             {showAddPortfolioModal && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <form 
-                  onSubmit={handleAddPortfolio} 
+                <form
+                  onSubmit={handleAddPortfolio}
                   className="bg-white rounded-3xl p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -2957,9 +2933,9 @@ export default function App() {
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
                       <h2 className="text-2xl font-extrabold text-charcoal mt-1">Yeni Portföy Ekle</h2>
                     </div>
-                    <button 
-                      type="button" 
-                      className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" 
+                    <button
+                      type="button"
+                      className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal"
                       onClick={() => setShowAddPortfolioModal(false)}
                     >
                       <X size={16} />
@@ -2969,9 +2945,9 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
-                      <select 
+                      <select
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortTip} 
+                        value={newPortTip}
                         onChange={e => setNewPortTip(e.target.value)}
                       >
                         <option value="DAIRE">Daire</option>
@@ -2980,12 +2956,12 @@ export default function App() {
                         <option value="ARSA">Arsa</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">İşlem Türü</label>
-                      <select 
+                      <select
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortTur} 
+                        value={newPortTur}
                         onChange={e => setNewPortTur(e.target.value)}
                       >
                         <option value="SATILIK">Satılık</option>
@@ -2997,33 +2973,33 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Fiyat (TL)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Fiyat girin"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortFiyat} 
+                        value={newPortFiyat}
                         onChange={e => setNewPortFiyat(e.target.value)}
                         required
                       />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Metrekare (m²)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Örn: 120"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortMetrekare} 
+                        value={newPortMetrekare}
                         onChange={e => setNewPortMetrekare(e.target.value)}
                         required
                       />
                     </div>
                   </div>
-{newPortTip !== 'ARSA' && (
+                  {newPortTip !== 'ARSA' && (
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Oda Sayısı</label>
-                      <select 
+                      <select
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortOdaSayisi} 
+                        value={newPortOdaSayisi}
                         onChange={e => setNewPortOdaSayisi(e.target.value)}
                       >
                         <option value="1+0">1+0 (Stüdyo)</option>
@@ -3040,21 +3016,21 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Opsiyonel)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Örn: 50000"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortKapora} 
+                        value={newPortKapora}
                         onChange={e => setNewPortKapora(e.target.value)}
                       />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Opsiyonel)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Örn: 20000"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortDepozito} 
+                        value={newPortDepozito}
                         onChange={e => setNewPortDepozito(e.target.value)}
                       />
                     </div>
@@ -3063,32 +3039,32 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">İl</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortIl} 
+                        value={newPortIl}
                         onChange={e => setNewPortIl(e.target.value)}
                         required
                       />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">İlçe</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="İlçe"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortIlce} 
+                        value={newPortIlce}
                         onChange={e => setNewPortIlce(e.target.value)}
                         required
                       />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Semt</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Semt"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortSemt} 
+                        value={newPortSemt}
                         onChange={e => setNewPortSemt(e.target.value)}
                       />
                     </div>
@@ -3097,11 +3073,11 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Mahalle</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Mahalle"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortMahalle} 
+                        value={newPortMahalle}
                         onChange={e => setNewPortMahalle(e.target.value)}
                       />
                     </div>
@@ -3109,26 +3085,26 @@ export default function App() {
 
                   <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
                     <span className="text-[10px] text-zinc-500 font-bold uppercase block">Ev Sahibi (Mülk Sahibi) İrtibat Bilgileri</span>
-                    
+
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] text-zinc-600 block mb-0.5">Adı Soyadı</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="Ad Soyad"
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={newPortLandlordName} 
+                          value={newPortLandlordName}
                           onChange={e => setNewPortLandlordName(e.target.value)}
                           required
                         />
                       </div>
                       <div>
                         <label className="text-[10px] text-zinc-600 block mb-0.5">Telefon</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="05xx..."
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={newPortLandlordPhone} 
+                          value={newPortLandlordPhone}
                           onChange={e => setNewPortLandlordPhone(e.target.value)}
                           required
                         />
@@ -3137,14 +3113,14 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-2 mt-2">
-                    <button 
+                    <button
                       type="submit"
                       className="flex-1 py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none"
                     >
                       Portföyü Kaydet
                     </button>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="flex-1 py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none"
                       onClick={() => setShowAddPortfolioModal(false)}
                     >
@@ -3161,7 +3137,7 @@ export default function App() {
         {/* Tab 3: Appointments Tab */}
         {activeTab === 'appointments' && (
           <div className="flex flex-col gap-6 w-full">
-            
+
             {/* Top Card: Kendi Oluşturulan Randevular (My Appointments Card) */}
             <div className="bento-card bg-white">
               <div className="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
@@ -3222,15 +3198,14 @@ export default function App() {
                           </td>
                           <td className="py-4 text-center">
                             <div className="flex flex-col items-center gap-1">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase ${
-                                app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                'bg-[#FBCFE8] text-red-950 border-red-300'
-                              }`}>
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
+                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                                 app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                                 app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                  app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                    app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
                               </span>
                               {app.durum === 'PENDING' && compareIds(app.talepEdenId, user?.id) && (
                                 <button
@@ -3265,7 +3240,7 @@ export default function App() {
 
               {/* 2-Split Grid: Left (Giden Talepler 📤) & Right (Gelen Talepler 📥) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
-                
+
                 {/* Left Section: Giden Talepler 📤 */}
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-3">
@@ -3299,15 +3274,14 @@ export default function App() {
                               <strong className="text-sm font-extrabold text-charcoal block">{app.portfoyTip} ({app.portfoyTur})</strong>
                               <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                             </div>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${
-                              app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                              app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
-                              app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                              'bg-[#FBCFE8] text-red-950 border-red-300'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
+                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                    'bg-[#FBCFE8] text-red-950 border-red-300'
+                              }`}>
                               {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                               app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                               app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                  app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
                             </span>
                           </div>
 
@@ -3324,7 +3298,7 @@ export default function App() {
 
                           <div className="mt-2 flex justify-end">
                             {app.durum === 'PENDING' ? (
-                              <button 
+                              <button
                                 type="button"
                                 onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
                                 className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-[10px] font-extrabold transition-all cursor-pointer"
@@ -3379,15 +3353,14 @@ export default function App() {
                                 <strong className="text-sm font-extrabold text-charcoal block">{app.portfoyTip} ({app.portfoyTur})</strong>
                                 <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                               </div>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${
-                                app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
-                                app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                'bg-[#FBCFE8] text-red-950 border-red-300'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
+                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                                 app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                                 app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                  app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                    app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
                               </span>
                             </div>
 
@@ -3405,13 +3378,13 @@ export default function App() {
                             <div className="mt-2 flex justify-end">
                               {canManageAppointment && app.durum === 'PENDING' ? (
                                 <div className="flex gap-2">
-                                  <button 
+                                  <button
                                     onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
                                     className="px-4 py-1.5 bg-[#BBF7D0] border border-emerald-400 rounded-md text-[10px] font-extrabold hover:bg-emerald-300 transition-all cursor-pointer text-emerald-950"
                                   >
                                     Onayla
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
                                     className="px-4 py-1.5 bg-white border border-red-200 text-red-600 rounded-md text-[10px] font-extrabold hover:bg-red-50 transition-all cursor-pointer"
                                   >
@@ -3448,14 +3421,13 @@ export default function App() {
                     <div>
                       <div className="flex gap-2 items-center flex-wrap">
                         <strong className="font-extrabold text-sm">{c.ad} {c.soyad}</strong>
-                        <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${
-                          c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
-                          c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
-                          c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
-                        }`}>
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
+                            c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
+                              c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
+                          }`}>
                           {c.musteriTipi === 'ALICI' ? 'ALICI' :
-                           c.musteriTipi === 'KIRACI' ? 'KİRACI' :
-                           c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
+                            c.musteriTipi === 'KIRACI' ? 'KİRACI' :
+                              c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
                         </span>
                       </div>
                       <span className="text-xs text-zinc-500 block mt-1">Telefon: {c.telefon}</span>
@@ -3476,9 +3448,9 @@ export default function App() {
               <form onSubmit={handleAddClient} className="flex flex-col gap-4">
                 <div>
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Ad Soyad</label>
-                  <input 
-                    type="text" 
-                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none" 
+                  <input
+                    type="text"
+                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                     placeholder="Örn: Murat Demir"
                     value={newClientName}
                     onChange={e => setNewClientName(e.target.value)}
@@ -3487,9 +3459,9 @@ export default function App() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Telefon Numarası</label>
-                  <input 
-                    type="text" 
-                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none" 
+                  <input
+                    type="text"
+                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                     placeholder="Örn: 0505 123 45 67"
                     value={newClientPhone}
                     onChange={e => setNewClientPhone(e.target.value)}
@@ -3500,7 +3472,7 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-zinc-500 block mb-1">Müşteri Tipi</label>
-                    <select 
+                    <select
                       className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                       value={newClientMusteriTipi}
                       onChange={e => setNewClientMusteriTipi(e.target.value)}
@@ -3511,10 +3483,10 @@ export default function App() {
                       <option value="KIRAYA_VEREN">Kiraya Veren (Mülkünü Kiralıyor)</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="text-xs font-bold text-zinc-500 block mb-1">Tercih Ettiği Tip</label>
-                    <select 
+                    <select
                       className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                       value={newClientType}
                       onChange={e => setNewClientType(e.target.value)}
@@ -3530,9 +3502,9 @@ export default function App() {
                 {newClientMusteriTipi !== 'SATICI' && newClientMusteriTipi !== 'KIRAYA_VEREN' && (
                   <div>
                     <label className="text-xs font-bold text-zinc-500 block mb-1">Maksimum Bütçe / Fiyat (TL)</label>
-                    <input 
-                      type="number" 
-                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none" 
+                    <input
+                      type="number"
+                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                       placeholder="Örn: 3500000"
                       value={newClientBudget}
                       onChange={e => setNewClientBudget(e.target.value)}
@@ -3551,17 +3523,17 @@ export default function App() {
         {/* Tab 5: Calculator Tab */}
         {activeTab === 'calculator' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             <div className="bento-card bg-white">
               <h2 className="text-2xl font-extrabold mb-4">Komisyon Payı Hesaplama</h2>
-              
+
               <div className="flex flex-col gap-4">
                 <div>
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Brüt Komisyon Bedeli (TL)</label>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      className="w-full text-sm p-3 rounded-2xl pl-10 bg-zinc-50 focus:outline-none" 
+                    <input
+                      type="number"
+                      className="w-full text-sm p-3 rounded-2xl pl-10 bg-zinc-50 focus:outline-none"
                       value={grossCommission}
                       onChange={e => setGrossCommission(Number(e.target.value))}
                     />
@@ -3571,7 +3543,7 @@ export default function App() {
 
                 <div>
                   <label className="text-xs font-bold text-zinc-500 block mb-1">Çalışma Senaryosu</label>
-                  <select 
+                  <select
                     className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
                     value={calcScenario}
                     onChange={e => setCalcScenario(e.target.value as any)}
@@ -3601,13 +3573,13 @@ export default function App() {
             <div className="bento-card bg-white flex flex-col justify-between">
               <div>
                 <h3 className="text-xl font-extrabold mb-4">Paylaşım Sonuçları</h3>
-                
+
                 <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 border-none">
                   <div className="flex justify-between items-center text-xs pb-2 border-b border-zinc-200">
                     <span>Toplam Komisyon:</span>
                     <strong className="font-extrabold">{grossCommission.toLocaleString('tr-TR')} TL</strong>
                   </div>
-                  
+
                   {calcScenario === 'A' && (
                     <>
                       <div className="flex justify-between items-center text-xs">
@@ -3679,7 +3651,7 @@ export default function App() {
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-1">OFİS YÖNETİM PANELİ</span>
                 <h2 className="text-2xl font-extrabold text-slate-800">Finansal & Performans Dashboard</h2>
               </div>
-              <button 
+              <button
                 onClick={() => token && fetchDashboardData(token)}
                 className="px-4 py-2 bg-white rounded-full text-xs font-bold text-slate-600 hover:bg-zinc-100 transition-colors border border-zinc-200 cursor-pointer"
               >
@@ -3703,11 +3675,10 @@ export default function App() {
                         <Banknote size={20} className="text-emerald-700" />
                       </div>
                       {dashboardData.ciroDegisimYuzde !== 0 && (
-                        <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
-                          dashboardData.ciroDegisimYuzde > 0 
-                            ? 'bg-emerald-100 text-emerald-800' 
+                        <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${dashboardData.ciroDegisimYuzde > 0
+                            ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-red-100 text-red-800'
-                        }`}>
+                          }`}>
                           {dashboardData.ciroDegisimYuzde > 0 ? '↑' : '↓'} %{Math.abs(dashboardData.ciroDegisimYuzde)}
                         </span>
                       )}
@@ -3725,11 +3696,10 @@ export default function App() {
                         <UserPlus size={20} className="text-blue-700" />
                       </div>
                       {dashboardData.musteriDegisimYuzde !== 0 && (
-                        <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
-                          dashboardData.musteriDegisimYuzde > 0 
-                            ? 'bg-blue-100 text-blue-800' 
+                        <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${dashboardData.musteriDegisimYuzde > 0
+                            ? 'bg-blue-100 text-blue-800'
                             : 'bg-red-100 text-red-800'
-                        }`}>
+                          }`}>
                           {dashboardData.musteriDegisimYuzde > 0 ? '↑' : '↓'} %{Math.abs(dashboardData.musteriDegisimYuzde)}
                         </span>
                       )}
@@ -3772,7 +3742,7 @@ export default function App() {
 
                 {/* ═══ BÖLÜM 2: GRAFİKLER (2 Kolon) ═══ */}
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                  
+
                   {/* Sol: Aylık Ciro Trend Grafiği (İnteraktif) */}
                   <div className="lg:col-span-3 bg-white rounded-3xl p-6 border-none shadow-none">
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Aylık Ciro Trendi</p>
@@ -3821,8 +3791,8 @@ export default function App() {
                                   x2={chartW - padX} y2={padY + drawH - frac * drawH}
                                   stroke="#e2e8f0" strokeWidth="0.2" strokeDasharray="0.8,0.8"
                                 />
-                                <text 
-                                  x={padX - 1} y={padY + drawH - frac * drawH + 0.8} 
+                                <text
+                                  x={padX - 1} y={padY + drawH - frac * drawH + 0.8}
                                   textAnchor="end" className="text-[2px]" fill="#94a3b8"
                                 >
                                   {(maxCiro * frac / 1000).toFixed(0)}K
@@ -3853,13 +3823,13 @@ export default function App() {
                             {points.map((p: any, i: number) => (
                               <g key={`dot-${i}`} className="chart-dot-group" style={{ cursor: 'pointer' }}>
                                 {/* Vertical guide line (hidden, shown on hover via CSS) */}
-                                <line 
+                                <line
                                   x1={p.x} y1={padY} x2={p.x} y2={padY + drawH}
                                   stroke="#10b981" strokeWidth="0.15" opacity="0"
                                   className="chart-guideline"
                                 />
                                 {/* Invisible hover area */}
-                                <rect 
+                                <rect
                                   x={p.x - 4} y={0} width={8} height={chartH + 10}
                                   fill="transparent"
                                   className="chart-hover-zone"
@@ -3873,15 +3843,15 @@ export default function App() {
                                   <animate attributeName="r" from="0" to="1" dur="0.3s" fill="freeze" begin="0.8s" />
                                 </circle>
                                 {/* Tooltip background */}
-                                <rect 
+                                <rect
                                   x={p.x - 10} y={p.y - 9} width={20} height={6}
                                   rx="1.5" fill="#1e293b" opacity="0"
                                   className="chart-tooltip-bg"
                                 />
                                 {/* Tooltip text */}
-                                <text 
-                                  x={p.x} y={p.y - 5.2} textAnchor="middle" 
-                                  className="text-[2.2px] font-bold chart-tooltip-text" 
+                                <text
+                                  x={p.x} y={p.y - 5.2} textAnchor="middle"
+                                  className="text-[2.2px] font-bold chart-tooltip-text"
                                   fill="white" opacity="0"
                                 >
                                   {p.ciro.toLocaleString('tr-TR')} ₺
@@ -3909,7 +3879,7 @@ export default function App() {
                       const colors = ['#f9a8d4', '#fde68a', '#93c5fd', '#c4b5fd', '#6ee7b7', '#fca5a5'];
                       let cumAngle = 0;
                       const cx = 50, cy = 50, r = 38, innerR = 24;
-                      
+
                       const slices = dist.map((d: any, i: number) => {
                         const sliceAngle = (d.adet / total) * 360;
                         const startAngle = cumAngle;
@@ -3937,12 +3907,12 @@ export default function App() {
                         <div className="flex flex-col items-center gap-4">
                           <svg viewBox="0 0 100 100" className="w-44 h-44">
                             {slices.map((s: any, i: number) => (
-                              <path 
-                                key={`donut-${i}`} 
-                                d={s.path} 
+                              <path
+                                key={`donut-${i}`}
+                                d={s.path}
                                 fill={s.color}
                                 className="donut-slice"
-                                style={{ 
+                                style={{
                                   transformOrigin: `${cx}px ${cy}px`,
                                   transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
                                   cursor: 'pointer'
@@ -4019,8 +3989,8 @@ export default function App() {
                           </tr>
                         ) : (
                           dashboardData.danismanPerformans.map((d: any, idx: number) => (
-                            <tr 
-                              key={`lb-${d.id}`} 
+                            <tr
+                              key={`lb-${d.id}`}
                               className="border-b border-slate-100 hover:bg-[#FDF8F2] transition-colors"
                             >
                               <td className="py-3.5 text-sm font-extrabold text-slate-800">
@@ -4063,7 +4033,7 @@ export default function App() {
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <TrendingUp size={40} className="text-zinc-300" />
                 <p className="text-sm text-zinc-400 font-semibold">Dashboard verileri yüklenemedi.</p>
-                <button 
+                <button
                   onClick={() => token && fetchDashboardData(token)}
                   className="px-4 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none cursor-pointer"
                 >
@@ -4078,13 +4048,12 @@ export default function App() {
         {/* Tab 7: Team / Consultant Management (YETKILI only) */}
         {activeTab === 'team' && user?.rol === 'YETKILI' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             <div className="bento-card bg-white">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-extrabold">Ofis Çalışan Yönetimi</h2>
-                <span className={`px-3 py-1 border border-charcoal rounded-full text-xs font-bold ${
-                  packageType === 'BASIC' ? 'bg-[#FEF08A]' : 'bg-[#BBF7D0]'
-                }`}>
+                <span className={`px-3 py-1 border border-charcoal rounded-full text-xs font-bold ${packageType === 'BASIC' ? 'bg-[#FEF08A]' : 'bg-[#BBF7D0]'
+                  }`}>
                   Paket: {packageType}
                 </span>
               </div>
@@ -4099,16 +4068,16 @@ export default function App() {
               {/* Add Employee Form */}
               <form onSubmit={handleAddEmployee} className="flex flex-col gap-3 mb-6">
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Ad Soyad"
                     className="flex-1 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
                     value={newEmpName}
                     onChange={e => setNewEmpName(e.target.value)}
                     required
                   />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     placeholder="E-posta"
                     className="flex-1 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
                     value={newEmpEmail}
@@ -4125,21 +4094,19 @@ export default function App() {
               <h4 className="font-extrabold text-sm mb-3">Aktif Danışmanlar ({employees.length} / 4)</h4>
               <div className="flex flex-col gap-2">
                 {employees.map(emp => (
-                  <div 
-                    key={emp.id} 
+                  <div
+                    key={emp.id}
                     onClick={() => setSelectedEmployee(emp)}
-                    className={`p-3 rounded-xl cursor-pointer transition-colors flex justify-between items-center text-xs border-none ${
-                      selectedEmployee?.id === emp.id ? 'bg-[#FEF08A]' : 'bg-cream hover:bg-zinc-100'
-                    }`}
+                    className={`p-3 rounded-xl cursor-pointer transition-colors flex justify-between items-center text-xs border-none ${selectedEmployee?.id === emp.id ? 'bg-[#FEF08A]' : 'bg-cream hover:bg-zinc-100'
+                      }`}
                   >
                     <div>
                       <div className="flex items-center gap-2">
                         <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
-                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
-                          emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
-                          emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
-                          'bg-zinc-200 text-zinc-700'
-                        }`}>
+                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
+                            emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
+                              'bg-zinc-200 text-zinc-700'
+                          }`}>
                           {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
                         </span>
                       </div>
@@ -4179,13 +4146,12 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-zinc-200">
                       <span className="text-zinc-500">Durum:</span>
-                      <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                        selectedEmployee.durum === 'Ofiste' 
-                          ? 'bg-emerald-100 text-emerald-950 border-emerald-300' 
+                      <span className={`px-3 py-1 text-xs font-bold rounded-full border ${selectedEmployee.durum === 'Ofiste'
+                          ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
                           : selectedEmployee.durum === 'Sahada'
-                          ? 'bg-amber-100 text-amber-950 border-amber-300'
-                          : 'bg-zinc-100 text-zinc-700 border-zinc-300'
-                      }`}>
+                            ? 'bg-amber-100 text-amber-950 border-amber-300'
+                            : 'bg-zinc-100 text-zinc-700 border-zinc-300'
+                        }`}>
                         {selectedEmployee.durum === 'Ofiste' ? 'Ofiste 🏢' : selectedEmployee.durum === 'Sahada' ? 'Sahada / Ofiste Değil 🏠' : (selectedEmployee.durum || 'Pasif')}
                       </span>
                     </div>
@@ -4214,13 +4180,13 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <button 
+                  <button
                     onClick={() => handleResetEmployeePassword(selectedEmployee.id)}
                     className="w-full py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors"
                   >
                     Şifreyi "Homey123!" Olarak Sıfırla
                   </button>
-                  <button 
+                  <button
                     onClick={() => setSelectedEmployee(null)}
                     className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors"
                   >
@@ -4260,7 +4226,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={() => setActiveTab('subscription')}
                   className="w-full py-2.5 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none"
                 >
@@ -4286,7 +4252,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               {/* Left Box: Active Subscription Details & Remaining Days Progress Bar */}
               <div className="p-6 rounded-3xl bg-cream border-none flex flex-col justify-between gap-6">
                 <div>
@@ -4303,7 +4269,7 @@ export default function App() {
 
                     {/* Progress Bar Container */}
                     <div className="w-full bg-zinc-200 h-4 rounded-full overflow-hidden border border-charcoal/30 relative">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-pastelYellow via-pastelBlue to-pastelGreen transition-all duration-500"
                         style={{ width: `${subInfo?.ilerlemeYuzdesi ?? 10}%` }}
                       />
@@ -4341,7 +4307,7 @@ export default function App() {
                     <div className="p-5 rounded-2xl bg-[#BBF7D0]/60 border-2 border-emerald-600 flex flex-col gap-3">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-extrabold text-emerald-950 uppercase tracking-wide">✓ Gelecek Paket Planlandı</span>
-                        <button 
+                        <button
                           onClick={handleCancelScheduledChange}
                           className="text-xs font-bold text-red-700 underline hover:text-red-900 border-none bg-transparent cursor-pointer"
                         >
@@ -4357,21 +4323,19 @@ export default function App() {
                     <div className="flex flex-col gap-4">
                       {/* Billing Period Switcher for Next Term */}
                       <div className="flex bg-zinc-200/80 p-1 rounded-xl">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setSchedPeriyot('AYLIK')}
-                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${
-                            schedPeriyot === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
-                          }`}
+                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${schedPeriyot === 'AYLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
+                            }`}
                         >
                           Aylık Ödeme
                         </button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setSchedPeriyot('YILLIK')}
-                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${
-                            schedPeriyot === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
-                          }`}
+                          className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-none ${schedPeriyot === 'YILLIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 bg-transparent'
+                            }`}
                         >
                           Yıllık Ödeme (%20 İndirimli)
                         </button>
@@ -4379,28 +4343,26 @@ export default function App() {
 
                       {/* Target Package Selection Cards */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div 
+                        <div
                           onClick={() => setSchedPaketTipi('BASIC')}
-                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${
-                            schedPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
-                          }`}
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                            }`}
                         >
                           <span className="text-xs font-extrabold block">BASIC Paket</span>
                           <span className="text-[10px] text-zinc-600 block mt-1">4 Danışman Kotası</span>
                         </div>
 
-                        <div 
+                        <div
                           onClick={() => setSchedPaketTipi('PREMIUM')}
-                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${
-                            schedPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
-                          }`}
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                            }`}
                         >
                           <span className="text-xs font-extrabold block">PREMIUM Paket</span>
                           <span className="text-[10px] text-zinc-600 block mt-1">Sınırsız Danışman</span>
                         </div>
                       </div>
 
-                      <button 
+                      <button
                         onClick={() => handleSchedulePackageChange(schedPaketTipi, schedPeriyot)}
                         className="w-full py-3 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none mt-2 cursor-pointer"
                       >
@@ -4419,21 +4381,21 @@ export default function App() {
         {activeTab === 'settings' && user?.rol === 'YETKILI' && (
           <div className="bento-card bg-white">
             <h2 className="text-2xl font-extrabold mb-4">Küresel Komisyon Payı Ayarları</h2>
-            <p className="text-xs text-zinc-500 mb-6 leading-relaxed">Broker (Yetkili) olarak emlakçılar hesaplama yaparken baz alınacak senaryo oranlarını buradan düzenleyebilirsiniz. Değişiklikler anlık olarak komisyon hesaplayıcısına yansıyacaktır.</p>
+            <p className="text-xs text-zinc-500 mb-6 leading-relaxed">Yetkili olarak emlakçılar hesaplama yaparken baz alınacak senaryo oranlarını buradan düzenleyebilirsiniz. Değişiklikler anlık olarak komisyon hesaplayıcısına yansıyacaktır.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
+
               {/* Senaryo A set */}
               <div className="p-4 rounded-2xl bg-cream border-none">
                 <h4 className="font-extrabold text-sm mb-3">Senaryo A (Kendi Müşterisi)</h4>
                 <div className="flex flex-col gap-2">
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Ofis Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aOfis} onChange={e => setCommSettings({...commSettings, aOfis: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aOfis} onChange={e => setCommSettings({ ...commSettings, aOfis: Number(e.target.value) })} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Danışman Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aDanisman} onChange={e => setCommSettings({...commSettings, aDanisman: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aDanisman} onChange={e => setCommSettings({ ...commSettings, aDanisman: Number(e.target.value) })} />
                   </div>
                 </div>
               </div>
@@ -4444,15 +4406,15 @@ export default function App() {
                 <div className="flex flex-col gap-2">
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Ofis Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bOfis} onChange={e => setCommSettings({...commSettings, bOfis: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bOfis} onChange={e => setCommSettings({ ...commSettings, bOfis: Number(e.target.value) })} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Portföy Sahibi (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bPortfoySahibi} onChange={e => setCommSettings({...commSettings, bPortfoySahibi: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bPortfoySahibi} onChange={e => setCommSettings({ ...commSettings, bPortfoySahibi: Number(e.target.value) })} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Müşteri Getiren (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bMusteriGetiren} onChange={e => setCommSettings({...commSettings, bMusteriGetiren: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bMusteriGetiren} onChange={e => setCommSettings({ ...commSettings, bMusteriGetiren: Number(e.target.value) })} />
                   </div>
                 </div>
               </div>
@@ -4463,34 +4425,82 @@ export default function App() {
                 <div className="flex flex-col gap-2">
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Dış Ortak Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDisOrtak} onChange={e => setCommSettings({...commSettings, cDisOrtak: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDisOrtak} onChange={e => setCommSettings({ ...commSettings, cDisOrtak: Number(e.target.value) })} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Kalandan Ofis (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cOfis} onChange={e => setCommSettings({...commSettings, cOfis: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cOfis} onChange={e => setCommSettings({ ...commSettings, cOfis: Number(e.target.value) })} />
                   </div>
                   <div>
                     <label className="text-[10px] text-zinc-500 block">Kalandan Danışman (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDanisman} onChange={e => setCommSettings({...commSettings, cDanisman: Number(e.target.value)})} />
+                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDanisman} onChange={e => setCommSettings({ ...commSettings, cDanisman: Number(e.target.value) })} />
                   </div>
                 </div>
               </div>
 
             </div>
+
+            {/* Komisyon Ayarları Özeti Tablosu */}
+            <div className="mt-8 border-t-2 border-zinc-100 pt-6">
+              <h3 className="font-extrabold text-sm mb-4 flex items-center gap-2">
+                <Calculator size={16} /> Güncel Komisyon Dağılım Özeti
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200">
+                      <th className="py-2 font-bold text-zinc-500 w-1/4">Senaryo</th>
+                      <th className="py-2 font-bold text-zinc-500">Ofis Payı</th>
+                      <th className="py-2 font-bold text-zinc-500">Danışman / Portföy Sahibi Payı</th>
+                      <th className="py-2 font-bold text-zinc-500">Diğer Pay (Müşteri Getiren/Dış Emlakçı)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Senaryo A */}
+                    <tr className="border-b border-zinc-100">
+                      <td className="py-3 font-semibold">Senaryo A<br /><span className="text-[10px] text-zinc-400 font-normal">Kendi Müşterisi</span></td>
+                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.aOfis}</td>
+                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.aDanisman}</td>
+                      <td className="py-3 text-zinc-400">-</td>
+                    </tr>
+                    {/* Senaryo B */}
+                    <tr className="border-b border-zinc-100 bg-[#FDF8F2]">
+                      <td className="py-3 font-semibold pl-2 rounded-l-lg">Senaryo B<br /><span className="text-[10px] text-zinc-400 font-normal">Ortak Çalışma (Ofis İçi)</span></td>
+                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.bOfis}</td>
+                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.bPortfoySahibi}</td>
+                      <td className="py-3 font-extrabold text-charcoal rounded-r-lg">%{commSettings.bMusteriGetiren} <span className="text-[10px] font-normal text-zinc-500">(Müşteri Getiren)</span></td>
+                    </tr>
+                    {/* Senaryo C */}
+                    <tr className="border-b border-zinc-100">
+                      <td className="py-3 font-semibold">Senaryo C<br /><span className="text-[10px] text-zinc-400 font-normal">Dış Emlakçı İle Ortak</span></td>
+                      <td className="py-3 font-extrabold text-charcoal">
+                        %{((100 - commSettings.cDisOrtak) * (commSettings.cOfis / 100)).toFixed(1)}
+                        <br /><span className="text-[10px] font-normal text-zinc-500">(Kalandan %{commSettings.cOfis})</span>
+                      </td>
+                      <td className="py-3 font-extrabold text-charcoal">
+                        %{((100 - commSettings.cDisOrtak) * (commSettings.cDanisman / 100)).toFixed(1)}
+                        <br /><span className="text-[10px] font-normal text-zinc-500">(Kalandan %{commSettings.cDanisman})</span>
+                      </td>
+                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.cDisOrtak} <span className="text-[10px] font-normal text-zinc-500">(Dış Ortak)</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
       </main>
 
       {/* RIGHT PANEL (Widgets & Schedule / Ajanda) */}
-      <aside className={`bg-cream border-none flex flex-col transition-all duration-300 z-10 shrink-0 ${
-        rightPanelCollapsed ? 'w-20 p-4 items-center gap-6' : 'w-80 p-6 gap-6'
-      } overflow-y-auto`}>
-        
+      <aside className={`bg-cream border-none flex flex-col transition-all duration-300 z-10 shrink-0 ${rightPanelCollapsed ? 'w-20 p-4 items-center gap-6' : 'w-80 p-6 gap-6'
+        } overflow-y-auto`}>
+
         {/* Toggle Button */}
         <div className="flex w-full items-center justify-between">
           {!rightPanelCollapsed && <span className="text-xs font-bold text-zinc-500 tracking-widest uppercase">Ajanda</span>}
-          <button 
+          <button
             onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
             className="p-1 rounded-lg hover:bg-zinc-200 border border-charcoal text-charcoal ml-auto"
           >
@@ -4501,7 +4511,7 @@ export default function App() {
         {rightPanelCollapsed ? (
           <div className="flex flex-col items-center gap-6 mt-4">
             {/* Collapsed Calendar Icon representing calendar */}
-            <button 
+            <button
               onClick={() => setRightPanelCollapsed(false)}
               className="p-3 rounded-full bg-white hover:bg-zinc-100 border border-charcoal shadow-none transition-all"
             >
@@ -4509,7 +4519,7 @@ export default function App() {
             </button>
 
             {/* Collapsed Add Portfolio Button */}
-            <button 
+            <button
               onClick={() => { setActiveTab('portfolios'); setShowAddPortfolioModal(true); setRightPanelCollapsed(false); }}
               className="p-3 bg-charcoal text-white rounded-full hover:bg-black shadow-none transition-all border-none cursor-pointer"
               title="Yeni Portföy Ekle"
@@ -4517,7 +4527,7 @@ export default function App() {
               <Plus size={18} />
             </button>
             {/* Collapsed Add Appointment Button */}
-            <button 
+            <button
               onClick={() => { setShowAddAppointmentModal(true); setRightPanelCollapsed(false); }}
               className="p-3 bg-[#FEF08A] text-charcoal rounded-full hover:bg-[#FEF08A]/80 shadow-none transition-all border border-charcoal/20 cursor-pointer"
               title="Yeni Randevu Oluştur"
@@ -4532,21 +4542,21 @@ export default function App() {
               <div className="flex justify-between items-center mb-3">
                 <span className="font-extrabold text-sm capitalize">{calendarMonthName}</span>
                 <div className="flex gap-1 items-center">
-                  <button 
+                  <button
                     onClick={handleToday}
                     className="px-2 py-1 text-[10px] font-extrabold border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
                     title="Bugüne Git"
                   >
                     Bugün
                   </button>
-                  <button 
+                  <button
                     onClick={handlePrevMonth}
                     className="p-1 border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
                     title="Önceki Ay"
                   >
                     <ChevronLeft size={14} />
                   </button>
-                  <button 
+                  <button
                     onClick={handleNextMonth}
                     className="p-1 border border-charcoal rounded-lg hover:bg-zinc-200 transition-all cursor-pointer"
                     title="Sonraki Ay"
@@ -4555,7 +4565,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              
+
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1 text-[10px] text-center font-bold">
                 {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
@@ -4573,21 +4583,22 @@ export default function App() {
                     }
                     return false;
                   });
+                  const isPastDate = new Date(calendarYear, calendarMonth, day) < new Date(new Date().setHours(0, 0, 0, 0));
                   return (
-                    <button 
+                    <button
                       key={day}
-                      onClick={() => setSelectedCalendarDay(day)}
-                      className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center cursor-pointer ${
-                        selectedCalendarDay === day 
-                          ? 'bg-charcoal text-white font-extrabold' 
-                          : 'hover:bg-zinc-200'
-                      }`}
+                      onClick={() => !isPastDate && setSelectedCalendarDay(day)}
+                      disabled={isPastDate}
+                      className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed hover:bg-transparent' :
+                          selectedCalendarDay === day
+                            ? 'bg-charcoal text-white font-extrabold cursor-pointer'
+                            : 'hover:bg-zinc-200 cursor-pointer'
+                        }`}
                     >
                       <span>{day}</span>
                       {hasAppointments && (
-                        <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${
-                          selectedCalendarDay === day ? 'bg-[#FEF08A]' : 'bg-indigo-600'
-                        }`} />
+                        <span className={`w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${selectedCalendarDay === day ? 'bg-[#FEF08A]' : 'bg-indigo-600'
+                          }`} />
                       )}
                     </button>
                   );
@@ -4597,13 +4608,13 @@ export default function App() {
 
             {/* Action Buttons: Separate Portfolio and Appointment Buttons */}
             <div className="flex flex-col gap-2 w-full">
-              <button 
+              <button
                 onClick={() => { setActiveTab('portfolios'); setShowAddPortfolioModal(true); }}
                 className="w-full bg-charcoal hover:bg-black text-white py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border-none cursor-pointer"
               >
                 <Plus size={15} /> Yeni Portföy Ekle
               </button>
-              <button 
+              <button
                 onClick={() => setShowAddAppointmentModal(true)}
                 className="w-full bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-charcoal/20 cursor-pointer"
               >
@@ -4616,7 +4627,7 @@ export default function App() {
               <h4 className="font-extrabold text-xs uppercase tracking-wider text-zinc-500">
                 {selectedCalendarDay} {calendarMonthName} Randevu Akışı
               </h4>
-              
+
               {(() => {
                 const dayAppointments = appointments.filter((app: any) => {
                   if (app.gun && app.ay && app.yil) {
@@ -4632,7 +4643,7 @@ export default function App() {
                       <span className="text-xs font-semibold text-zinc-500 leading-relaxed">
                         {selectedCalendarDay} {calendarMonthName} tarihinde henüz randevu planlanmadı.
                       </span>
-                      <button 
+                      <button
                         onClick={() => setActiveTab('appointments')}
                         className="text-[11px] text-indigo-600 font-extrabold underline hover:text-indigo-800 border-none bg-transparent cursor-pointer"
                       >
@@ -4650,11 +4661,10 @@ export default function App() {
 
                       return (
                         <div key={app.id} className="relative">
-                          <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${
-                            app.durum === 'APPROVED' ? 'bg-[#BBF7D0]' :
-                            app.durum === 'PENDING' ? 'bg-[#FEF08A]' :
-                            app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-[#FBCFE8]'
-                          }`} />
+                          <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0]' :
+                              app.durum === 'PENDING' ? 'bg-[#FEF08A]' :
+                                app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-[#FBCFE8]'
+                            }`} />
                           <div className="text-xs flex flex-col gap-0.5">
                             <span className="font-extrabold text-charcoal">
                               {app.zaman || '12:00'} - {app.portfoyTip || 'Portföy'} Gösterimi
@@ -4662,28 +4672,27 @@ export default function App() {
                             <span className="text-zinc-500">Uzman: {app.talepEden}</span>
                             <span className="text-zinc-500">Müşteri: {app.musteri}</span>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${
-                                app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' : 
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                'bg-[#FBCFE8] text-red-950 border-red-300'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
+                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                                 app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                                 app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                  app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                    app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
                               </span>
 
                               {app.durum === 'PENDING' && (
                                 <>
                                   {canManageAppointment && (
                                     <div className="flex gap-1">
-                                      <button 
+                                      <button
                                         onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
                                         className="px-2 py-0.5 bg-[#BBF7D0] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer"
                                       >
                                         Onayla
                                       </button>
-                                      <button 
+                                      <button
                                         onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
                                         className="px-2 py-0.5 bg-[#FBCFE8] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer"
                                       >
@@ -4693,7 +4702,7 @@ export default function App() {
                                   )}
 
                                   {!canManageAppointment && canCancelAppointment && (
-                                    <button 
+                                    <button
                                       onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
                                       className="px-2 py-0.5 bg-zinc-100 hover:bg-red-100 text-zinc-600 hover:text-red-700 border border-zinc-300 rounded-full text-[9px] font-extrabold transition-colors cursor-pointer"
                                     >
@@ -4719,8 +4728,8 @@ export default function App() {
       {/* Add Appointment Modal */}
       {showAddAppointmentModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form 
-            onSubmit={handleCreateAppointmentFromModal} 
+          <form
+            onSubmit={handleCreateAppointmentFromModal}
             className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex justify-between items-start mb-1">
@@ -4730,9 +4739,9 @@ export default function App() {
                   <Calendar size={22} className="text-amber-500" /> Yeni Randevu Oluştur
                 </h2>
               </div>
-              <button 
-                type="button" 
-                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer" 
+              <button
+                type="button"
+                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer"
                 onClick={() => setShowAddAppointmentModal(false)}
               >
                 <X size={16} />
@@ -4748,9 +4757,9 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 Hedef Portföy (İlan) <span className="text-red-500">*</span>
               </label>
-              <select 
+              <select
                 className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-semibold text-charcoal"
-                value={newAppPortfolioId} 
+                value={newAppPortfolioId}
                 onChange={e => setNewAppPortfolioId(e.target.value)}
                 required
               >
@@ -4771,9 +4780,9 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 Katılacak Müşteri (Alıcı / Kiracı Adayı) <span className="text-red-500">*</span>
               </label>
-              <select 
+              <select
                 className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-semibold text-charcoal"
-                value={newAppMusteriId} 
+                value={newAppMusteriId}
                 onChange={e => setNewAppMusteriId(e.target.value)}
                 required
               >
@@ -4791,11 +4800,12 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 Randevu Tarihi & Saati <span className="text-red-500">*</span>
               </label>
-              <input 
-                type="datetime-local" 
-                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium" 
-                value={newAppDate} 
-                onChange={e => setNewAppDate(e.target.value)} 
+              <input
+                type="datetime-local"
+                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium"
+                value={newAppDate}
+                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                onChange={e => setNewAppDate(e.target.value)}
                 required
               />
             </div>
@@ -4806,19 +4816,18 @@ export default function App() {
               const isOwner = selPort ? compareIds(selPort.gorevliUzmanId, user?.id) : true;
               return (
                 <div className="flex gap-2 pt-2">
-                  <button 
+                  <button
                     type="submit"
-                    className={`flex-1 py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${
-                      isOwner 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                    className={`flex-1 py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${isOwner
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         : 'bg-charcoal hover:bg-black text-white'
-                    }`}
+                      }`}
                   >
                     {isOwner ? '➕ Randevu Oluştur (Doğrudan Ekle)' : '📤 Randevu Talebi Oluştur (İlan Sahibine Gönder)'}
                   </button>
-                  <button 
-                    type="button" 
-                    className="px-5 py-3 text-xs font-extrabold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 transition-all border-none cursor-pointer" 
+                  <button
+                    type="button"
+                    className="px-5 py-3 text-xs font-extrabold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 transition-all border-none cursor-pointer"
                     onClick={() => setShowAddAppointmentModal(false)}
                   >
                     İptal
@@ -4833,8 +4842,8 @@ export default function App() {
       {/* Close Transaction (Satıldı / Kiralandı Yap) Modal */}
       {showCloseTransactionModal && closePortPortfolio && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form 
-            onSubmit={handleCloseTransactionSubmit} 
+          <form
+            onSubmit={handleCloseTransactionSubmit}
             className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex justify-between items-start mb-1">
@@ -4844,9 +4853,9 @@ export default function App() {
                   <Check size={22} className="text-emerald-600" /> İşlemi Kapat / Satıldı-Kiralandı Yap
                 </h2>
               </div>
-              <button 
-                type="button" 
-                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer" 
+              <button
+                type="button"
+                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer"
                 onClick={() => setShowCloseTransactionModal(false)}
               >
                 <X size={16} />
@@ -4862,9 +4871,9 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 İşlem Türü <span className="text-red-500">*</span>
               </label>
-              <select 
+              <select
                 className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-bold text-charcoal"
-                value={closeIslemTuru} 
+                value={closeIslemTuru}
                 onChange={e => handleIslemTuruChange(e.target.value as 'SATIS' | 'KIRALAMA')}
                 required
               >
@@ -4878,11 +4887,11 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 Nihai İşlem Bedeli (TL) <span className="text-red-500">*</span>
               </label>
-              <input 
-                type="number" 
-                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-extrabold text-charcoal" 
-                value={closeIslemBedeli} 
-                onChange={e => handleIslemBedeliChange(e.target.value)} 
+              <input
+                type="number"
+                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-extrabold text-charcoal"
+                value={closeIslemBedeli}
+                onChange={e => handleIslemBedeliChange(e.target.value)}
                 placeholder="Örn: 4200000"
                 required
               />
@@ -4896,11 +4905,11 @@ export default function App() {
                   ({closeIslemTuru === 'SATIS' ? 'Hesaplanan: %2 Komisyon' : 'Hesaplanan: 1 Ay Kira'})
                 </span>
               </label>
-              <input 
-                type="number" 
-                className="w-full text-xs p-3 border-2 border-emerald-600 rounded-2xl bg-emerald-50/30 focus:outline-none font-extrabold text-emerald-950" 
-                value={closeHizmetBedeliCiro} 
-                onChange={e => setCloseHizmetBedeliCiro(e.target.value)} 
+              <input
+                type="number"
+                className="w-full text-xs p-3 border-2 border-emerald-600 rounded-2xl bg-emerald-50/30 focus:outline-none font-extrabold text-emerald-950"
+                value={closeHizmetBedeliCiro}
+                onChange={e => setCloseHizmetBedeliCiro(e.target.value)}
                 placeholder="Örn: 84000"
                 required
               />
@@ -4911,11 +4920,11 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 İşlem Kapatma Tarihi <span className="text-red-500">*</span>
               </label>
-              <input 
-                type="date" 
-                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium" 
-                value={closeIslemTarihi} 
-                onChange={e => setCloseIslemTarihi(e.target.value)} 
+              <input
+                type="date"
+                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium"
+                value={closeIslemTarihi}
+                onChange={e => setCloseIslemTarihi(e.target.value)}
                 required
               />
             </div>
@@ -4925,18 +4934,18 @@ export default function App() {
               <label className="text-xs text-zinc-600 font-semibold block mb-1">
                 İşlem Notları / Açıklama (İsteğe Bağlı)
               </label>
-              <textarea 
-                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium resize-none" 
+              <textarea
+                className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium resize-none"
                 rows={3}
-                value={closeAciklama} 
-                onChange={e => setCloseAciklama(e.target.value)} 
+                value={closeAciklama}
+                onChange={e => setCloseAciklama(e.target.value)}
                 placeholder="Alıcı/kiracı bilgisi, özel notlar veya komisyon ayrıntıları..."
               />
             </div>
 
             {/* Submit & Cancel Buttons */}
             <div className="flex gap-2 pt-2">
-              <button 
+              <button
                 type="submit"
                 disabled={closeLoading}
                 className="flex-1 py-3.5 text-xs font-extrabold rounded-full bg-emerald-600 hover:bg-emerald-700 text-white transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2"
@@ -4944,9 +4953,9 @@ export default function App() {
                 {closeLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {closeIslemTuru === 'SATIS' ? 'Satıldı Olarak İşlemi Kapat & Ciroya İşle' : 'Kiralandı Olarak İşlemi Kapat & Ciroya İşle'}
               </button>
-              <button 
-                type="button" 
-                className="px-5 py-3.5 text-xs font-extrabold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 transition-all border-none cursor-pointer" 
+              <button
+                type="button"
+                className="px-5 py-3.5 text-xs font-extrabold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 transition-all border-none cursor-pointer"
                 onClick={() => setShowCloseTransactionModal(false)}
               >
                 İptal
