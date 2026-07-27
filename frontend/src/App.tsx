@@ -5,71 +5,9 @@ import {
   Search, AlertTriangle, TrendingUp, Menu,
   ChevronLeft, LogOut, MapPin, User, Briefcase,
   FileText, Clock, LayoutDashboard, Loader2,
-  Trophy, Banknote, UserPlus, BadgeCheck, Building2
+  Trophy, Banknote, UserPlus, BadgeCheck, Building2,
+  Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle
 } from 'lucide-react';
-
-// Mock Data for Phase 3/4
-const INITIAL_PORTFOLIOS = [
-  {
-    id: '1',
-    tip: 'DAIRE',
-    tur: 'SATILIK',
-    fiyat: 4200000,
-    metrekare: 120,
-    odaSayisi: '3+1',
-    kapora: 100000,
-    depozito: 0,
-    il: 'İstanbul',
-    ilce: 'Kadıköy',
-    mahalle: 'Caferağa',
-    gorevliUzman: 'Can Yılmaz',
-    gorevliUzmanId: 'uzman-1',
-    evSahibiAdi: 'Mehmet Yılmaz',
-    evSahibiTelefon: '0533 222 3344',
-    durum: 'BOSTA' // BOSTA, RANDEVULAR_MEVCUT, KAPORA_ASAMASINDA, KIRALANDI_SATILDI
-  },
-  {
-    id: '2',
-    tip: 'VILLA',
-    tur: 'KIRALIK',
-    fiyat: 65000,
-    metrekare: 350,
-    odaSayisi: '5+2',
-    kapora: 130000,
-    depozito: 130000,
-    il: 'İstanbul',
-    ilce: 'Sarıyer',
-    mahalle: 'Tarabya',
-    gorevliUzman: 'Elif Kaya',
-    gorevliUzmanId: 'uzman-2',
-    evSahibiAdi: 'Ayşe Kaya',
-    evSahibiTelefon: '0532 444 5566',
-    durum: 'BOSTA'
-  },
-  {
-    id: '3',
-    tip: 'MUSTAKIL',
-    tur: 'SATILIK',
-    fiyat: 9500000,
-    metrekare: 210,
-    odaSayisi: '4+1',
-    kapora: 300000,
-    depozito: 0,
-    il: 'Muğla',
-    ilce: 'Bodrum',
-    mahalle: 'Yalıkavak',
-    gorevliUzman: 'Can Yılmaz',
-    gorevliUzmanId: 'uzman-1',
-    evSahibiAdi: 'Kemal Arslan',
-    evSahibiTelefon: '0535 777 8899',
-    durum: 'KAPORA_ASAMASINDA'
-  }
-];
-
-const INITIAL_CLIENTS = [
-  { id: '1', ad: 'Murat', soyad: 'Demir', telefon: '0505 123 4567', butce: 3500000, tip: 'DAIRE', musteriTipi: 'ALICI' },
-  { id: '2', ad: 'Zeynep', soyad: 'Öztürk', telefon: '0543 987 6543', butce: 75000, tip: 'VILLA', musteriTipi: 'KIRACI' }
-];
 
 export default function App() {
   // Authentication & Session States
@@ -105,12 +43,117 @@ export default function App() {
   const [changePassError, setChangePassError] = useState<string | null>(null);
 
   // Navigation & Layout States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
+
+  // Completed Portfolios States
+  const [completedPortfolios, setCompletedPortfolios] = useState<any[]>([]);
+  const [completedLoading, setCompletedLoading] = useState(false);
+  const [completedScopeFilter, setCompletedScopeFilter] = useState<'all' | 'mine' | 'others'>('all');
+  const [completedTypeFilter, setCompletedTypeFilter] = useState<'all' | 'SATILDI' | 'KIRALANDI'>('all');
+  const [completedSearchQuery, setCompletedSearchQuery] = useState('');
+  const [selectedCompletedPortfolio, setSelectedCompletedPortfolio] = useState<any | null>(null);
+
+
+
+
+
+  const [firmaSettings, setFirmaSettings] = useState({
+    KiralamaKomisyonOrani: 1.00,
+    KiralamaKdv: 20.00,
+    KiralamaDepozitoSiniri: 3,
+    KiralamaPesinKira: 1,
+    KiralamaKaporaTipi: 'ESNEK',
+    SatisAliciKomisyon: 2.00,
+    SatisSaticiKomisyon: 2.00,
+    TapuHarciAlici: 2.00,
+    TapuHarciSatici: 2.00,
+    DonerSermayeBedeli: 0.00,
+    SatisKaporaOrani: 5.00,
+    DisOfisPortfoyPayi: 50.00,
+    DisOfisMusteriPayi: 50.00,
+    IciPortfoyPayi: 50.00,
+    IciMusteriPayi: 50.00,
+    BrokerDanismanPayi: 50.00,
+    BrokerOfisPayi: 50.00,
+    KademeliDanismanPayi: 60.00,
+    KademeliOfisPayi: 40.00,
+    MasaUcretiTutar: 0.00,
+    MasaDanismanPayi: 70.00
+  });
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'standartlar' | 'disOfis' | 'iciOfis'>('standartlar');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [personalCiro, setPersonalCiro] = useState(0);
+
+  // Fetch settings when user logs in
+  useEffect(() => {
+    if (user && token) {
+      const fetchSettings = async () => {
+        try {
+          const res = await fetch('/api/firma/komisyon-ayarlari', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setFirmaSettings(data);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      const fetchPersonalStats = async () => {
+        try {
+          const res = await fetch('/api/dashboard/personal-stats', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setPersonalCiro(data.aylikCiro || 0);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchSettings();
+      fetchPersonalStats();
+    }
+  }, [user, token]);
+
+
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const res = await fetch('/api/firma/komisyon-ayarlari', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(firmaSettings)
+      });
+      if (res.ok) {
+        alert('Ayarlar başarıyla kaydedildi.');
+      } else {
+        alert('Ayarlar kaydedilirken hata oluştu.');
+      }
+    } catch (e) {
+      alert('Sunucu hatası.');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   // Filter tags in top bar
   const [filterTag, setFilterTag] = useState<string>('Tümü');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [filterIlanTipi, setFilterIlanTipi] = useState<string>('');
+  const [filterTip, setFilterTip] = useState<string>('');
+  const [filterOdaSayisi, setFilterOdaSayisi] = useState<string>('');
+  const [filterIl, setFilterIl] = useState<string>('');
+  const [filterIlce, setFilterIlce] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Global Search Autocomplete States
@@ -126,8 +169,10 @@ export default function App() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Business Logic States
-  const [portfolios, setPortfolios] = useState(INITIAL_PORTFOLIOS);
-  const [selectedPortfolio, setSelectedPortfolio] = useState<typeof INITIAL_PORTFOLIOS[0] | null>(null);
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<any | null>(null);
+
+
   // Helper for case-insensitive UUID & string comparisons
   const compareIds = (id1?: string | number, id2?: string | number) => {
     if (id1 === undefined || id1 === null || id2 === undefined || id2 === null) return false;
@@ -232,6 +277,14 @@ export default function App() {
   const [appointmentScope, setAppointmentScope] = useState<'all' | 'incoming' | 'outgoing'>('all');
   const [selectedMusteriId, setSelectedMusteriId] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+
+  // Appointment Action Modal
+  const [showAppointmentActionModal, setShowAppointmentActionModal] = useState(false);
+  const [selectedAppointmentToAction, setSelectedAppointmentToAction] = useState<any>(null);
+  const [appActionType, setAppActionType] = useState<'SATILDI' | 'KIRALANDI' | 'VAZGECILDI'>('SATILDI');
+  const [appActionBedel, setAppActionBedel] = useState('');
+  const [appActionCiro, setAppActionCiro] = useState('');
+  const [appActionLoading, setAppActionLoading] = useState(false);
 
   // Clients (Musteriler)
   const [clients, setClients] = useState<any[]>([]);
@@ -351,6 +404,27 @@ export default function App() {
     }
   };
 
+  // Fetch completed portfolios (Satıldı / Kiralandı) from backend
+  const fetchCompletedPortfolios = async (currentToken: string) => {
+    setCompletedLoading(true);
+    try {
+      const res = await fetch('/api/portfolios/completed', {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCompletedPortfolios(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch completed portfolios:', err);
+    } finally {
+      setCompletedLoading(false);
+    }
+  };
+
+
   // Fetch clients list from real backend
   const fetchClients = async (currentToken: string) => {
     try {
@@ -379,7 +453,10 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAppointments(Array.isArray(data) ? data : []);
+        const validAppointments = (Array.isArray(data) ? data : []).filter(
+          (app: any) => app.durum !== 'DENIED' && app.durum !== 'REJECTED'
+        );
+        setAppointments(validAppointments);
       }
     } catch (err) {
       console.error('Failed to fetch appointments:', err);
@@ -585,12 +662,22 @@ export default function App() {
     if (token) {
       fetchEmployees(token);
       fetchPortfolios(token);
+      fetchCompletedPortfolios(token);
       fetchClients(token);
       fetchSubscriptionDetails(token);
       fetchMyOfficeStatus(token);
       fetchOfficeUsers(token);
     }
   }, [token]);
+
+  // Re-fetch completed portfolios dynamically when switching to completedPortfolios tab
+  useEffect(() => {
+    if (token && activeTab === 'completedPortfolios') {
+      fetchCompletedPortfolios(token);
+    }
+  }, [activeTab, token]);
+
+
 
   // 300ms Debounce for Global Search
   useEffect(() => {
@@ -682,6 +769,27 @@ export default function App() {
   }, [token, selectedPortfolio, popCalendarDate]);
 
   // Login Handler
+  // Auto-fill Kapora and Depozito based on FirmaSettings when adding a portfolio
+  useEffect(() => {
+    if (showAddPortfolioModal && newPortFiyat) {
+      const fiyatNum = Number(newPortFiyat);
+      if (isNaN(fiyatNum) || fiyatNum <= 0) return;
+
+      if (newPortTur === 'KIRALIK') {
+        setNewPortDepozito(String(fiyatNum * (firmaSettings.KiralamaDepozitoSiniri || 1)));
+        if (firmaSettings.KiralamaKaporaTipi === '1_KIRA') {
+          setNewPortKapora(String(fiyatNum));
+        } else {
+          setNewPortKapora('');
+        }
+      } else if (newPortTur === 'SATILIK') {
+        const orani = firmaSettings.SatisKaporaOrani || 5;
+        setNewPortKapora(String(fiyatNum * (orani / 100)));
+        setNewPortDepozito('');
+      }
+    }
+  }, [showAddPortfolioModal, newPortFiyat, newPortTur, firmaSettings]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -798,10 +906,13 @@ export default function App() {
     localStorage.removeItem('homey_user');
     setToken(null);
     setUser(null);
-    setPortfolios(INITIAL_PORTFOLIOS);
-    setClients(INITIAL_CLIENTS);
+    setPortfolios([]);
+    setCompletedPortfolios([]);
+    setClients([]);
     setActiveTab('dashboard');
   };
+
+
 
   // Commission Calculator Handler
   const calculateCommissionResult = () => {
@@ -1104,6 +1215,7 @@ export default function App() {
           setShowCloseTransactionModal(false);
           setSelectedPortfolio(null);
           fetchPortfolios(token);
+          fetchCompletedPortfolios(token);
           fetchEmployees(token);
         } else {
           alert(data.message || 'İşlem kapatılırken hata oluştu.');
@@ -1115,12 +1227,25 @@ export default function App() {
       }
     } else {
       const finalDurum = closeIslemTuru === 'KIRALAMA' ? 'KIRALANDI' : 'SATILDI';
-      setPortfolios(portfolios.map(p => p.id === closePortPortfolio.id ? { ...p, durum: finalDurum } : p));
+      const updatedPort = {
+        ...closePortPortfolio,
+        durum: finalDurum,
+        islemTuru: closeIslemTuru,
+        islemBedeli: Number(closeIslemBedeli),
+        hizmetBedeliCiro: Number(closeHizmetBedeliCiro),
+        islemTarihi: closeIslemTarihi || new Date().toISOString(),
+        islemAciklama: closeAciklama,
+        islemYapanDanisman: user ? `${user.ad || ''} ${user.soyad || ''}`.trim() : (closePortPortfolio.gorevliUzman || 'Danışman'),
+        islemYapanDanismanId: user?.id || closePortPortfolio.gorevliUzmanId
+      };
+      setPortfolios(prev => prev.map(p => p.id === closePortPortfolio.id ? { ...p, durum: finalDurum } : p));
+      setCompletedPortfolios(prev => [updatedPort, ...prev.filter(p => p.id !== closePortPortfolio.id)]);
       showToast(`Portföy işlemi '${finalDurum}' olarak kapatıldı!`, 'success');
       setShowCloseTransactionModal(false);
       setSelectedPortfolio(null);
       setCloseLoading(false);
     }
+
   };
 
   // Appointment Create / Request Handler
@@ -1278,7 +1403,11 @@ export default function App() {
   // Update Appointment Status
   const handleUpdateAppStatus = async (id: string, newStatus: 'APPROVED' | 'REJECTED' | 'CANCELLED') => {
     if (!token) {
-      setAppointments(appointments.map(app => app.id === id ? { ...app, durum: newStatus } : app));
+      if (newStatus === 'REJECTED') {
+        setAppointments(appointments.filter(app => app.id !== id));
+      } else {
+        setAppointments(appointments.map(app => app.id === id ? { ...app, durum: newStatus } : app));
+      }
       return;
     }
     try {
@@ -1308,8 +1437,74 @@ export default function App() {
     }
   };
 
+  const handleAppointmentAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAppointmentToAction) return;
+
+    if (appActionType === 'VAZGECILDI') {
+      await handleUpdateAppStatus(selectedAppointmentToAction.id, 'CANCELLED');
+      setShowAppointmentActionModal(false);
+      setSelectedAppointmentToAction(null);
+      return;
+    }
+
+    setAppActionLoading(true);
+    try {
+      const portfoyId = selectedAppointmentToAction.portfoyId;
+      const aciklamaMetni = `Randevu üzerinden işlem: Katılan Müşteri - ${selectedAppointmentToAction.musteri || ''} (${selectedAppointmentToAction.musteriTelefon || ''}). Talep Eden: ${selectedAppointmentToAction.talepEden || ''}. Randevu: ${selectedAppointmentToAction.tarih} ${selectedAppointmentToAction.zaman}`;
+
+      const res = await fetch(`/api/portfolios/${portfoyId}/satis-kapat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          islemTuru: appActionType === 'KIRALANDI' ? 'KIRALAMA' : 'SATIS',
+          islemBedeli: Number(appActionBedel),
+          hizmetBedeliCiro: appActionType === 'KIRALANDI' ? Number(appActionBedel) : Number(appActionBedel) * 0.02,
+          islemTarihi: new Date().toISOString().split('T')[0],
+          aciklama: aciklamaMetni
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'İşlem başarıyla kaydedildi!', 'success');
+        await handleUpdateAppStatus(selectedAppointmentToAction.id, 'APPROVED');
+        if (token) fetchPortfolios(token);
+        if (token && user?.rol === 'YETKILI') {
+          fetchEmployees(token);
+          fetchDashboardData(token);
+        }
+        setShowAppointmentActionModal(false);
+        setSelectedAppointmentToAction(null);
+      } else {
+        alert(data.message || 'İşlem kapatılırken bir hata oluştu.');
+      }
+    } catch (err) {
+      alert('Sunucu hatası.');
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  // Extract unique options for dependent dropdowns based on existing filters
+  const availableIlanTipleri = [...new Set(portfolios.map(p => p.tur).filter(Boolean))].sort();
+  const availableTips = [...new Set(portfolios.filter(p => !filterIlanTipi || p.tur === filterIlanTipi).map(p => p.tip).filter(Boolean))].sort();
+  const availableOdaSayilari = [...new Set(portfolios.filter(p => (!filterIlanTipi || p.tur === filterIlanTipi) && (!filterTip || p.tip === filterTip)).map(p => p.odaSayisi).filter(Boolean))].sort();
+  const availableIller = [...new Set(portfolios.filter(p => (!filterIlanTipi || p.tur === filterIlanTipi) && (!filterTip || p.tip === filterTip) && (!filterOdaSayisi || p.odaSayisi === filterOdaSayisi)).map(p => p.il).filter(Boolean))].sort();
+  const availableIlceler = [...new Set(portfolios.filter(p => (!filterIlanTipi || p.tur === filterIlanTipi) && (!filterTip || p.tip === filterTip) && (!filterOdaSayisi || p.odaSayisi === filterOdaSayisi) && (!filterIl || p.il === filterIl)).map(p => p.ilce).filter(Boolean))].sort();
+
   // Filter logic for portfolios list
   const filteredPortfolios = portfolios.filter(p => {
+    // 0. Dependent Filters
+    if (filterIlanTipi && p.tur !== filterIlanTipi) return false;
+    if (filterTip && p.tip !== filterTip) return false;
+    if (filterOdaSayisi && p.odaSayisi !== filterOdaSayisi) return false;
+    if (filterIl && p.il !== filterIl) return false;
+    if (filterIlce && p.ilce !== filterIlce) return false;
+
     // 1. Tag filter
     if (filterTag !== 'Tümü') {
       if (filterTag === 'Satılık' && p.tur !== 'SATILIK') return false;
@@ -1644,10 +1839,18 @@ export default function App() {
           {/* Logo / Header */}
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!sidebarCollapsed ? (
-              <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
-                HOMEY
-              </span>
+              <div className="flex flex-col leading-tight">
+                <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
+                  HOMEY
+                </span>
+                {user?.firmaAdi && (
+                  <span className="text-[10px] font-extrabold text-amber-300/80 uppercase tracking-widest truncate max-w-[150px]" title={user.firmaAdi}>
+                    🏢 {user.firmaAdi}
+                  </span>
+                )}
+              </div>
             ) : (
+
               <span className="text-xl font-extrabold bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
                 H
               </span>
@@ -1685,6 +1888,15 @@ export default function App() {
                 <Building size={20} className="shrink-0" />
                 {!sidebarCollapsed && <span>Portföyler</span>}
               </button>
+              <button
+                onClick={() => setActiveTab('completedPortfolios')}
+                title="Tamamlanan İşlemler"
+                className={`sidebar-link ${activeTab === 'completedPortfolios' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+              >
+                <BadgeCheck size={20} className="shrink-0 text-emerald-400" />
+                {!sidebarCollapsed && <span>Tamamlanan İşlemler</span>}
+              </button>
+
               <button
                 onClick={() => setActiveTab('appointments')}
                 title="Randevular"
@@ -1787,14 +1999,21 @@ export default function App() {
         <header className="flex justify-between items-center w-full gap-4">
           {activeTab === 'dashboard' && (
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">İyi günler, {user?.ad || ''} 👋</h1>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight flex items-center gap-2 flex-wrap">
+                <span>İyi günler, {user?.ad || ''} 👋</span>
+                {user?.firmaAdi && (
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
+                    🏢 {user.firmaAdi}
+                  </span>
+                )}
+              </h1>
+
               {(() => {
                 const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
-                const approvedCount = userApps.filter(a => a.durum === 'APPROVED').length;
                 const pendingCount = userApps.filter(a => a.durum === 'PENDING').length;
                 return (
                   <p className="text-zinc-500 text-sm mt-1">
-                    Bugün <strong className="text-charcoal">{approvedCount} onaylı randevunuz</strong> ve <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
+                    Bugün <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
                   </p>
                 );
               })()}
@@ -2079,18 +2298,12 @@ export default function App() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-charcoal/60 block mb-0.5">Kişisel Performans</span>
-                      <h4 className="text-sm font-extrabold text-charcoal">Aylık Ciro Hakedişim</h4>
+                      <h4 className="text-sm font-extrabold text-charcoal">Aylık Ciro</h4>
                     </div>
                     <DollarSign size={20} className="text-charcoal" />
                   </div>
                   {(() => {
-                    const myEmp = employees.find(e => compareIds(e.id, user?.id));
-                    const myPortfolios = portfolios.filter(p => compareIds(p.gorevliUzmanId, user?.id) && (p.durum === 'KIRALANDI_SATILDI' || p.durum === 'KAPORA_ASAMASINDA'));
-                    const computedCiro = myPortfolios.reduce((sum, p) => {
-                      const comm = p.tur === 'SATILIK' ? (p.fiyat || 0) * 0.02 : (p.fiyat || 0);
-                      return sum + comm;
-                    }, 0);
-                    const ciro = (myEmp && myEmp.getirdigiPara !== undefined) ? myEmp.getirdigiPara : computedCiro;
+                    const ciro = personalCiro;
                     const officeShare = ciro * (commSettings.aOfis / 100);
                     const userEarned = ciro * (commSettings.aDanisman / 100);
 
@@ -2134,7 +2347,7 @@ export default function App() {
                       <>
                         <div className="flex items-baseline gap-2 mb-3">
                           <span className="text-3xl font-extrabold text-charcoal">
-                            {approvedApps.length} Onaylı
+                            {approvedApps.length}
                           </span>
                           <span
                             className="w-7 h-7 inline-flex items-center justify-center text-xs font-extrabold text-amber-950 bg-[#FEF08A] rounded-full border border-amber-300 cursor-default"
@@ -2259,7 +2472,7 @@ export default function App() {
                         <td className="py-3.5 font-medium">{p.gorevliUzman || ''}</td>
                         <td className="py-3.5 text-right">
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-charcoal ${p.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-900' :
-                              p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
+                            p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
                             }`}>
                             {(p.durum || 'BOSTA').replace('_', ' ')}
                           </span>
@@ -2361,13 +2574,100 @@ export default function App() {
             <div className="bento-card bg-white">
               <div className="flex flex-wrap justify-between items-start mb-6 gap-3">
                 <h2 className="text-xl md:text-2xl font-extrabold min-w-0 break-words">Portföy Yönetimi</h2>
-                <button
-                  onClick={() => setShowAddPortfolioModal(true)}
-                  className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none"
-                >
-                  <Plus size={14} /> Yeni Portföy Ekle
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`px-4 py-2 text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 border-2 ${showFilters ? 'bg-zinc-200 text-charcoal border-transparent' : 'bg-white border-zinc-200 text-charcoal hover:bg-zinc-50 shadow-sm'}`}
+                  >
+                    <Filter size={14} /> Filtrele
+                  </button>
+                  <button
+                    onClick={() => setShowAddPortfolioModal(true)}
+                    className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none"
+                  >
+                    <Plus size={14} /> Yeni Portföy Ekle
+                  </button>
+                </div>
               </div>
+
+              {/* Dependent Dropdown Filters */}
+              {showFilters && (
+                <div className="flex flex-col md:flex-row flex-wrap gap-3 mb-4 bg-zinc-50 p-4 rounded-2xl border border-charcoal/10 shadow-sm">
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="text-[10px] text-zinc-500 font-extrabold uppercase ml-1 block mb-1">İlan Tipi</label>
+                    <select
+                      className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal transition-colors cursor-pointer"
+                      value={filterIlanTipi}
+                      onChange={(e) => {
+                        setFilterIlanTipi(e.target.value);
+                        setFilterTip('');
+                        setFilterOdaSayisi('');
+                        setFilterIl('');
+                        setFilterIlce('');
+                      }}
+                    >
+                      <option value="">Tümü</option>
+                      {availableIlanTipleri.map(tur => <option key={tur} value={tur}>{tur}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="text-[10px] text-zinc-500 font-extrabold uppercase ml-1 block mb-1">Mülk Tipi</label>
+                    <select
+                      className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal transition-colors cursor-pointer"
+                      value={filterTip}
+                      onChange={(e) => {
+                        setFilterTip(e.target.value);
+                        setFilterOdaSayisi('');
+                        setFilterIl('');
+                        setFilterIlce('');
+                      }}
+                    >
+                      <option value="">Tümü</option>
+                      {availableTips.map(tip => <option key={tip} value={tip}>{tip}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="text-[10px] text-zinc-500 font-extrabold uppercase ml-1 block mb-1">Oda Sayısı</label>
+                    <select
+                      className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal transition-colors cursor-pointer"
+                      value={filterOdaSayisi}
+                      onChange={(e) => {
+                        setFilterOdaSayisi(e.target.value);
+                        setFilterIl('');
+                        setFilterIlce('');
+                      }}
+                    >
+                      <option value="">Tümü</option>
+                      {availableOdaSayilari.map(oda => <option key={oda} value={oda}>{oda}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="text-[10px] text-zinc-500 font-extrabold uppercase ml-1 block mb-1">İl</label>
+                    <select
+                      className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal transition-colors cursor-pointer"
+                      value={filterIl}
+                      onChange={(e) => {
+                        setFilterIl(e.target.value);
+                        setFilterIlce('');
+                      }}
+                    >
+                      <option value="">Tümü</option>
+                      {availableIller.map(il => <option key={il} value={il}>{il}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="text-[10px] text-zinc-500 font-extrabold uppercase ml-1 block mb-1">İlçe</label>
+                    <select
+                      className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal transition-colors cursor-pointer"
+                      value={filterIlce}
+                      onChange={(e) => setFilterIlce(e.target.value)}
+                    >
+                      <option value="">Tümü</option>
+                      {availableIlceler.map(ilce => <option key={ilce} value={ilce}>{ilce}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {/* Category Filter Pills (Sadece Portföyler sayfasında) */}
               <div className="flex flex-wrap gap-2 mb-4">
@@ -2376,8 +2676,8 @@ export default function App() {
                     key={tag}
                     onClick={() => setFilterTag(tag)}
                     className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 border-charcoal transition-all ${filterTag === tag
-                        ? 'bg-charcoal text-white shadow-none'
-                        : 'bg-white text-charcoal hover:bg-zinc-50'
+                      ? 'bg-charcoal text-white shadow-none'
+                      : 'bg-white text-charcoal hover:bg-zinc-50'
                       }`}
                   >
                     {tag}
@@ -2740,6 +3040,7 @@ export default function App() {
                                   type="datetime-local"
                                   className="w-full text-xs p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-medium"
                                   value={selectedDate}
+                                  min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                                   onChange={e => setSelectedDate(e.target.value)}
                                 />
                               </div>
@@ -2748,8 +3049,8 @@ export default function App() {
                               <button
                                 type="button"
                                 className={`w-full py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${isOwner
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                    : 'bg-charcoal hover:bg-black text-white'
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  : 'bg-charcoal hover:bg-black text-white'
                                   }`}
                                 onClick={() => handleCreateOrRequestAppointment(selectedPortfolio, isOwner)}
                               >
@@ -2823,7 +3124,7 @@ export default function App() {
                                 onClick={() => !isPastDate && setPopSelectedDay(day)}
                                 disabled={isPastDate}
                                 className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed hover:bg-transparent' :
-                                    popSelectedDay === day ? 'bg-charcoal text-white font-extrabold cursor-pointer' : 'hover:bg-zinc-100 cursor-pointer'
+                                  popSelectedDay === day ? 'bg-charcoal text-white font-extrabold cursor-pointer' : 'hover:bg-zinc-100 cursor-pointer'
                                   }`}
                               >
                                 <span>{day}</span>
@@ -2865,9 +3166,9 @@ export default function App() {
                                     </div>
                                     <div className="flex items-center gap-1.5">
                                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                          app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                            app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                              'bg-[#FBCFE8] text-red-950 border-red-300'
+                                        app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                          app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                            'bg-[#FBCFE8] text-red-950 border-red-300'
                                         }`}>
                                         {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                           app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -2942,32 +3243,35 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
-                      <select
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortTip}
-                        onChange={e => setNewPortTip(e.target.value)}
-                      >
-                        <option value="DAIRE">Daire</option>
-                        <option value="VILLA">Villa</option>
-                        <option value="MUSTAKIL">Müstakil Ev</option>
-                        <option value="ARSA">Arsa</option>
-                      </select>
-                    </div>
+                  <div className="flex gap-2 mb-2 p-1 bg-zinc-100 rounded-full border border-zinc-200">
+                    <button
+                      type="button"
+                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'SATILIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                      onClick={() => { setNewPortTur('SATILIK'); setNewPortDepozito(''); }}
+                    >
+                      Satılık
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'KIRALIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                      onClick={() => setNewPortTur('KIRALIK')}
+                    >
+                      Kiralık
+                    </button>
+                  </div>
 
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">İşlem Türü</label>
-                      <select
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortTur}
-                        onChange={e => setNewPortTur(e.target.value)}
-                      >
-                        <option value="SATILIK">Satılık</option>
-                        <option value="KIRALIK">Kiralık</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
+                    <select
+                      className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                      value={newPortTip}
+                      onChange={e => setNewPortTip(e.target.value)}
+                    >
+                      <option value="DAIRE">Daire</option>
+                      <option value="VILLA">Villa</option>
+                      <option value="MUSTAKIL">Müstakil Ev</option>
+                      <option value="ARSA">Arsa</option>
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -3013,9 +3317,9 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={`grid gap-3 ${newPortTur === 'KIRALIK' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Opsiyonel)</label>
+                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Otomatik)</label>
                       <input
                         type="number"
                         placeholder="Örn: 50000"
@@ -3024,17 +3328,44 @@ export default function App() {
                         onChange={e => setNewPortKapora(e.target.value)}
                       />
                     </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Opsiyonel)</label>
-                      <input
-                        type="number"
-                        placeholder="Örn: 20000"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortDepozito}
-                        onChange={e => setNewPortDepozito(e.target.value)}
-                      />
-                    </div>
+                    {newPortTur === 'KIRALIK' && (
+                      <div>
+                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Otomatik)</label>
+                        <input
+                          type="number"
+                          placeholder="Örn: 20000"
+                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                          value={newPortDepozito}
+                          onChange={e => setNewPortDepozito(e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {(() => {
+                    const f = Number(newPortFiyat) || 0;
+                    if (f <= 0) return null;
+                    let komisyon = 0;
+                    if (newPortTur === 'KIRALIK') {
+                      komisyon = f * (Number(firmaSettings.KiralamaKomisyonOrani) || 1);
+                    } else {
+                      const oran = (Number(firmaSettings.SatisAliciKomisyon) || 2) + (Number(firmaSettings.SatisSaticiKomisyon) || 2);
+                      komisyon = f * (oran / 100);
+                    }
+                    return (
+                      <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-charcoal/10">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-xs font-bold text-zinc-600 block">Öngörülen Hizmet Bedeli (KDV Dahil)</span>
+                            <span className="text-[10px] text-zinc-400">Senaryo A (Kendi Müşterisi)</span>
+                          </div>
+                          <div className="text-lg font-extrabold text-charcoal">
+                            {komisyon.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
@@ -3134,6 +3465,518 @@ export default function App() {
           </div>
         )}
 
+        {/* Tab: Completed Portfolios & Ciro Analysis Tab */}
+        {activeTab === 'completedPortfolios' && (
+          <div className="w-full flex flex-col gap-6">
+
+            {/* Header Banner */}
+            <div className="bento-card bg-gradient-to-r from-charcoal via-zinc-900 to-indigo-950 text-white flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="px-3 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                    <BadgeCheck size={14} /> Kapanan İşlemler & Hakediş
+                  </span>
+                  {user?.firmaAdi && (
+                    <span className="px-3 py-0.5 bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 rounded-full text-xs font-extrabold">
+                      🏢 {user.firmaAdi}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white">Tamamlanan Portföyler & Ciro Analizi</h2>
+                <p className="text-xs md:text-sm text-zinc-300 mt-1 max-w-2xl">
+                  {user?.firmaAdi ? `${user.firmaAdi} firmasına` : 'Giriş yapılı firmaya'} ve uzmana ait satışı ve kiralaması tamamlanmış portföyler. Düzenleme yapılamaz, elde edilen ciro ve Danışman/Ofis pay dağılımları salt okunur takip edilir.
+                </p>
+              </div>
+
+              <button
+                onClick={() => fetchCompletedPortfolios(token!)}
+                disabled={completedLoading}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-extrabold transition-all border border-white/20 flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                {completedLoading ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
+                Verileri Yenile
+              </button>
+            </div>
+
+            {/* Calculate stats based on all completed portfolios */}
+            {(() => {
+              const allItems = completedPortfolios;
+              const filtered = allItems.filter(p => {
+                const isMine = compareIds(p.gorevliUzmanId, user?.id) || compareIds(p.islemYapanDanismanId, user?.id);
+                if (completedScopeFilter === 'mine' && !isMine) return false;
+                if (completedScopeFilter === 'others' && isMine) return false;
+
+                const dUpper = String(p.durum || '').toUpperCase();
+                const tUpper = String(p.islemTuru || '').toUpperCase();
+
+                if (completedTypeFilter === 'SATILDI' && !dUpper.includes('SATIL') && !tUpper.includes('SATIS')) return false;
+                if (completedTypeFilter === 'KIRALANDI' && !dUpper.includes('KIRAL') && !tUpper.includes('KIRAL')) return false;
+
+                if (completedSearchQuery.trim()) {
+                  const q = completedSearchQuery.toLowerCase();
+                  const matches = (
+                    (p.tip && p.tip.toLowerCase().includes(q)) ||
+                    (p.il && p.il.toLowerCase().includes(q)) ||
+                    (p.ilce && p.ilce.toLowerCase().includes(q)) ||
+                    (p.evSahibiAdi && p.evSahibiAdi.toLowerCase().includes(q)) ||
+                    (p.gorevliUzman && p.gorevliUzman.toLowerCase().includes(q)) ||
+                    (p.islemYapanDanisman && p.islemYapanDanisman.toLowerCase().includes(q))
+                  );
+                  if (!matches) return false;
+                }
+                return true;
+              });
+
+              // Calculated metrics
+              const totalTransactionVolume = filtered.reduce((sum, p) => sum + (Number(p.islemBedeli) || Number(p.fiyat) || 0), 0);
+              const totalRevenueCiro = filtered.reduce((sum, p) => sum + (Number(p.hizmetBedeliCiro) || 0), 0);
+              const danismanPayOran = Number(firmaSettings.BrokerDanismanPayi || 50);
+              const totalDanismanHakedis = (totalRevenueCiro * danismanPayOran) / 100;
+              const totalOfisPayi = (totalRevenueCiro * (100 - danismanPayOran)) / 100;
+              const satilanCount = filtered.filter(p => String(p.durum || '').toUpperCase().includes('SATIL') || String(p.islemTuru || '').toUpperCase().includes('SATIS')).length;
+              const kiralananCount = filtered.filter(p => String(p.durum || '').toUpperCase().includes('KIRAL') || String(p.islemTuru || '').toUpperCase().includes('KIRAL')).length;
+
+
+              // Mine vs Others counts
+              const mineCount = allItems.filter(p => compareIds(p.gorevliUzmanId, user?.id) || compareIds(p.islemYapanDanismanId, user?.id)).length;
+              const othersCount = allItems.length - mineCount;
+
+              return (
+                <>
+                  {/* Top 4 Bento Metric Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                    {/* Card 1: Total Transaction Volume */}
+                    <div className="bento-card bg-[#E0F2FE] border border-sky-300 flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-900/70">Toplam İşlem Hacmi</span>
+                        <div className="w-8 h-8 rounded-full bg-sky-200 flex items-center justify-center">
+                          <Banknote size={18} className="text-sky-900" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-sky-950 truncate">
+                          {totalTransactionVolume.toLocaleString('tr-TR')} ₺
+                        </h3>
+                        <p className="text-[11px] font-semibold text-sky-800/80 mt-1">
+                          Kapanan tüm mülk işlem tutarları
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Total Service Fee / Revenue */}
+                    <div className="bento-card bg-[#DCFCE7] border border-emerald-300 flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900/70">Elde Edilen Toplam Ciro</span>
+                        <div className="w-8 h-8 rounded-full bg-emerald-200 flex items-center justify-center">
+                          <DollarSign size={18} className="text-emerald-900" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-emerald-950 truncate">
+                          {totalRevenueCiro.toLocaleString('tr-TR')} ₺
+                        </h3>
+                        <p className="text-[11px] font-semibold text-emerald-800/80 mt-1">
+                          Tahsil edilen toplam hizmet bedeli
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Advisor Revenue Share */}
+                    <div className="bento-card bg-[#FEF3C7] border border-amber-300 flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-900/70">Danışman Hakedişi (%{danismanPayOran})</span>
+                        <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center">
+                          <Trophy size={18} className="text-amber-900" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-amber-950 truncate">
+                          {totalDanismanHakedis.toLocaleString('tr-TR')} ₺
+                        </h3>
+                        <p className="text-[11px] font-semibold text-amber-800/80 mt-1">
+                          Danışman payına düşen toplam tutar
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Total Completed Count */}
+                    <div className="bento-card bg-[#F3E8FF] border border-purple-300 flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-900/70">Kapanan İşlem Adedi</span>
+                        <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center">
+                          <BadgeCheck size={18} className="text-purple-900" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-purple-950">
+                          {filtered.length} <span className="text-xs font-bold text-purple-800">Portföy</span>
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-pink-100 text-pink-900 border border-pink-200">
+                            {satilanCount} Satış
+                          </span>
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-200">
+                            {kiralananCount} Kiralama
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Revenue Distribution Banner (Danışman Payı vs Ofis Payı) */}
+                  <div className="bento-card bg-white border border-zinc-200">
+                    <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
+                      <div className="flex items-center gap-2">
+                        <Percent size={18} className="text-charcoal" />
+                        <h3 className="text-base font-extrabold text-charcoal">Firma Ciro Dağılım Modeli</h3>
+                      </div>
+                      <span className="text-xs font-bold text-zinc-500">
+                        Kayıtlı Sözleşme Oranı: Danışman %{danismanPayOran} / Ofis %{100 - danismanPayOran}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar Visualizer */}
+                    <div className="w-full bg-zinc-100 rounded-2xl p-3 border border-zinc-200">
+                      <div className="flex justify-between text-xs font-extrabold mb-1.5">
+                        <span className="text-emerald-700 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                          Danışman Hakedişi (%{danismanPayOran}): {totalDanismanHakedis.toLocaleString('tr-TR')} ₺
+                        </span>
+                        <span className="text-indigo-700 flex items-center gap-1">
+                          Ofis Payı (%{100 - danismanPayOran}): {totalOfisPayi.toLocaleString('tr-TR')} ₺
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                        </span>
+                      </div>
+                      <div className="w-full h-4 bg-indigo-100 rounded-full overflow-hidden flex">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${totalRevenueCiro > 0 ? danismanPayOran : 50}%` }}
+                          title={`Danışman Payı: %${danismanPayOran}`}
+                        />
+                        <div
+                          className="h-full bg-indigo-600 transition-all duration-500"
+                          style={{ width: `${totalRevenueCiro > 0 ? (100 - danismanPayOran) : 50}%` }}
+                          title={`Ofis Payı: %${100 - danismanPayOran}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter Toolbar (Scope, Type, Search) */}
+                  <div className="bento-card bg-white border border-zinc-200 flex flex-col md:flex-row flex-wrap justify-between items-center gap-4">
+
+                    {/* Scope Tabs: Tüm Ofis / Kendi Portföylerim / Başkasının Portföyü */}
+                    <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-2xl border border-zinc-200 shrink-0 w-full sm:w-auto">
+                      <button
+                        onClick={() => setCompletedScopeFilter('all')}
+                        className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all border-none cursor-pointer flex-1 sm:flex-initial ${completedScopeFilter === 'all' ? 'bg-charcoal text-white shadow-md' : 'text-zinc-600 hover:text-charcoal'
+                          }`}
+                      >
+                        Tüm Ofis ({allItems.length})
+                      </button>
+                      <button
+                        onClick={() => setCompletedScopeFilter('mine')}
+                        className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all border-none cursor-pointer flex-1 sm:flex-initial flex items-center justify-center gap-1 ${completedScopeFilter === 'mine' ? 'bg-emerald-600 text-white shadow-md' : 'text-zinc-600 hover:text-emerald-700'
+                          }`}
+                      >
+                        <User size={13} /> Kendi Portföylerim ({mineCount})
+                      </button>
+                      <button
+                        onClick={() => setCompletedScopeFilter('others')}
+                        className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all border-none cursor-pointer flex-1 sm:flex-initial flex items-center justify-center gap-1 ${completedScopeFilter === 'others' ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-600 hover:text-indigo-700'
+                          }`}
+                      >
+                        <Building size={13} /> Ofis / Diğer Danışmanlar ({othersCount})
+                      </button>
+                    </div>
+
+                    {/* Secondary Filters: Type & Search */}
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1 justify-end">
+                      {/* Type Filter */}
+                      <select
+                        value={completedTypeFilter}
+                        onChange={(e: any) => setCompletedTypeFilter(e.target.value)}
+                        className="bg-zinc-50 border-2 border-zinc-200 rounded-2xl px-3 py-2 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal cursor-pointer"
+                      >
+                        <option value="all">Tüm İşlem Türleri</option>
+                        <option value="SATILDI">Satılanlar (SATILDI)</option>
+                        <option value="KIRALANDI">Kiralananlar (KIRALANDI)</option>
+                      </select>
+
+                      {/* Search Bar */}
+                      <div className="relative flex-1 md:w-64">
+                        <input
+                          type="text"
+                          placeholder="Mülk tipi, il, ilce, uzman ara..."
+                          value={completedSearchQuery}
+                          onChange={(e) => setCompletedSearchQuery(e.target.value)}
+                          className="w-full bg-zinc-50 border-2 border-zinc-200 rounded-full px-4 py-2 pl-9 text-xs font-semibold text-charcoal focus:outline-none focus:border-charcoal transition-all"
+                        />
+                        <Search size={14} className="absolute left-3 top-2.5 text-zinc-400" />
+                        {completedSearchQuery && (
+                          <button
+                            onClick={() => setCompletedSearchQuery('')}
+                            className="absolute right-3 top-2 text-zinc-400 hover:text-zinc-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Completed Portfolios Grid View */}
+                  {completedLoading ? (
+                    <div className="bento-card bg-white py-16 flex flex-col items-center justify-center text-zinc-500 gap-3">
+                      <Loader2 size={32} className="animate-spin text-charcoal" />
+                      <p className="text-sm font-semibold">Tamamlanan portföyler yükleniyor...</p>
+                    </div>
+                  ) : filtered.length === 0 ? (
+                    <div className="bento-card bg-white py-16 text-center text-zinc-400">
+                      <BadgeCheck size={40} className="mx-auto mb-3 opacity-30 text-charcoal" />
+                      <h4 className="text-base font-extrabold text-charcoal mb-1">Seçilen Kriterlere Uygun İşlem Bulunamadı</h4>
+                      <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                        {allItems.length === 0
+                          ? `${user?.firmaAdi || 'Firmanıza'} ait veritabanında henüz tamamlanmış (Satıldı/Kiralandı) bir portföy kaydı bulunmamaktadır.`
+                          : completedScopeFilter === 'mine'
+                            ? 'Size ait henüz kapatılmış bir satılık veya kiralık portföy kaydı bulunmuyor.'
+                            : 'Filtrelerinizi değiştirerek daha fazla sonuç arayabilirsiniz.'}
+                      </p>
+
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {filtered.map(p => {
+                        const isMine = compareIds(p.gorevliUzmanId, user?.id) || compareIds(p.islemYapanDanismanId, user?.id);
+                        const ciroNum = Number(p.hizmetBedeliCiro) || 0;
+                        const danismanHakedisNum = (ciroNum * danismanPayOran) / 100;
+                        const ofisHakedisNum = (ciroNum * (100 - danismanPayOran)) / 100;
+                        const isSatildim = p.durum === 'SATILDI';
+
+                        return (
+                          <div
+                            key={`completed-${p.id}`}
+                            className={`bento-card bg-white border-2 transition-all hover:shadow-lg flex flex-col justify-between relative overflow-hidden ${isMine ? 'border-emerald-300' : 'border-zinc-200'
+                              }`}
+                          >
+                            {/* Top Ownership & Status Ribbons */}
+                            <div>
+                              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                {/* Ownership Badge */}
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${isMine
+                                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                    : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                                  }`}>
+                                  {isMine ? '👤 Kendi Portföyüm' : '🏢 Ofis Portföyü'}
+                                </span>
+
+                                {/* Status Badge */}
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${isSatildim
+                                    ? 'bg-pink-100 text-pink-950 border-pink-300'
+                                    : 'bg-sky-100 text-sky-950 border-sky-300'
+                                  }`}>
+                                  {isSatildim ? '🏷️ SATILDI' : '🔑 KIRALANDI'}
+                                </span>
+                              </div>
+
+                              {/* Title & Specs */}
+                              <div className="mb-3">
+                                <h3 className="text-lg font-black text-charcoal leading-tight">
+                                  {p.tip} <span className="text-xs font-bold text-zinc-500">({p.tur})</span>
+                                </h3>
+                                <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+                                  <MapPin size={12} className="shrink-0 text-zinc-400" />
+                                  {p.ilce ? `${p.ilce}, ` : ''}{p.il} {p.mahalle ? `· ${p.mahalle} Mah.` : ''}
+                                </p>
+                              </div>
+
+                              {/* Property Features Badges */}
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {p.odaSayisi && (
+                                  <span className="px-2 py-0.5 bg-cream rounded-lg text-[11px] font-extrabold text-charcoal border border-charcoal/10 flex items-center gap-1">
+                                    <Bed size={12} /> {p.odaSayisi}
+                                  </span>
+                                )}
+                                {p.metrekare && (
+                                  <span className="px-2 py-0.5 bg-cream rounded-lg text-[11px] font-extrabold text-charcoal border border-charcoal/10 flex items-center gap-1">
+                                    <Ruler size={12} /> {p.metrekare} m²
+                                  </span>
+                                )}
+                                <span className="px-2 py-0.5 bg-cream rounded-lg text-[11px] font-extrabold text-charcoal border border-charcoal/10 flex items-center gap-1">
+                                  <User size={12} /> Uzman: {p.gorevliUzman || 'Atanmamış'}
+                                </span>
+                              </div>
+
+                              {/* Financial Breakdown Card Box */}
+                              <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col gap-2 mb-4">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-zinc-500 font-semibold">İşlem Bedeli:</span>
+                                  <strong className="text-charcoal font-black">
+                                    {(Number(p.islemBedeli) || Number(p.fiyat) || 0).toLocaleString('tr-TR')} ₺
+                                  </strong>
+                                </div>
+                                <div className="flex justify-between items-center text-xs pt-1.5 border-t border-zinc-200">
+                                  <span className="text-emerald-800 font-bold">Toplanan Ciro:</span>
+                                  <strong className="text-emerald-700 font-black text-sm">
+                                    {ciroNum.toLocaleString('tr-TR')} ₺
+                                  </strong>
+                                </div>
+
+                                {/* Commission Split Breakdown */}
+                                <div className="mt-1 pt-2 border-t border-dashed border-zinc-300 grid grid-cols-2 gap-2 text-[11px]">
+                                  <div className="p-1.5 rounded-xl bg-emerald-100/60 border border-emerald-200">
+                                    <span className="text-[9px] font-extrabold uppercase text-emerald-900 block">Danışman Payı (%{danismanPayOran})</span>
+                                    <strong className="text-emerald-950 font-black text-xs block mt-0.5">
+                                      {danismanHakedisNum.toLocaleString('tr-TR')} ₺
+                                    </strong>
+                                  </div>
+                                  <div className="p-1.5 rounded-xl bg-indigo-100/60 border border-indigo-200">
+                                    <span className="text-[9px] font-extrabold uppercase text-indigo-900 block">Ofis Payı (%{100 - danismanPayOran})</span>
+                                    <strong className="text-indigo-950 font-black text-xs block mt-0.5">
+                                      {ofisHakedisNum.toLocaleString('tr-TR')} ₺
+                                    </strong>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Dates & Owners Info */}
+                              <div className="text-[11px] text-zinc-500 flex flex-col gap-1 mb-4">
+                                <div className="flex justify-between">
+                                  <span>Kapanış Tarihi:</span>
+                                  <strong className="text-charcoal font-semibold">
+                                    {p.islemTarihi ? new Date(p.islemTarihi).toLocaleDateString('tr-TR') : 'Belirtilmedi'}
+                                  </strong>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Mülk Sahibi:</span>
+                                  <strong className="text-charcoal font-semibold">{p.evSahibiAdi || 'Gizli'}</strong>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* READ-ONLY ACTION BUTTON - No editing allowed */}
+                            <button
+                              onClick={() => setSelectedCompletedPortfolio(p)}
+                              className="w-full py-2.5 bg-charcoal hover:bg-black text-white text-xs font-extrabold rounded-full transition-all border-none flex items-center justify-center gap-1.5 cursor-pointer mt-auto"
+                            >
+                              <Info size={14} /> Detay & Ciro Dökümünü Gör
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Read-Only Completed Portfolio Detail Modal */}
+                  {selectedCompletedPortfolio && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full relative border-none shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+
+                        {/* Modal Header */}
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-xs font-extrabold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                              <BadgeCheck size={14} /> Kapanmış Portföy Detayı (Salt Okunur)
+                            </span>
+                            <h2 className="text-2xl font-black text-charcoal mt-1">
+                              {selectedCompletedPortfolio.tip} - {selectedCompletedPortfolio.durum}
+                            </h2>
+                          </div>
+                          <button
+                            onClick={() => setSelectedCompletedPortfolio(null)}
+                            className="p-2 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+
+                        {/* Lock Warning Note */}
+                        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
+                          <Lock size={18} className="shrink-0 text-amber-700" />
+                          <span>Bu işlem tamamlanmış ve finansal kaydı işlenmiş olduğu için üzerinde düzenleme veya silme yapılamaz.</span>
+                        </div>
+
+                        {/* Detailed Specs Grid */}
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div className="p-3 bg-cream rounded-xl border border-zinc-200">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase block">Mülk Tipi & Türü</span>
+                            <strong className="text-charcoal font-black text-sm">{selectedCompletedPortfolio.tip} ({selectedCompletedPortfolio.tur})</strong>
+                          </div>
+                          <div className="p-3 bg-cream rounded-xl border border-zinc-200">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase block">Kapanış Tarihi</span>
+                            <strong className="text-charcoal font-black text-sm">
+                              {selectedCompletedPortfolio.islemTarihi ? new Date(selectedCompletedPortfolio.islemTarihi).toLocaleDateString('tr-TR') : '-'}
+                            </strong>
+                          </div>
+                          <div className="p-3 bg-cream rounded-xl border border-zinc-200">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase block">Lokasyon</span>
+                            <strong className="text-charcoal font-black text-sm">{selectedCompletedPortfolio.il} / {selectedCompletedPortfolio.ilce}</strong>
+                          </div>
+                          <div className="p-3 bg-cream rounded-xl border border-zinc-200">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase block">Sorumlu Uzman</span>
+                            <strong className="text-charcoal font-black text-sm">{selectedCompletedPortfolio.gorevliUzman}</strong>
+                          </div>
+                        </div>
+
+                        {/* Financial Table */}
+                        <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200 flex flex-col gap-3">
+                          <h4 className="text-xs font-black uppercase text-charcoal tracking-wider">İşlem & Ciro Hesaplama Dökümü</h4>
+                          <div className="flex justify-between text-xs py-1 border-b border-zinc-200">
+                            <span className="text-zinc-600">İşlem Bedeli:</span>
+                            <strong className="font-extrabold text-charcoal">
+                              {(Number(selectedCompletedPortfolio.islemBedeli) || Number(selectedCompletedPortfolio.fiyat) || 0).toLocaleString('tr-TR')} ₺
+                            </strong>
+                          </div>
+                          <div className="flex justify-between text-xs py-1 border-b border-zinc-200">
+                            <span className="text-emerald-800 font-bold">Toplanan Hizmet Bedeli (Ciro):</span>
+                            <strong className="font-black text-emerald-700 text-sm">
+                              {(Number(selectedCompletedPortfolio.hizmetBedeliCiro) || 0).toLocaleString('tr-TR')} ₺
+                            </strong>
+                          </div>
+                          <div className="flex justify-between text-xs py-1 border-b border-zinc-200">
+                            <span className="text-emerald-900 font-bold">Danışman Payı (%{danismanPayOran}):</span>
+                            <strong className="font-black text-emerald-900">
+                              {(((Number(selectedCompletedPortfolio.hizmetBedeliCiro) || 0) * danismanPayOran) / 100).toLocaleString('tr-TR')} ₺
+                            </strong>
+                          </div>
+                          <div className="flex justify-between text-xs py-1">
+                            <span className="text-indigo-900 font-bold">Ofis Payı (%{100 - danismanPayOran}):</span>
+                            <strong className="font-black text-indigo-900">
+                              {(((Number(selectedCompletedPortfolio.hizmetBedeliCiro) || 0) * (100 - danismanPayOran)) / 100).toLocaleString('tr-TR')} ₺
+                            </strong>
+                          </div>
+                        </div>
+
+                        {/* Landlord Contact Info */}
+                        <div className="p-4 bg-cream rounded-2xl border border-zinc-200">
+                          <span className="text-[10px] font-extrabold uppercase text-zinc-500 block mb-1">Mülk Sahibi İletişim</span>
+                          <p className="text-xs font-black text-charcoal">{selectedCompletedPortfolio.evSahibiAdi}</p>
+                          <p className="text-xs font-semibold text-zinc-600 mt-0.5">{selectedCompletedPortfolio.evSahibiTelefon}</p>
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                          onClick={() => setSelectedCompletedPortfolio(null)}
+                          className="w-full py-3 bg-charcoal hover:bg-black text-white font-extrabold rounded-full text-xs transition-colors border-none cursor-pointer"
+                        >
+                          Kapat
+                        </button>
+
+                      </div>
+                    </div>
+                  )}
+
+                </>
+              );
+            })()}
+
+          </div>
+        )}
+
+
         {/* Tab 3: Appointments Tab */}
         {activeTab === 'appointments' && (
           <div className="flex flex-col gap-6 w-full">
@@ -3156,7 +3999,8 @@ export default function App() {
                     <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase">
                       <th className="pb-3 min-w-[140px]">Portföy Tipi</th>
                       <th className="pb-3 min-w-[160px]">Lokasyon</th>
-                      <th className="pb-3 min-w-[160px]">İlan Sahibi Uzman</th>
+                      <th className="pb-3 min-w-[160px]">Portföy Sahibi</th>
+                      <th className="pb-3 min-w-[160px]">Randevuyu Alan Uzman</th>
                       <th className="pb-3 min-w-[150px]">Katılan Müşteri</th>
                       <th className="pb-3 min-w-[140px]">Randevu Zamanı</th>
                       <th className="pb-3 text-center min-w-[110px]">Durum</th>
@@ -3176,7 +4020,18 @@ export default function App() {
                       }
 
                       return myApps.map(app => (
-                        <tr key={`my-app-${app.id}`} className="border-b border-zinc-100 text-sm hover:bg-zinc-50/50 transition-colors">
+                        <tr
+                          key={`my-app-${app.id}`}
+                          className="border-b border-zinc-100 text-sm hover:bg-zinc-50/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedAppointmentToAction(app);
+                            setAppActionType(app.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                            const fiyatNum = Number(app.portfoyFiyat || 0);
+                            setAppActionBedel(fiyatNum.toString());
+                            setAppActionCiro(app.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
+                            setShowAppointmentActionModal(true);
+                          }}
+                        >
                           <td className="py-4">
                             <strong className="font-extrabold text-charcoal">{app.portfoyTip}</strong>
                             <span className="text-xs text-zinc-500 block">{app.portfoyTur}</span>
@@ -3186,7 +4041,10 @@ export default function App() {
                             {app.mahalle && <span className="block text-zinc-400 text-[11px]">{app.mahalle} Mah.</span>}
                           </td>
                           <td className="py-4 text-xs font-bold text-charcoal">
-                            {app.portfoySahibi || 'Gayrimenkul Uzmanı'}
+                            {app.portfoySahibi || 'Belirtilmemiş'}
+                          </td>
+                          <td className="py-4 text-xs font-bold text-emerald-700">
+                            {app.talepEden || 'Belirtilmemiş'}
                           </td>
                           <td className="py-4 text-xs">
                             <div className="font-bold text-charcoal">{app.musteri}</div>
@@ -3199,9 +4057,9 @@ export default function App() {
                           <td className="py-4 text-center">
                             <div className="flex flex-col items-center gap-1">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                    'bg-[#FBCFE8] text-red-950 border-red-300'
                                 }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                   app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -3244,7 +4102,7 @@ export default function App() {
                 {/* Left Section: Giden Talepler 📤 */}
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-amber-600 font-bold text-lg">📤</span>
                       <div>
                         <h3 className="font-extrabold text-base text-charcoal">Giden Talepler</h3>
@@ -3275,9 +4133,9 @@ export default function App() {
                               <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                             </div>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
-                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                    'bg-[#FBCFE8] text-red-950 border-red-300'
+                              app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                                app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                  'bg-[#FBCFE8] text-red-950 border-red-300'
                               }`}>
                               {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                 app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -3320,7 +4178,7 @@ export default function App() {
                 {/* Right Section: Gelen Talepler 📥 */}
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-indigo-600 font-bold text-lg">📥</span>
                       <div>
                         <h3 className="font-extrabold text-base text-charcoal">Gelen Talepler</h3>
@@ -3354,9 +4212,9 @@ export default function App() {
                                 <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                               </div>
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
-                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                    'bg-[#FBCFE8] text-red-950 border-red-300'
                                 }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                   app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -3422,8 +4280,8 @@ export default function App() {
                       <div className="flex gap-2 items-center flex-wrap">
                         <strong className="font-extrabold text-sm">{c.ad} {c.soyad}</strong>
                         <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
-                            c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
-                              c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
+                          c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
+                            c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
                           }`}>
                           {c.musteriTipi === 'ALICI' ? 'ALICI' :
                             c.musteriTipi === 'KIRACI' ? 'KİRACI' :
@@ -3676,8 +4534,8 @@ export default function App() {
                       </div>
                       {dashboardData.ciroDegisimYuzde !== 0 && (
                         <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${dashboardData.ciroDegisimYuzde > 0
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-red-100 text-red-800'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-red-100 text-red-800'
                           }`}>
                           {dashboardData.ciroDegisimYuzde > 0 ? '↑' : '↓'} %{Math.abs(dashboardData.ciroDegisimYuzde)}
                         </span>
@@ -3697,8 +4555,8 @@ export default function App() {
                       </div>
                       {dashboardData.musteriDegisimYuzde !== 0 && (
                         <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${dashboardData.musteriDegisimYuzde > 0
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-red-100 text-red-800'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-red-100 text-red-800'
                           }`}>
                           {dashboardData.musteriDegisimYuzde > 0 ? '↑' : '↓'} %{Math.abs(dashboardData.musteriDegisimYuzde)}
                         </span>
@@ -4101,11 +4959,11 @@ export default function App() {
                       }`}
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
                         <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
-                            emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
-                              'bg-zinc-200 text-zinc-700'
+                          emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
+                            'bg-zinc-200 text-zinc-700'
                           }`}>
                           {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
                         </span>
@@ -4147,10 +5005,10 @@ export default function App() {
                     <div className="flex justify-between items-center py-2 border-b border-zinc-200">
                       <span className="text-zinc-500">Durum:</span>
                       <span className={`px-3 py-1 text-xs font-bold rounded-full border ${selectedEmployee.durum === 'Ofiste'
-                          ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                          : selectedEmployee.durum === 'Sahada'
-                            ? 'bg-amber-100 text-amber-950 border-amber-300'
-                            : 'bg-zinc-100 text-zinc-700 border-zinc-300'
+                        ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                        : selectedEmployee.durum === 'Sahada'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300'
+                          : 'bg-zinc-100 text-zinc-700 border-zinc-300'
                         }`}>
                         {selectedEmployee.durum === 'Ofiste' ? 'Ofiste 🏢' : selectedEmployee.durum === 'Sahada' ? 'Sahada / Ofiste Değil 🏠' : (selectedEmployee.durum || 'Pasif')}
                       </span>
@@ -4379,118 +5237,319 @@ export default function App() {
 
         {/* Tab 8: Commission settings (YETKILI only) */}
         {activeTab === 'settings' && user?.rol === 'YETKILI' && (
-          <div className="bento-card bg-white">
-            <h2 className="text-2xl font-extrabold mb-4">Küresel Komisyon Payı Ayarları</h2>
-            <p className="text-xs text-zinc-500 mb-6 leading-relaxed">Yetkili olarak emlakçılar hesaplama yaparken baz alınacak senaryo oranlarını buradan düzenleyebilirsiniz. Değişiklikler anlık olarak komisyon hesaplayıcısına yansıyacaktır.</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-              {/* Senaryo A set */}
-              <div className="p-4 rounded-2xl bg-cream border-none">
-                <h4 className="font-extrabold text-sm mb-3">Senaryo A (Kendi Müşterisi)</h4>
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Ofis Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aOfis} onChange={e => setCommSettings({ ...commSettings, aOfis: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Danışman Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.aDanisman} onChange={e => setCommSettings({ ...commSettings, aDanisman: Number(e.target.value) })} />
-                  </div>
-                </div>
+          <div className="bento-card bg-white p-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-extrabold text-charcoal">Komisyon & Finansal Ayarlar</h2>
+                <p className="text-xs text-zinc-500 mt-1">Firmanıza özel satış, kiralama, ofis içi ve dışı komisyon paylaşımlarını yönetin.</p>
               </div>
-
-              {/* Senaryo B set */}
-              <div className="p-4 rounded-2xl bg-cream border-none">
-                <h4 className="font-extrabold text-sm mb-3">Senaryo B (Ortak Çalışma)</h4>
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Ofis Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bOfis} onChange={e => setCommSettings({ ...commSettings, bOfis: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Portföy Sahibi (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bPortfoySahibi} onChange={e => setCommSettings({ ...commSettings, bPortfoySahibi: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Müşteri Getiren (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.bMusteriGetiren} onChange={e => setCommSettings({ ...commSettings, bMusteriGetiren: Number(e.target.value) })} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Senaryo C set */}
-              <div className="p-4 rounded-2xl bg-cream border-none">
-                <h4 className="font-extrabold text-sm mb-3">Senaryo C (Dış Emlakçı)</h4>
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Dış Ortak Payı (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDisOrtak} onChange={e => setCommSettings({ ...commSettings, cDisOrtak: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Kalandan Ofis (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cOfis} onChange={e => setCommSettings({ ...commSettings, cOfis: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-500 block">Kalandan Danışman (%)</label>
-                    <input type="number" className="w-full text-xs p-2 border-2 border-charcoal rounded-lg" value={commSettings.cDanisman} onChange={e => setCommSettings({ ...commSettings, cDanisman: Number(e.target.value) })} />
-                  </div>
-                </div>
-              </div>
-
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSavingSettings}
+                className="px-6 py-2.5 bg-charcoal text-white text-sm font-bold rounded-full hover:bg-black transition-colors flex items-center gap-2"
+              >
+                {isSavingSettings ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                Değişiklikleri Kaydet
+              </button>
             </div>
 
-            {/* Komisyon Ayarları Özeti Tablosu */}
-            <div className="mt-8 border-t-2 border-zinc-100 pt-6">
-              <h3 className="font-extrabold text-sm mb-4 flex items-center gap-2">
-                <Calculator size={16} /> Güncel Komisyon Dağılım Özeti
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-zinc-200">
-                      <th className="py-2 font-bold text-zinc-500 w-1/4">Senaryo</th>
-                      <th className="py-2 font-bold text-zinc-500">Ofis Payı</th>
-                      <th className="py-2 font-bold text-zinc-500">Danışman / Portföy Sahibi Payı</th>
-                      <th className="py-2 font-bold text-zinc-500">Diğer Pay (Müşteri Getiren/Dış Emlakçı)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Senaryo A */}
-                    <tr className="border-b border-zinc-100">
-                      <td className="py-3 font-semibold">Senaryo A<br /><span className="text-[10px] text-zinc-400 font-normal">Kendi Müşterisi</span></td>
-                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.aOfis}</td>
-                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.aDanisman}</td>
-                      <td className="py-3 text-zinc-400">-</td>
-                    </tr>
-                    {/* Senaryo B */}
-                    <tr className="border-b border-zinc-100 bg-[#FDF8F2]">
-                      <td className="py-3 font-semibold pl-2 rounded-l-lg">Senaryo B<br /><span className="text-[10px] text-zinc-400 font-normal">Ortak Çalışma (Ofis İçi)</span></td>
-                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.bOfis}</td>
-                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.bPortfoySahibi}</td>
-                      <td className="py-3 font-extrabold text-charcoal rounded-r-lg">%{commSettings.bMusteriGetiren} <span className="text-[10px] font-normal text-zinc-500">(Müşteri Getiren)</span></td>
-                    </tr>
-                    {/* Senaryo C */}
-                    <tr className="border-b border-zinc-100">
-                      <td className="py-3 font-semibold">Senaryo C<br /><span className="text-[10px] text-zinc-400 font-normal">Dış Emlakçı İle Ortak</span></td>
-                      <td className="py-3 font-extrabold text-charcoal">
-                        %{((100 - commSettings.cDisOrtak) * (commSettings.cOfis / 100)).toFixed(1)}
-                        <br /><span className="text-[10px] font-normal text-zinc-500">(Kalandan %{commSettings.cOfis})</span>
-                      </td>
-                      <td className="py-3 font-extrabold text-charcoal">
-                        %{((100 - commSettings.cDisOrtak) * (commSettings.cDanisman / 100)).toFixed(1)}
-                        <br /><span className="text-[10px] font-normal text-zinc-500">(Kalandan %{commSettings.cDanisman})</span>
-                      </td>
-                      <td className="py-3 font-extrabold text-charcoal">%{commSettings.cDisOrtak} <span className="text-[10px] font-normal text-zinc-500">(Dış Ortak)</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            {/* Tabs */}
+            <div className="flex border-b border-zinc-200 mb-6 gap-6">
+              <button
+                onClick={() => setSettingsActiveTab('standartlar')}
+                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'standartlar' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+              >
+                Satış & Kiralama Standartları
+                {settingsActiveTab === 'standartlar' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+              </button>
+              <button
+                onClick={() => setSettingsActiveTab('disOfis')}
+                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'disOfis' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+              >
+                Ofis Dışı Paylaşım
+                {settingsActiveTab === 'disOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+              </button>
+              <button
+                onClick={() => setSettingsActiveTab('iciOfis')}
+                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'iciOfis' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+              >
+                Ofis İçi Prim & Hakediş
+                {settingsActiveTab === 'iciOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+              </button>
             </div>
 
+            {/* Content */}
+            <div className="bg-[#FDF8F2] p-6 rounded-3xl border border-charcoal/5">
+
+              {settingsActiveTab === 'standartlar' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Kiralama Parametreleri */}
+                  <div>
+                    <h3 className="text-lg font-extrabold mb-4 text-charcoal border-b border-zinc-200 pb-2">Kiralama Parametreleri</h3>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Emlak Komisyonu (Hizmet Bedeli)</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Yasal tavan 1 aylık kiradır. Kanunen taraflarca eşit ödenebilse de uygulamada tamamını kiracı öder.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="number" step="0.1" className="w-24 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KiralamaKomisyonOrani} onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKomisyonOrani: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">Aylık Kira</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Depozito</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            TBK m. 342 uyarınca üst sınır 3 kiradır. Piyasada yaygın olarak 1-2 aylık kira talep edilir.
+                          </div>
+                        </div>
+                      </div>
+                      <select className="w-full text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KiralamaDepozitoSiniri} onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaDepozitoSiniri: Number(e.target.value) })}>
+                        <option value={1}>1 Aylık Kira</option>
+                        <option value={2}>2 Aylık Kira</option>
+                        <option value={3}>3 Aylık Kira</option>
+                      </select>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Peşin Kira</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            İlgili ayın kullanım bedeli olarak sözleşme imza/giriş tarihinde peşin tahsil edilir.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="number" className="w-24 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KiralamaPesinKira} onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaPesinKira: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">Aylık Kira</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Kapora (Bağlanma Parası) Tipi</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Tutma niyetini kesinleştirmek için verilir. Miktarı taraflarca belirlenir.
+                          </div>
+                        </div>
+                      </div>
+                      <select className="w-full text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KiralamaKaporaTipi} onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKaporaTipi: e.target.value })}>
+                        <option value="ESNEK">Serbest Tutar (İşlem anında belirlenir)</option>
+                        <option value="1_KIRA">1 Aylık Kira Bedeli</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Satış Parametreleri */}
+                  <div>
+                    <h3 className="text-lg font-extrabold mb-4 text-charcoal border-b border-zinc-200 pb-2">Satış Parametreleri</h3>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Satış Emlak Komisyonu (Hizmet Bedeli)</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Satış bedeli üzerinden hesaplanır. Yasal olarak %2 Alıcı, %2 Satıcı öder (KDV Dahil).
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">Alıcı %</span>
+                        <input type="number" step="0.1" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.SatisAliciKomisyon} onChange={e => setFirmaSettings({ ...firmaSettings, SatisAliciKomisyon: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">+ Satıcı %</span>
+                        <input type="number" step="0.1" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.SatisSaticiKomisyon} onChange={e => setFirmaSettings({ ...firmaSettings, SatisSaticiKomisyon: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">= Toplam %{(Number(firmaSettings.SatisAliciKomisyon) + Number(firmaSettings.SatisSaticiKomisyon)).toFixed(1)} (KDV Dahil)</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Tapu Harcı Oranı</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Beyan edilen satış bedeli üzerinden %2 Alıcı, %2 Satıcı öder.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">Alıcı %</span>
+                        <input type="number" step="0.1" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.TapuHarciAlici} onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciAlici: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">+ Satıcı %</span>
+                        <input type="number" step="0.1" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.TapuHarciSatici} onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciSatici: Number(e.target.value) })} />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Döner Sermaye Bedeli (Maktu Tutarı)</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Tapu Müdürlüğü tarafından her yıl belirlenen işlem ücretidir.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="number" className="w-full text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.DonerSermayeBedeli} onChange={e => setFirmaSettings({ ...firmaSettings, DonerSermayeBedeli: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">TL</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Satış Kapora / Ön Ödeme Yüzdesi</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Anlaşma sağlandığında cayma durumlarına karşı satıcıya veya emlakçıya güvence olarak verilir. (Genelde %1-5)
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">%</span>
+                        <input type="number" step="0.1" className="w-24 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.SatisKaporaOrani} onChange={e => setFirmaSettings({ ...firmaSettings, SatisKaporaOrani: Number(e.target.value) })} />
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {settingsActiveTab === 'disOfis' && (
+                <div className="max-w-xl">
+                  <h3 className="text-lg font-extrabold mb-4 text-charcoal border-b border-zinc-200 pb-2">Başka Emlak Ofisi ile Komisyon Bölüşümü</h3>
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-xs font-bold text-zinc-700">Paylaşım Oranları</label>
+                      <div className="relative group cursor-pointer">
+                        <Info size={14} className="text-zinc-400" />
+                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          Portföy sahibi ofis ile alıcı/kiracı getiren dış ofis toplam komisyonu nasıl paylaşır? (Genelde %50-%50)
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex-1">
+                        <span className="text-[10px] text-zinc-500 font-bold block mb-1">Portföy Sahibi Ofis %</span>
+                        <input type="number" className="w-full text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.DisOfisPortfoyPayi} onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisPortfoyPayi: Number(e.target.value) })} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-zinc-500 font-bold block mb-1">Müşteri Getiren Ofis %</span>
+                        <input type="number" className="w-full text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.DisOfisMusteriPayi} onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisMusteriPayi: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsActiveTab === 'iciOfis' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-extrabold mb-4 text-charcoal border-b border-zinc-200 pb-2">Standart Bölüşüm</h3>
+
+                    <div className="mb-6">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Danışmanlar Arası (Portföy vs Müşteri)</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Ofis içinde portföyü getiren danışman ile alıcı/kiracı getiren danışman brüt komisyonu nasıl böler?
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">Portföyü Getiren %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.IciPortfoyPayi} onChange={e => setFirmaSettings({ ...firmaSettings, IciPortfoyPayi: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">/ Müşteri Bulan %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.IciMusteriPayi} onChange={e => setFirmaSettings({ ...firmaSettings, IciMusteriPayi: Number(e.target.value) })} />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Danışman - Broker Paylaşımı</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Danışman, hakedişinin yüzde kaçını ofise bırakır?
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">Danışman %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.BrokerDanismanPayi} onChange={e => setFirmaSettings({ ...firmaSettings, BrokerDanismanPayi: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">/ Ofis (Broker) %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.BrokerOfisPayi} onChange={e => setFirmaSettings({ ...firmaSettings, BrokerOfisPayi: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-extrabold mb-4 text-charcoal border-b border-zinc-200 pb-2">Özel Modeller</h3>
+
+                    <div className="mb-6">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Kademeli Ciro Primi Modeli</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Danışman belirli bir ciro barajını aştıkça artan prim oranı uygulanır.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-bold">Danışman Primi %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KademeliDanismanPayi} onChange={e => setFirmaSettings({ ...firmaSettings, KademeliDanismanPayi: Number(e.target.value) })} />
+                        <span className="text-xs text-zinc-500 font-bold">/ Ofis Payı %</span>
+                        <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.KademeliOfisPayi} onChange={e => setFirmaSettings({ ...firmaSettings, KademeliOfisPayi: Number(e.target.value) })} />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs font-bold text-zinc-700">Masa Ücreti (Desk Fee) Modeli</label>
+                        <div className="relative group cursor-pointer">
+                          <Info size={14} className="text-zinc-400" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-white text-[10px] p-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                            Danışman sabit aylık masa ücreti öder, ancak işlemlerden çok yüksek oranda prim alır.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-zinc-500 font-bold">Sabit Aylık Ücret:</span>
+                          <input type="number" className="w-24 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.MasaUcretiTutar} onChange={e => setFirmaSettings({ ...firmaSettings, MasaUcretiTutar: Number(e.target.value) })} />
+                          <span className="text-xs text-zinc-500 font-bold">TL</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-zinc-500 font-bold">Danışman İşlem Primi %</span>
+                          <input type="number" className="w-20 text-sm p-2 border border-zinc-300 rounded-xl bg-white" value={firmaSettings.MasaDanismanPayi} onChange={e => setFirmaSettings({ ...firmaSettings, MasaDanismanPayi: Number(e.target.value) })} />
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
         )}
-
       </main>
 
       {/* RIGHT PANEL (Widgets & Schedule / Ajanda) */}
@@ -4590,9 +5649,9 @@ export default function App() {
                       onClick={() => !isPastDate && setSelectedCalendarDay(day)}
                       disabled={isPastDate}
                       className={`p-1 rounded transition-colors relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed hover:bg-transparent' :
-                          selectedCalendarDay === day
-                            ? 'bg-charcoal text-white font-extrabold cursor-pointer'
-                            : 'hover:bg-zinc-200 cursor-pointer'
+                        selectedCalendarDay === day
+                          ? 'bg-charcoal text-white font-extrabold cursor-pointer'
+                          : 'hover:bg-zinc-200 cursor-pointer'
                         }`}
                     >
                       <span>{day}</span>
@@ -4662,8 +5721,8 @@ export default function App() {
                       return (
                         <div key={app.id} className="relative">
                           <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0]' :
-                              app.durum === 'PENDING' ? 'bg-[#FEF08A]' :
-                                app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-[#FBCFE8]'
+                            app.durum === 'PENDING' ? 'bg-[#FEF08A]' :
+                              app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-[#FBCFE8]'
                             }`} />
                           <div className="text-xs flex flex-col gap-0.5">
                             <span className="font-extrabold text-charcoal">
@@ -4673,9 +5732,9 @@ export default function App() {
                             <span className="text-zinc-500">Müşteri: {app.musteri}</span>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                  app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                    app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                      'bg-[#FBCFE8] text-red-950 border-red-300'
+                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                    'bg-[#FBCFE8] text-red-950 border-red-300'
                                 }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                   app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -4819,8 +5878,8 @@ export default function App() {
                   <button
                     type="submit"
                     className={`flex-1 py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer flex items-center justify-center gap-2 ${isOwner
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        : 'bg-charcoal hover:bg-black text-white'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-charcoal hover:bg-black text-white'
                       }`}
                   >
                     {isOwner ? '➕ Randevu Oluştur (Doğrudan Ekle)' : '📤 Randevu Talebi Oluştur (İlan Sahibine Gönder)'}
@@ -4836,6 +5895,106 @@ export default function App() {
               );
             })()}
           </form>
+        </div>
+      )}
+
+      {/* Appointment Action (Satıldı/Kiralandı/Vazgeçildi) Modal */}
+      {showAppointmentActionModal && selectedAppointmentToAction && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-6 bg-charcoal text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-extrabold mb-1">Randevu İşlemleri</h3>
+                <p className="text-xs text-white/70 font-medium">Bu randevunun sonucunu belirleyin</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAppointmentActionModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer border-none text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAppointmentAction} className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]">
+              <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 flex flex-col gap-2">
+                <div className="text-xs">
+                  <span className="text-zinc-500 font-bold block mb-0.5">Portföy:</span>
+                  <span className="font-extrabold text-charcoal">{selectedAppointmentToAction.portfoyTip} - {selectedAppointmentToAction.portfoyTur} ({selectedAppointmentToAction.ilce}/{selectedAppointmentToAction.il})</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-zinc-500 font-bold block mb-0.5">Müşteri:</span>
+                  <span className="font-extrabold text-charcoal">{selectedAppointmentToAction.musteri} ({selectedAppointmentToAction.musteriTelefon})</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-600 font-bold block mb-2">İşlem Sonucu</label>
+                <div className="flex bg-zinc-100 p-1 rounded-full w-full">
+                  {['SATILDI', 'KIRALANDI', 'VAZGECILDI'].map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setAppActionType(t as any)}
+                      className={`flex-1 py-2 text-[11px] font-extrabold rounded-full transition-all border-none cursor-pointer ${appActionType === t
+                        ? (t === 'VAZGECILDI' ? 'bg-red-500 text-white shadow-md' : 'bg-charcoal text-white shadow-md')
+                        : 'bg-transparent text-zinc-500 hover:text-charcoal'
+                        }`}
+                    >
+                      {t === 'VAZGECILDI' ? 'Vazgeçildi' : t === 'SATILDI' ? 'Satıldı' : 'Kiralandı'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {appActionType !== 'VAZGECILDI' && (
+                <>
+                  <div>
+                    <label className="text-xs text-zinc-600 font-bold block mb-1">
+                      İşlem Bedeli (TL) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-bold"
+                      placeholder="Satış veya Kiralama Tutarı"
+                      value={appActionBedel}
+                      onChange={e => setAppActionBedel(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex flex-col gap-1 mt-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Dinamik Komisyon Hesaplaması</span>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-600 font-bold">Hesaplanan Toplam Ciro:</span>
+                      <span className="font-extrabold text-charcoal">
+                        {(Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)).toLocaleString('tr-TR')} TL
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm border-t border-emerald-200/50 pt-2 mt-1">
+                      <span className="text-emerald-900 font-bold">Net Hakedişiniz (Senaryo A - %{commSettings.aDanisman}):</span>
+                      <span className="font-extrabold text-emerald-700">
+                        {((Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)) * (commSettings.aDanisman / 100)).toLocaleString('tr-TR')} TL
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={appActionLoading}
+                  className={`flex-1 py-3.5 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer ${appActionType === 'VAZGECILDI'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
+                >
+                  {appActionLoading ? 'İşleniyor...' : (appActionType === 'VAZGECILDI' ? 'Randevuyu İptal Et' : 'İşlemi Tamamla & Kapat')}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

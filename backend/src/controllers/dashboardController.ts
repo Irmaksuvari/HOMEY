@@ -199,3 +199,29 @@ export const getDashboardSummary = async (req: any, res: Response) => {
     res.status(500).json({ message: 'Dashboard verileri getirilirken hata oluştu.', error: error.message });
   }
 };
+
+
+export const getPersonalStats = async (req: any, res: any) => {
+  const userId = req.user?.userId || req.user?.id;
+  try {
+    const pool = await poolPromise;
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+    const personalRevenue = await pool.request()
+      .input('danismanId', sql.UniqueIdentifier, userId)
+      .input('startDate', sql.DateTime, startOfMonth)
+      .query(`
+        SELECT ISNULL(SUM(HizmetBedeliCiro), 0) AS AylikCiro, COUNT(IslemID) AS IslemSayisi
+        FROM SatisIslemleri
+        WHERE DanismanID = @danismanId AND IslemTarihi >= @startDate
+      `);
+      
+    res.json({ 
+      aylikCiro: personalRevenue.recordset[0].AylikCiro,
+      islemSayisi: personalRevenue.recordset[0].IslemSayisi
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Sunucu hatası' });
+  }
+};

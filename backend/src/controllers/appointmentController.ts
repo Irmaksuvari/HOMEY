@@ -163,19 +163,27 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
       }
     }
 
-    await pool.request()
+    const request = pool.request()
       .input('appointmentId', sql.UniqueIdentifier, appointmentId)
-      .input('durum', sql.NVarChar, requestedStatus)
-      .query(`
+      .input('durum', sql.NVarChar, requestedStatus);
+
+    if (requestedStatus === 'REJECTED') {
+      await request.query(`
+        DELETE FROM Randevular
+        WHERE Id = @appointmentId
+      `);
+    } else {
+      await request.query(`
         UPDATE Randevular
         SET Durum = @durum
         WHERE Id = @appointmentId
       `);
+    }
 
     let messageText = `Randevu durumu '${requestedStatus}' olarak güncellendi.`;
     if (requestedStatus === 'CANCELLED') messageText = 'Randevu talebiniz iptal edildi.';
     else if (requestedStatus === 'APPROVED') messageText = 'Randevu talebi onaylandı.';
-    else if (requestedStatus === 'REJECTED') messageText = 'Randevu talebi reddedildi.';
+    else if (requestedStatus === 'REJECTED') messageText = 'Randevu talebi reddedilerek kalıcı olarak silindi.';
 
     res.json({ message: messageText });
 

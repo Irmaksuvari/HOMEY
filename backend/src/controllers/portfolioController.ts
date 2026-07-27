@@ -3,8 +3,8 @@ import { poolPromise, sql } from '../config/db';
 
 // Yeni Portföy Ekleme (POST /api/portfolios/add) - Korumalı
 export const addPortfolio = async (req: any, res: Response) => {
-  const { 
-    tip, tur, fiyat, metrekare, odaSayisi, 
+  const {
+    tip, tur, fiyat, metrekare, odaSayisi,
     il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
     kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari
   } = req.body;
@@ -123,9 +123,9 @@ export const listPortfolios = async (req: any, res: Response) => {
 // Portföy Düzenleme / Güncelleme (PUT /api/portfolios/edit/:id) - Korumalı
 export const editPortfolio = async (req: any, res: Response) => {
   const { id } = req.params;
-  const { 
-    tip, tur, fiyat, metrekare, odaSayisi, 
-    il, ilce, mahalle, evSahibiAdi, evSahibiTelefon 
+  const {
+    tip, tur, fiyat, metrekare, odaSayisi,
+    il, ilce, mahalle, evSahibiAdi, evSahibiTelefon
   } = req.body;
   const { firmaId, userId, rol } = req.user;
 
@@ -275,7 +275,7 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
       });
 
     } catch (txErr: any) {
-      await transaction.rollback().catch(() => {});
+      await transaction.rollback().catch(() => { });
       throw txErr;
     }
 
@@ -284,3 +284,131 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
     res.status(500).json({ message: 'Portföy işlemi kapatılırken hata oluştu.', error: error.message });
   }
 };
+
+// Tamamlanan (Satıldı / Kiralandı) Portföyleri Listeleme (GET /api/portfolios/completed) - Korumalı
+export const getCompletedPortfolios = async (req: any, res: Response) => {
+  const { firmaId } = req.user;
+
+  if (!firmaId) {
+    return res.status(400).json({ message: 'Firma bilgisi bulunamadı.' });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query(`
+        SELECT 
+          COALESCE(p.Id, s.PortfoyID, CAST(s.IslemID AS NVARCHAR(36))) AS Id,
+          ISNULL(p.Tip, 'DAIRE') AS Tip,
+          ISNULL(p.Tur, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALIK' ELSE 'SATILIK' END) AS Tur,
+          ISNULL(s.IslemBedeli, ISNULL(p.Fiyat, 0)) AS Fiyat,
+          p.Metrekare, 
+          p.OdaSayisi,
+          p.KaporaMiktari, 
+          p.DepozitoMiktari, 
+          ISNULL(p.Il, 'İstanbul') AS Il, 
+          ISNULL(p.Ilce, 'Merkez') AS Ilce, 
+          p.Mahalle,
+          p.EvSahibiAdi, 
+          p.EvSahibiTelefon,
+          ISNULL(p.Durum, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALANDI' ELSE 'SATILDI' END) AS Durum,
+          ISNULL(p.GorevliUzmanId, s.DanismanID) AS GorevliUzmanId,
+          k.Ad AS UzmanAd, 
+          k.Soyad AS UzmanSoyad,
+          s.IslemID AS SatisIslemId, 
+          s.DanismanID AS IslemYapanDanismanId,
+          s.IslemTuru, 
+          s.IslemBedeli, 
+          s.HizmetBedeliCiro, 
+          s.IslemTarihi, 
+          s.Aciklama AS IslemAciklama,
+          dk.Ad AS IslemYapanAd, 
+          dk.Soyad AS IslemYapanSoyad
+        FROM SatisIslemleri s
+        LEFT JOIN Portfoyler p ON s.PortfoyID = p.Id
+        LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
+        LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+        WHERE dk.FirmaId = @firmaId OR p.FirmaId = @firmaId
+
+        UNION ALL
+
+        SELECT 
+          p.Id,
+          p.Tip,
+          p.Tur,
+          p.Fiyat,
+          p.Metrekare,
+          p.OdaSayisi,
+          p.KaporaMiktari,
+          p.DepozitoMiktari,
+          p.Il,
+          p.Ilce,
+          p.Mahalle,
+          p.EvSahibiAdi,
+          p.EvSahibiTelefon,
+          p.Durum,
+          p.GorevliUzmanId,
+          k.Ad AS UzmanAd,
+          k.Soyad AS UzmanSoyad,
+          NULL AS SatisIslemId,
+          p.GorevliUzmanId AS IslemYapanDanismanId,
+          CASE WHEN p.Tur = 'KIRALIK' THEN 'KIRALAMA' ELSE 'SATIS' END AS IslemTuru,
+          p.Fiyat AS IslemBedeli,
+          0 AS HizmetBedeliCiro,
+          p.KayitTarihi AS IslemTarihi,
+          NULL AS IslemAciklama,
+          k.Ad AS IslemYapanAd,
+          k.Soyad AS IslemYapanSoyad
+        FROM Portfoyler p
+        LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+        WHERE p.FirmaId = @firmaId
+          AND UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
+          AND (p.Id NOT IN (SELECT ISNULL(PortfoyID, '00000000-0000-0000-0000-000000000000') FROM SatisIslemleri WHERE PortfoyID IS NOT NULL))
+
+        ORDER BY IslemTarihi DESC
+      `);
+
+    const list = result.recordset.map((p: any) => {
+      const islemBedeliNum = p.IslemBedeli !== null && p.IslemBedeli !== undefined ? Number(p.IslemBedeli) : Number(p.Fiyat || 0);
+      const ciroNum = p.HizmetBedeliCiro !== null && p.HizmetBedeliCiro !== undefined ? Number(p.HizmetBedeliCiro) : 0;
+
+      return {
+        id: p.Id,
+        tip: p.Tip || 'DAIRE',
+        tur: p.Tur || 'SATILIK',
+        fiyat: Number(p.Fiyat || 0),
+        metrekare: p.Metrekare,
+        odaSayisi: p.OdaSayisi,
+        kapora: Number(p.KaporaMiktari || 0),
+        depozito: Number(p.DepozitoMiktari || 0),
+        il: p.Il || 'İstanbul',
+        ilce: p.Ilce || 'Merkez',
+        mahalle: p.Mahalle || '',
+        evSahibiAdi: p.EvSahibiAdi || 'Mülk Sahibi',
+        evSahibiTelefon: p.EvSahibiTelefon || '',
+        durum: p.Durum || (p.IslemTuru === 'KIRALAMA' ? 'KIRALANDI' : 'SATILDI'),
+        gorevliUzmanId: p.GorevliUzmanId,
+        gorevliUzman: p.UzmanAd ? `${p.UzmanAd} ${p.UzmanSoyad || ''}`.trim() : (p.IslemYapanAd ? `${p.IslemYapanAd} ${p.IslemYapanSoyad || ''}`.trim() : 'Danışman'),
+        satisIslemId: p.SatisIslemId,
+        islemYapanDanismanId: p.IslemYapanDanismanId || p.GorevliUzmanId,
+        islemTuru: p.IslemTuru || (p.Durum === 'SATILDI' ? 'SATIS' : 'KIRALAMA'),
+        islemBedeli: islemBedeliNum,
+        hizmetBedeliCiro: ciroNum,
+        islemTarihi: p.IslemTarihi,
+        islemAciklama: p.IslemAciklama,
+        islemYapanDanisman: p.IslemYapanAd ? `${p.IslemYapanAd} ${p.IslemYapanSoyad || ''}`.trim() : (p.UzmanAd ? `${p.UzmanAd} ${p.UzmanSoyad || ''}`.trim() : 'Danışman')
+      };
+    });
+
+    res.json(list);
+
+  } catch (error: any) {
+    console.error('[HOMEY API] getCompletedPortfolios Error:', error);
+    res.status(500).json({ message: 'Tamamlanan portföyler çekilirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+
+

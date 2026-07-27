@@ -13,6 +13,7 @@ import appointmentRoutes from './routes/appointmentRoutes';
 import searchRoutes from './routes/searchRoutes';
 import presenceRoutes from './routes/presenceRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import firmaSettingsRoutes from './routes/firmaSettingsRoutes';
 
 dotenv.config();
 
@@ -60,7 +61,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/user', presenceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-
+app.use('/api/firma/komisyon-ayarlari', firmaSettingsRoutes);
 // Arayüz Statik Dosyalarını Sunma
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendDistPath));

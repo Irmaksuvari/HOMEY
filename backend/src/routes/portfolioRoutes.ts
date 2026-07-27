@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addPortfolio, listPortfolios, editPortfolio, closePortfolioTransaction } from '../controllers/portfolioController';
+import { addPortfolio, listPortfolios, editPortfolio, closePortfolioTransaction, getCompletedPortfolios } from '../controllers/portfolioController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
@@ -10,6 +10,9 @@ router.post('/add', authenticateJWT, addPortfolio);
 // Portföyleri Listeleme (Giriş yapmış tüm danışman/broker görebilir)
 router.get('/list', authenticateJWT, listPortfolios);
 
+// Tamamlanan Portföyleri Listeleme (Satıldı / Kiralandı)
+router.get('/completed', authenticateJWT, getCompletedPortfolios);
+
 // Portföy Düzenleme (Sadece yetkili veya ilgili sorumlu uzman düzenleyebilir)
 router.put('/edit/:id', authenticateJWT, editPortfolio);
 
@@ -17,3 +20,4 @@ router.put('/edit/:id', authenticateJWT, editPortfolio);
 router.post('/:id/satis-kapat', authenticateJWT, closePortfolioTransaction);
 
 export default router;
+
