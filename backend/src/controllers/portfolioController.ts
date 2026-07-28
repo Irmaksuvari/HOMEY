@@ -85,32 +85,45 @@ export const listPortfolios = async (req: any, res: Response) => {
     const result = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
       .query(`
-        SELECT p.*, k.Ad as UzmanAd, k.Soyad as UzmanSoyad
+        SELECT p.*, k.Ad as UzmanAd, k.Soyad as UzmanSoyad,
+          STUFF((
+            SELECT ',' + pf.FotoUrl
+            FROM PortfoyFotograflari pf
+            WHERE pf.PortfoyID = p.Id
+            ORDER BY ISNULL(pf.Sira, 99) ASC, pf.Id DESC
+            FOR XML PATH(''), TYPE
+          ).value('.', 'NVARCHAR(MAX)'), 1, 1, '') as TumFotograflar
         FROM Portfoyler p
         INNER JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
         WHERE p.FirmaId = @firmaId
+          AND UPPER(ISNULL(p.Durum, 'BOSTA')) NOT IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI')
         ORDER BY p.KayitTarihi DESC
       `);
 
     // Ön yüze uygun formatta eşleme (map)
-    const list = result.recordset.map(p => ({
-      id: p.Id,
-      tip: p.Tip,
-      tur: p.Tur,
-      fiyat: Number(p.Fiyat),
-      metrekare: p.Metrekare,
-      odaSayisi: p.OdaSayisi,
-      kapora: Number(p.KaporaMiktari ?? p.KaparoMiktari ?? 0),
-      depozito: Number(p.DepozitoMiktari || 0),
-      il: p.Il,
-      ilce: p.Ilce,
-      mahalle: p.Mahalle,
-      gorevliUzman: `${p.UzmanAd} ${p.UzmanSoyad}`,
-      gorevliUzmanId: p.GorevliUzmanId,
-      evSahibiAdi: p.EvSahibiAdi,
-      evSahibiTelefon: p.EvSahibiTelefon,
-      durum: p.Durum
-    }));
+    const list = result.recordset.map(p => {
+      const photos = p.TumFotograflar ? String(p.TumFotograflar).split(',').filter(Boolean) : [];
+      return {
+        id: p.Id,
+        tip: p.Tip,
+        tur: p.Tur,
+        fiyat: Number(p.Fiyat),
+        metrekare: p.Metrekare,
+        odaSayisi: p.OdaSayisi,
+        kapora: Number(p.KaporaMiktari ?? p.KaparoMiktari ?? 0),
+        depozito: Number(p.DepozitoMiktari || 0),
+        il: p.Il,
+        ilce: p.Ilce,
+        mahalle: p.Mahalle,
+        gorevliUzman: `${p.UzmanAd} ${p.UzmanSoyad}`,
+        gorevliUzmanId: p.GorevliUzmanId,
+        evSahibiAdi: p.EvSahibiAdi,
+        evSahibiTelefon: p.EvSahibiTelefon,
+        durum: p.Durum,
+        fotograflar: photos,
+        kapakFoto: photos[0] || null
+      };
+    });
 
     res.json(list);
 
@@ -201,8 +214,10 @@ export const editPortfolio = async (req: any, res: Response) => {
 // İşlemi Kapat / Satıldı - Kiralandı Yap (POST /api/portfolios/:id/satis-kapat or /api/portfoyler/:id/satis-kapat)
 export const closePortfolioTransaction = async (req: any, res: Response) => {
   const { id: portfoyId } = req.params;
-  const { islemTuru, islemBedeli, hizmetBedeliCiro, islemTarihi, aciklama } = req.body;
-  const { userId, firmaId, role } = req.user;
+  const { islemTuru, islemBedeli, hizmetBedeliCiro, islemTarihi, aciklama, aliciMusteriId } = req.body;
+  const userId = req.user?.userId || req.user?.id;
+  const firmaId = req.user?.firmaId;
+  const role = req.user?.rol || req.user?.role;
 
   if (!portfoyId) {
     return res.status(400).json({ message: 'Portföy ID zorunludur.' });
@@ -251,18 +266,21 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
           WHERE Id = @portfoyId
         `);
 
+      const validAliciMusteriId = (typeof aliciMusteriId === 'string' && aliciMusteriId.trim().length > 0) ? aliciMusteriId.trim() : null;
+
       // b. Insert new record into dbo.SatisIslemleri
       await transaction.request()
         .input('portfoyId', sql.UniqueIdentifier, portfoyId)
         .input('danismanId', sql.UniqueIdentifier, userId)
+        .input('aliciMusteriId', sql.UniqueIdentifier, validAliciMusteriId)
         .input('islemTuru', sql.NVarChar, islemTuru.toUpperCase())
         .input('islemBedeli', sql.Decimal(18, 2), Number(islemBedeli))
         .input('hizmetBedeliCiro', sql.Decimal(18, 2), Number(hizmetBedeliCiro))
         .input('islemTarihi', sql.DateTime, closingDate)
         .input('aciklama', sql.NVarChar, aciklama || null)
         .query(`
-          INSERT INTO SatisIslemleri (PortfoyID, DanismanID, IslemTuru, IslemBedeli, HizmetBedeliCiro, IslemTarihi, Aciklama)
-          VALUES (@portfoyId, @danismanId, @islemTuru, @islemBedeli, @hizmetBedeliCiro, @islemTarihi, @aciklama)
+          INSERT INTO SatisIslemleri (PortfoyID, DanismanID, AliciMusteriId, IslemTuru, IslemBedeli, HizmetBedeliCiro, IslemTarihi, Aciklama)
+          VALUES (@portfoyId, @danismanId, @aliciMusteriId, @islemTuru, @islemBedeli, @hizmetBedeliCiro, @islemTarihi, @aciklama)
         `);
 
       await transaction.commit();
@@ -287,17 +305,15 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
 
 // Tamamlanan (Satıldı / Kiralandı) Portföyleri Listeleme (GET /api/portfolios/completed) - Korumalı
 export const getCompletedPortfolios = async (req: any, res: Response) => {
-  const { firmaId } = req.user;
-
-  if (!firmaId) {
-    return res.status(400).json({ message: 'Firma bilgisi bulunamadı.' });
-  }
+  const userId = req.user?.userId || req.user?.id;
+  const firmaId = req.user?.firmaId;
 
   try {
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
+      .input('userId', sql.UniqueIdentifier, userId || null)
       .query(`
         SELECT 
           COALESCE(p.Id, s.PortfoyID, CAST(s.IslemID AS NVARCHAR(36))) AS Id,
@@ -325,12 +341,16 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
           s.IslemTarihi, 
           s.Aciklama AS IslemAciklama,
           dk.Ad AS IslemYapanAd, 
-          dk.Soyad AS IslemYapanSoyad
+          dk.Soyad AS IslemYapanSoyad,
+          s.AliciMusteriID AS AliciMusteriId,
+          m.Ad AS AliciMusteriAd,
+          m.Müşteri_Tipi AS AliciMusteriTipi
         FROM SatisIslemleri s
         LEFT JOIN Portfoyler p ON s.PortfoyID = p.Id
         LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
         LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
-        WHERE dk.FirmaId = @firmaId OR p.FirmaId = @firmaId
+        LEFT JOIN Musteriler m ON s.AliciMusteriID = m.Id
+        WHERE (dk.FirmaId = @firmaId OR p.FirmaId = @firmaId OR s.DanismanID = @userId)
 
         UNION ALL
 
@@ -360,11 +380,14 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
           p.KayitTarihi AS IslemTarihi,
           NULL AS IslemAciklama,
           k.Ad AS IslemYapanAd,
-          k.Soyad AS IslemYapanSoyad
+          k.Soyad AS IslemYapanSoyad,
+          NULL AS AliciMusteriId,
+          NULL AS AliciMusteriAd,
+          NULL AS AliciMusteriTipi
         FROM Portfoyler p
         LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
-        WHERE p.FirmaId = @firmaId
-          AND UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
+        WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
+          AND (p.FirmaId = @firmaId OR p.GorevliUzmanId = @userId)
           AND (p.Id NOT IN (SELECT ISNULL(PortfoyID, '00000000-0000-0000-0000-000000000000') FROM SatisIslemleri WHERE PortfoyID IS NOT NULL))
 
         ORDER BY IslemTarihi DESC
@@ -398,9 +421,16 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
         hizmetBedeliCiro: ciroNum,
         islemTarihi: p.IslemTarihi,
         islemAciklama: p.IslemAciklama,
-        islemYapanDanisman: p.IslemYapanAd ? `${p.IslemYapanAd} ${p.IslemYapanSoyad || ''}`.trim() : (p.UzmanAd ? `${p.UzmanAd} ${p.UzmanSoyad || ''}`.trim() : 'Danışman')
+        islemYapanDanisman: p.IslemYapanAd ? `${p.IslemYapanAd} ${p.IslemYapanSoyad || ''}`.trim() : (p.UzmanAd ? `${p.UzmanAd} ${p.UzmanSoyad || ''}`.trim() : 'Danışman'),
+        aliciMusteriId: p.AliciMusteriId,
+        aliciMusteri: p.AliciMusteriAd || null
       };
     });
+
+    console.log(`[DEBUG] getCompletedPortfolios => userId=${userId} firmaId=${firmaId} => ${list.length} rows returned`);
+    if (list.length > 0) {
+      console.log('[DEBUG] First row sample:', JSON.stringify(list[0]));
+    }
 
     res.json(list);
 

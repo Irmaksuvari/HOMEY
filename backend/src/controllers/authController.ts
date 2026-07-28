@@ -196,6 +196,7 @@ export const login = async (req: Request, res: Response) => {
 
     // JWT Token Üretme
     const payload = {
+      id: user.Id,
       userId: user.Id,
       firmaId: user.FirmaId,
       rol: user.Rol,

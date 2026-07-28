@@ -1,1 +1,0 @@
-import { poolPromise } from '../src/config/db'; async function clean() { try { const pool = await poolPromise; const result = await pool.request().query(\DELETE FROM Randevular WHERE Durum = 'REJECTED'\); console.log('Silinen kayit sayisi: ' + result.rowsAffected[0]); process.exit(0); } catch (e) { console.error(e); process.exit(1); } }; clean();
