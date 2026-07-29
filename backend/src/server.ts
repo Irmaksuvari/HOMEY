@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { poolPromise } from './config/db';
 import { authenticateJWT, AuthenticatedRequest } from './middleware/auth';
 import authRoutes from './routes/authRoutes';
@@ -90,11 +91,19 @@ app.use('/api/firma/komisyon-ayarlari', firmaSettingsRoutes);
 app.use('/api/upload', uploadRoutes);
 // Arayüz Statik Dosyalarını Sunma
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
-app.use(express.static(frontendDistPath));
+const altFrontendDistPath = path.join(__dirname, '../frontend/dist');
+const activeFrontendPath = fs.existsSync(frontendDistPath) ? frontendDistPath : (fs.existsSync(altFrontendDistPath) ? altFrontendDistPath : frontendDistPath);
+
+app.use(express.static(activeFrontendPath));
 
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
+    const indexPath = path.join(activeFrontendPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(200).send('HOMEY API is running successfully. Frontend build index.html not found.');
+    }
   }
 });
 
