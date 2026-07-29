@@ -22,11 +22,15 @@ export const addClient = async (req: any, res: Response) => {
       .input('aradigiEmlakTipi', sql.NVarChar, aradigiEmlakTipi || null)
       .input('musteriTipi', sql.NVarChar, musteriTipi)
       .query(`
+        IF COL_LENGTH('Musteriler', 'is_active') IS NULL
+        BEGIN
+          ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
+        END
         INSERT INTO Musteriler (
-          FirmaId, KayitEdenUzmanId, Ad, Soyad, Telefon, AradigiButce, AradigiEmlakTipi, Müşteri_Tipi
+          FirmaId, KayitEdenUzmanId, Ad, Soyad, Telefon, AradigiButce, AradigiEmlakTipi, Müşteri_Tipi, is_active
         )
         VALUES (
-          @firmaId, @kayitEdenUzmanId, @ad, @soyad, @telefon, @aradigiButce, @aradigiEmlakTipi, @musteriTipi
+          @firmaId, @kayitEdenUzmanId, @ad, @soyad, @telefon, @aradigiButce, @aradigiEmlakTipi, @musteriTipi, 1
         )
       `);
 
@@ -54,12 +58,40 @@ export const listClients = async (req: any, res: Response) => {
       telefon: c.Telefon,
       butce: Number(c.AradigiButce || 0),
       tip: c.AradigiEmlakTipi || 'TÜMÜ',
-      musteriTipi: c.Müşteri_Tipi || 'ALICI'
+      musteriTipi: c.Müşteri_Tipi || 'ALICI',
+      isActive: c.is_active === undefined || c.is_active === null ? true : (Boolean(c.is_active) || c.is_active === 1)
     }));
 
     res.json(mapped);
   } catch (error: any) {
     console.error('[HOMEY API] listClients Error:', error);
     res.status(500).json({ message: 'Müşteriler çekilirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+// Müşteri Aktif/Pasif Durum Değiştirme (PUT /api/clients/toggle-status/:id) - Korumalı
+export const toggleClientStatus = async (req: any, res: Response) => {
+  const { id } = req.params;
+  const { isActive } = req.body;
+  const { firmaId } = req.user;
+
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('id', sql.UniqueIdentifier, id)
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .input('isActive', sql.Bit, isActive ? 1 : 0)
+      .query(`
+        IF COL_LENGTH('Musteriler', 'is_active') IS NULL
+        BEGIN
+          ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
+        END
+        UPDATE Musteriler SET is_active = @isActive WHERE Id = @id AND FirmaId = @firmaId
+      `);
+
+    res.json({ message: 'Müşteri durumu güncellendi.', isActive });
+  } catch (error: any) {
+    console.error('[HOMEY API] toggleClientStatus Error:', error);
+    res.status(500).json({ message: 'Müşteri durumu güncellenirken hata oluştu.', error: error.message });
   }
 };

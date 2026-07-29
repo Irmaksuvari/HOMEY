@@ -35,7 +35,29 @@ app.get('/api/health', async (req, res) => {
 
   try {
     const pool = await poolPromise;
-    const result = await pool.request().query('SELECT GETDATE() as ServerTime');
+    const result = await pool.request().query(`
+      IF COL_LENGTH('Musteriler', 'is_active') IS NULL
+      BEGIN
+        ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
+      END
+
+      -- 1. Geçmişte gerçekleşmiş satış/kiralama işlemlerindeki müşterileri pasife al (is_active = 0)
+      UPDATE Musteriler
+      SET is_active = 0
+      WHERE Id IN (
+        SELECT AliciMusteriId 
+        FROM SatisIslemleri 
+        WHERE AliciMusteriId IS NOT NULL
+      );
+
+      -- 2. Satılmış veya kiralanmış portföylere ait tüm randevuları sil
+      DELETE FROM Randevular
+      WHERE PortfoyId IN (
+        SELECT Id FROM Portfoyler WHERE Durum IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI')
+      );
+
+      SELECT GETDATE() as ServerTime
+    `);
     dbStatus = 'connected';
     serverTime = result.recordset[0].ServerTime;
   } catch (error: any) {

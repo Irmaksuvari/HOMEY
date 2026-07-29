@@ -283,6 +283,29 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
           VALUES (@portfoyId, @danismanId, @aliciMusteriId, @islemTuru, @islemBedeli, @hizmetBedeliCiro, @islemTarihi, @aciklama)
         `);
 
+      // c. Satın alma işlemi gerçekleştikten sonra işlemi yapan müşteriyi pasif yap (is_active = 0)
+      if (validAliciMusteriId) {
+        await transaction.request()
+          .input('aliciMusteriId', sql.UniqueIdentifier, validAliciMusteriId)
+          .query(`
+            IF COL_LENGTH('Musteriler', 'is_active') IS NULL
+            BEGIN
+              ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
+            END
+            UPDATE Musteriler
+            SET is_active = 0
+            WHERE Id = @aliciMusteriId
+          `);
+      }
+
+      // d. O portföye ait tüm randevuları veritabanından tamamen sil
+      await transaction.request()
+        .input('portfoyId', sql.UniqueIdentifier, portfoyId)
+        .query(`
+          DELETE FROM Randevular
+          WHERE PortfoyId = @portfoyId
+        `);
+
       await transaction.commit();
 
       res.json({
@@ -316,7 +339,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
       .input('userId', sql.UniqueIdentifier, userId || null)
       .query(`
         SELECT 
-          COALESCE(p.Id, s.PortfoyID, CAST(s.IslemID AS NVARCHAR(36))) AS Id,
+          CAST(s.IslemID AS NVARCHAR(36)) AS Id,
           ISNULL(p.Tip, 'DAIRE') AS Tip,
           ISNULL(p.Tur, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALIK' ELSE 'SATILIK' END) AS Tur,
           ISNULL(s.IslemBedeli, ISNULL(p.Fiyat, 0)) AS Fiyat,
@@ -350,12 +373,12 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
         LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
         LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
         LEFT JOIN Musteriler m ON s.AliciMusteriID = m.Id
-        WHERE (dk.FirmaId = @firmaId OR p.FirmaId = @firmaId OR s.DanismanID = @userId)
+        WHERE (@firmaId IS NULL OR dk.FirmaId = @firmaId OR p.FirmaId = @firmaId)
 
         UNION ALL
 
         SELECT 
-          p.Id,
+          CAST(p.Id AS NVARCHAR(36)) AS Id,
           p.Tip,
           p.Tur,
           p.Fiyat,
@@ -387,7 +410,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
         FROM Portfoyler p
         LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
         WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
-          AND (p.FirmaId = @firmaId OR p.GorevliUzmanId = @userId)
+          AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
           AND (p.Id NOT IN (SELECT ISNULL(PortfoyID, '00000000-0000-0000-0000-000000000000') FROM SatisIslemleri WHERE PortfoyID IS NOT NULL))
 
         ORDER BY IslemTarihi DESC

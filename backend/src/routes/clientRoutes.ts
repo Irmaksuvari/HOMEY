@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addClient, listClients } from '../controllers/clientController';
+import { addClient, listClients, toggleClientStatus } from '../controllers/clientController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
@@ -9,5 +9,8 @@ router.post('/add', authenticateJWT, addClient);
 
 // Müşterileri Listeleme (Giriş yapmış tüm danışman/broker görebilir)
 router.get('/list', authenticateJWT, listClients);
+
+// Müşteri Aktif/Pasif Durumunu Güncelleme
+router.put('/toggle-status/:id', authenticateJWT, toggleClientStatus);
 
 export default router;
