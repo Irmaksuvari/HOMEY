@@ -6,9 +6,12 @@ export const addPortfolio = async (req: any, res: Response) => {
   const {
     tip, tur, fiyat, metrekare, odaSayisi,
     il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
-    kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari
+    kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari,
+    isPublished: reqIsPublished,
+    aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu
   } = req.body;
-  const { firmaId, userId } = req.user; // Token'dan çözülen FirmaId ve KullanıcıId
+  const { firmaId, userId } = req.user;
 
   if (!tip || !tur || !fiyat || !il || !ilce || !evSahibiAdi || !evSahibiTelefon || !metrekare) {
     return res.status(400).json({ message: 'Zorunlu tüm alanları doldurunuz.' });
@@ -17,7 +20,6 @@ export const addPortfolio = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    // Varsayılan kapora ve depozito oranları hesaplaması
     const fiyatNum = Number(fiyat);
     let kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
     let depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
@@ -28,6 +30,10 @@ export const addPortfolio = async (req: any, res: Response) => {
     if (reqDepozitoMiktari !== undefined && reqDepozitoMiktari !== null && reqDepozitoMiktari !== '') {
       depozitoMiktari = Number(reqDepozitoMiktari);
     }
+
+    const isPublished = reqIsPublished === undefined || reqIsPublished === null || reqIsPublished === ''
+      ? true
+      : Boolean(reqIsPublished);
 
     const result = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
@@ -47,17 +53,34 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('sokak', sql.NVarChar, sokak || '')
       .input('evSahibiAdi', sql.NVarChar, evSahibiAdi)
       .input('evSahibiTelefon', sql.NVarChar, evSahibiTelefon)
+      .input('isPublished', sql.Bit, isPublished)
+      .input('aciklama', sql.NVarChar(sql.MAX), aciklama || '')
+      .input('otoparkTipi', sql.NVarChar, otoparkTipi || '')
+      .input('isinmaTipi', sql.NVarChar, isinmaTipi || '')
+      .input('balkonDurumu', sql.NVarChar, balkonDurumu || '')
+      .input('esyaDurumu', sql.NVarChar, esyaDurumu || '')
+      .input('kullanimDurumu', sql.NVarChar, kullanimDurumu || '')
+      .input('tapuDurumu', sql.NVarChar, tur === 'SATILIK' ? (tapuDurumu || '') : '')
+      .input('hasAsansor', sql.Bit, hasAsansor === true || hasAsansor === 'true' || hasAsansor === 1)
+      .input('isKrediyeUygun', sql.Bit, tur === 'SATILIK' ? (isKrediyeUygun === true || isKrediyeUygun === 'true' || isKrediyeUygun === 1) : 0)
+      .input('isTakasaUygun', sql.Bit, tur === 'SATILIK' ? (isTakasaUygun === true || isTakasaUygun === 'true' || isTakasaUygun === 1) : 0)
+      .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
+      .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
       .query(`
         INSERT INTO Portfoyler (
           FirmaId, GorevliUzmanId, Tip, Tur, Fiyat, Metrekare, OdaSayisi,
           KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, Semt, Cadde, Sokak,
-          EvSahibiAdi, EvSahibiTelefon, Durum
+          EvSahibiAdi, EvSahibiTelefon, Durum, IsPublished, Aciklama, OtoparkTipi,
+          IsinmaTipi, BalkonDurumu, EsyaDurumu, KullanimDurumu, TapuDurumu, HasAsansor,
+          IsKrediyeUygun, IsTakasaUygun, IsAcilSatilik, IsFiyatiDustu
         )
         OUTPUT inserted.Id
         VALUES (
           @firmaId, @gorevliUzmanId, @tip, @tur, @fiyat, @metrekare, @odaSayisi,
           @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle, @semt, @cadde, @sokak,
-          @evSahibiAdi, @evSahibiTelefon, 'BOSTA'
+          @evSahibiAdi, @evSahibiTelefon, 'BOSTA', @isPublished, @aciklama, @otoparkTipi,
+          @isinmaTipi, @balkonDurumu, @esyaDurumu, @kullanimDurumu, @tapuDurumu, @hasAsansor,
+          @isKrediyeUygun, @isTakasaUygun, @isAcilSatilik, @isFiyatiDustu
         )
       `);
 
@@ -115,11 +138,27 @@ export const listPortfolios = async (req: any, res: Response) => {
         il: p.Il,
         ilce: p.Ilce,
         mahalle: p.Mahalle,
+        semt: p.Semt || '',
+        cadde: p.Cadde || '',
+        sokak: p.Sokak || '',
         gorevliUzman: `${p.UzmanAd} ${p.UzmanSoyad}`,
         gorevliUzmanId: p.GorevliUzmanId,
         evSahibiAdi: p.EvSahibiAdi,
         evSahibiTelefon: p.EvSahibiTelefon,
         durum: p.Durum,
+        isPublished: p.IsPublished === true || p.IsPublished === 1 || p.IsPublished === '1' || p.IsPublished === 'true' || p.IsPublished === 'TRUE',
+        aciklama: p.Aciklama || '',
+        otoparkTipi: p.OtoparkTipi || '',
+        isinmaTipi: p.IsinmaTipi || '',
+        balkonDurumu: p.BalkonDurumu || '',
+        esyaDurumu: p.EsyaDurumu || '',
+        kullanimDurumu: p.KullanimDurumu || '',
+        tapuDurumu: p.TapuDurumu || '',
+        hasAsansor: p.HasAsansor === true || p.HasAsansor === 1 || p.HasAsansor === '1' || p.HasAsansor === 'true',
+        isKrediyeUygun: p.IsKrediyeUygun === true || p.IsKrediyeUygun === 1 || p.IsKrediyeUygun === '1' || p.IsKrediyeUygun === 'true',
+        isTakasaUygun: p.IsTakasaUygun === true || p.IsTakasaUygun === 1 || p.IsTakasaUygun === '1' || p.IsTakasaUygun === 'true',
+        isAcilSatilik: p.IsAcilSatilik === true || p.IsAcilSatilik === 1 || p.IsAcilSatilik === '1' || p.IsAcilSatilik === 'true',
+        isFiyatiDustu: p.IsFiyatiDustu === true || p.IsFiyatiDustu === 1 || p.IsFiyatiDustu === '1' || p.IsFiyatiDustu === 'true',
         fotograflar: photos,
         kapakFoto: photos[0] || null
       };
@@ -138,7 +177,9 @@ export const editPortfolio = async (req: any, res: Response) => {
   const { id } = req.params;
   const {
     tip, tur, fiyat, metrekare, odaSayisi,
-    il, ilce, mahalle, evSahibiAdi, evSahibiTelefon
+    il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
+    aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu
   } = req.body;
   const { firmaId, userId, rol } = req.user;
 
@@ -149,7 +190,6 @@ export const editPortfolio = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    // 1. Portföyün varlığını ve sahipliğini kontrol et
     const checkResult = await pool.request()
       .input('id', sql.UniqueIdentifier, id)
       .input('firmaId', sql.UniqueIdentifier, firmaId)
@@ -161,17 +201,14 @@ export const editPortfolio = async (req: any, res: Response) => {
 
     const currentGorevliUzmanId = checkResult.recordset[0].GorevliUzmanId;
 
-    // 2. Yetki kontrolü: Broker (YETKILI) veya portföyün kendi danışmanı güncelleyebilir
     if (rol !== 'YETKILI' && currentGorevliUzmanId !== userId) {
       return res.status(403).json({ message: 'Bu portföyü düzenlemek için yetkiniz bulunmamaktadır.' });
     }
 
-    // Varsayılan kapora ve depozito oranları hesaplaması
     const fiyatNum = Number(fiyat);
     const kaporaMiktari = tur === 'SATILIK' ? fiyatNum * 0.02 : fiyatNum * 2;
     const depozitoMiktari = tur === 'KIRALIK' ? fiyatNum * 2 : 0;
 
-    // 3. Güncelleme sorgusu
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
       .input('tip', sql.NVarChar, tip)
@@ -184,8 +221,23 @@ export const editPortfolio = async (req: any, res: Response) => {
       .input('il', sql.NVarChar, il)
       .input('ilce', sql.NVarChar, ilce)
       .input('mahalle', sql.NVarChar, mahalle || '')
+      .input('semt', sql.NVarChar, semt || '')
+      .input('cadde', sql.NVarChar, cadde || '')
+      .input('sokak', sql.NVarChar, sokak || '')
       .input('evSahibiAdi', sql.NVarChar, evSahibiAdi)
       .input('evSahibiTelefon', sql.NVarChar, evSahibiTelefon)
+      .input('aciklama', sql.NVarChar(sql.MAX), aciklama || '')
+      .input('otoparkTipi', sql.NVarChar, otoparkTipi || '')
+      .input('isinmaTipi', sql.NVarChar, isinmaTipi || '')
+      .input('balkonDurumu', sql.NVarChar, balkonDurumu || '')
+      .input('esyaDurumu', sql.NVarChar, esyaDurumu || '')
+      .input('kullanimDurumu', sql.NVarChar, kullanimDurumu || '')
+      .input('tapuDurumu', sql.NVarChar, tur === 'SATILIK' ? (tapuDurumu || '') : '')
+      .input('hasAsansor', sql.Bit, hasAsansor === true || hasAsansor === 'true' || hasAsansor === 1)
+      .input('isKrediyeUygun', sql.Bit, tur === 'SATILIK' ? (isKrediyeUygun === true || isKrediyeUygun === 'true' || isKrediyeUygun === 1) : 0)
+      .input('isTakasaUygun', sql.Bit, tur === 'SATILIK' ? (isTakasaUygun === true || isTakasaUygun === 'true' || isTakasaUygun === 1) : 0)
+      .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
+      .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
       .query(`
         UPDATE Portfoyler
         SET Tip = @tip,
@@ -198,8 +250,23 @@ export const editPortfolio = async (req: any, res: Response) => {
             Il = @il,
             Ilce = @ilce,
             Mahalle = @mahalle,
+            Semt = @semt,
+            Cadde = @cadde,
+            Sokak = @sokak,
             EvSahibiAdi = @evSahibiAdi,
-            EvSahibiTelefon = @evSahibiTelefon
+            EvSahibiTelefon = @evSahibiTelefon,
+            Aciklama = @aciklama,
+            OtoparkTipi = @otoparkTipi,
+            IsinmaTipi = @isinmaTipi,
+            BalkonDurumu = @balkonDurumu,
+            EsyaDurumu = @esyaDurumu,
+            KullanimDurumu = @kullanimDurumu,
+            TapuDurumu = @tapuDurumu,
+            HasAsansor = @hasAsansor,
+            IsKrediyeUygun = @isKrediyeUygun,
+            IsTakasaUygun = @isTakasaUygun,
+            IsAcilSatilik = @isAcilSatilik,
+            IsFiyatiDustu = @isFiyatiDustu
         WHERE Id = @id
       `);
 
@@ -208,6 +275,50 @@ export const editPortfolio = async (req: any, res: Response) => {
   } catch (error: any) {
     console.error('[HOMEY API] editPortfolio Error:', error);
     res.status(500).json({ message: 'Portföy güncellenirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+export const updatePortfolioPublishState = async (req: any, res: Response) => {
+  const { id } = req.params;
+  const { isPublished } = req.body;
+  const { firmaId, userId, rol } = req.user;
+
+  if (id === undefined || id === null || id === '') {
+    return res.status(400).json({ message: 'Portföy ID bilgisi eksik.' });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    const checkResult = await pool.request()
+      .input('id', sql.UniqueIdentifier, id)
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query('SELECT GorevliUzmanId FROM Portfoyler WHERE Id = @id AND FirmaId = @firmaId');
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({ message: 'Portföy bulunamadı.' });
+    }
+
+    const currentGorevliUzmanId = checkResult.recordset[0].GorevliUzmanId;
+
+    if (rol !== 'YETKILI' && currentGorevliUzmanId !== userId) {
+      return res.status(403).json({ message: 'Bu portföyün yayın durumunu değiştirmek için yetkiniz yok.' });
+    }
+
+    const normalizedPublished = Boolean(isPublished);
+
+    await pool.request()
+      .input('id', sql.UniqueIdentifier, id)
+      .input('isPublished', sql.Bit, normalizedPublished)
+      .query('UPDATE Portfoyler SET IsPublished = @isPublished WHERE Id = @id');
+
+    res.json({
+      message: normalizedPublished ? 'Portföy yayınlandı.' : 'Portföy gizlendi.',
+      isPublished: normalizedPublished
+    });
+  } catch (error: any) {
+    console.error('[HOMEY API] updatePortfolioPublishState Error:', error);
+    res.status(500).json({ message: 'Yayın durumu güncellenirken sunucu hatası oluştu.', error: error.message });
   }
 };
 
@@ -334,87 +445,109 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
 
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-      .input('userId', sql.UniqueIdentifier, userId || null)
-      .query(`
-        SELECT 
-          CAST(s.IslemID AS NVARCHAR(36)) AS Id,
-          ISNULL(p.Tip, 'DAIRE') AS Tip,
-          ISNULL(p.Tur, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALIK' ELSE 'SATILIK' END) AS Tur,
-          ISNULL(s.IslemBedeli, ISNULL(p.Fiyat, 0)) AS Fiyat,
-          p.Metrekare, 
-          p.OdaSayisi,
-          p.KaporaMiktari, 
-          p.DepozitoMiktari, 
-          ISNULL(p.Il, 'İstanbul') AS Il, 
-          ISNULL(p.Ilce, 'Merkez') AS Ilce, 
-          p.Mahalle,
-          p.EvSahibiAdi, 
-          p.EvSahibiTelefon,
-          ISNULL(p.Durum, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALANDI' ELSE 'SATILDI' END) AS Durum,
-          ISNULL(p.GorevliUzmanId, s.DanismanID) AS GorevliUzmanId,
-          k.Ad AS UzmanAd, 
-          k.Soyad AS UzmanSoyad,
-          s.IslemID AS SatisIslemId, 
-          s.DanismanID AS IslemYapanDanismanId,
-          s.IslemTuru, 
-          s.IslemBedeli, 
-          s.HizmetBedeliCiro, 
-          s.IslemTarihi, 
-          s.Aciklama AS IslemAciklama,
-          dk.Ad AS IslemYapanAd, 
-          dk.Soyad AS IslemYapanSoyad,
-          s.AliciMusteriID AS AliciMusteriId,
-          m.Ad AS AliciMusteriAd,
-          m.Müşteri_Tipi AS AliciMusteriTipi
-        FROM SatisIslemleri s
-        LEFT JOIN Portfoyler p ON s.PortfoyID = p.Id
-        LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
-        LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
-        LEFT JOIN Musteriler m ON s.AliciMusteriID = m.Id
-        WHERE (@firmaId IS NULL OR dk.FirmaId = @firmaId OR p.FirmaId = @firmaId)
+    let result;
+    try {
+      result = await pool.request()
+        .input('firmaId', sql.UniqueIdentifier, firmaId || null)
+        .input('userId', sql.UniqueIdentifier, userId || null)
+        .query(`
+          SELECT 
+            CAST(s.IslemID AS NVARCHAR(36)) AS Id,
+            ISNULL(p.Tip, 'DAIRE') AS Tip,
+            ISNULL(p.Tur, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALIK' ELSE 'SATILIK' END) AS Tur,
+            ISNULL(s.IslemBedeli, ISNULL(p.Fiyat, 0)) AS Fiyat,
+            p.Metrekare, 
+            p.OdaSayisi,
+            p.KaporaMiktari, 
+            p.DepozitoMiktari, 
+            ISNULL(p.Il, 'İstanbul') AS Il, 
+            ISNULL(p.Ilce, 'Merkez') AS Ilce, 
+            p.Mahalle,
+            p.EvSahibiAdi, 
+            p.EvSahibiTelefon,
+            ISNULL(p.Durum, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALANDI' ELSE 'SATILDI' END) AS Durum,
+            ISNULL(p.GorevliUzmanId, s.DanismanID) AS GorevliUzmanId,
+            k.Ad AS UzmanAd, 
+            k.Soyad AS UzmanSoyad,
+            s.IslemID AS SatisIslemId, 
+            s.DanismanID AS IslemYapanDanismanId,
+            s.IslemTuru, 
+            s.IslemBedeli, 
+            s.HizmetBedeliCiro, 
+            s.IslemTarihi, 
+            s.Aciklama AS IslemAciklama,
+            dk.Ad AS IslemYapanAd, 
+            dk.Soyad AS IslemYapanSoyad,
+            s.AliciMusteriID AS AliciMusteriId,
+            m.Ad AS AliciMusteriAd
+          FROM SatisIslemleri s
+          LEFT JOIN Portfoyler p ON s.PortfoyID = p.Id
+          LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
+          LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+          LEFT JOIN Musteriler m ON s.AliciMusteriID = m.Id
+          WHERE (@firmaId IS NULL OR dk.FirmaId = @firmaId OR p.FirmaId = @firmaId)
 
-        UNION ALL
+          UNION ALL
 
-        SELECT 
-          CAST(p.Id AS NVARCHAR(36)) AS Id,
-          p.Tip,
-          p.Tur,
-          p.Fiyat,
-          p.Metrekare,
-          p.OdaSayisi,
-          p.KaporaMiktari,
-          p.DepozitoMiktari,
-          p.Il,
-          p.Ilce,
-          p.Mahalle,
-          p.EvSahibiAdi,
-          p.EvSahibiTelefon,
-          p.Durum,
-          p.GorevliUzmanId,
-          k.Ad AS UzmanAd,
-          k.Soyad AS UzmanSoyad,
-          NULL AS SatisIslemId,
-          p.GorevliUzmanId AS IslemYapanDanismanId,
-          CASE WHEN p.Tur = 'KIRALIK' THEN 'KIRALAMA' ELSE 'SATIS' END AS IslemTuru,
-          p.Fiyat AS IslemBedeli,
-          0 AS HizmetBedeliCiro,
-          p.KayitTarihi AS IslemTarihi,
-          NULL AS IslemAciklama,
-          k.Ad AS IslemYapanAd,
-          k.Soyad AS IslemYapanSoyad,
-          NULL AS AliciMusteriId,
-          NULL AS AliciMusteriAd,
-          NULL AS AliciMusteriTipi
-        FROM Portfoyler p
-        LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
-        WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
-          AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
-          AND (p.Id NOT IN (SELECT ISNULL(PortfoyID, '00000000-0000-0000-0000-000000000000') FROM SatisIslemleri WHERE PortfoyID IS NOT NULL))
+          SELECT 
+            CAST(p.Id AS NVARCHAR(36)) AS Id,
+            p.Tip,
+            p.Tur,
+            p.Fiyat,
+            p.Metrekare,
+            p.OdaSayisi,
+            p.KaporaMiktari,
+            p.DepozitoMiktari,
+            p.Il,
+            p.Ilce,
+            p.Mahalle,
+            p.EvSahibiAdi,
+            p.EvSahibiTelefon,
+            p.Durum,
+            p.GorevliUzmanId,
+            k.Ad AS UzmanAd,
+            k.Soyad AS UzmanSoyad,
+            NULL AS SatisIslemId,
+            p.GorevliUzmanId AS IslemYapanDanismanId,
+            CASE WHEN p.Tur = 'KIRALIK' THEN 'KIRALAMA' ELSE 'SATIS' END AS IslemTuru,
+            p.Fiyat AS IslemBedeli,
+            0 AS HizmetBedeliCiro,
+            p.KayitTarihi AS IslemTarihi,
+            NULL AS IslemAciklama,
+            k.Ad AS IslemYapanAd,
+            k.Soyad AS IslemYapanSoyad,
+            NULL AS AliciMusteriId,
+            NULL AS AliciMusteriAd
+          FROM Portfoyler p
+          LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+          WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
+            AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
 
-        ORDER BY IslemTarihi DESC
-      `);
+          ORDER BY IslemTarihi DESC
+        `);
+    } catch (sqlErr: any) {
+      console.warn('[HOMEY API] Full SatisIslemleri query fallback triggered:', sqlErr.message);
+      // SatisIslemleri veya Musteriler tablosunda kolon uyuşmazlığı varsa sadece Portfoyler tablosundan tamamlananları getir
+      result = await pool.request()
+        .input('firmaId', sql.UniqueIdentifier, firmaId || null)
+        .query(`
+          SELECT 
+            CAST(p.Id AS NVARCHAR(36)) AS Id,
+            p.Tip, p.Tur, p.Fiyat, p.Metrekare, p.OdaSayisi,
+            p.KaporaMiktari, p.DepozitoMiktari, p.Il, p.Ilce, p.Mahalle,
+            p.EvSahibiAdi, p.EvSahibiTelefon, p.Durum, p.GorevliUzmanId,
+            k.Ad AS UzmanAd, k.Soyad AS UzmanSoyad,
+            NULL AS SatisIslemId, p.GorevliUzmanId AS IslemYapanDanismanId,
+            CASE WHEN p.Tur = 'KIRALIK' THEN 'KIRALAMA' ELSE 'SATIS' END AS IslemTuru,
+            p.Fiyat AS IslemBedeli, 0 AS HizmetBedeliCiro, p.KayitTarihi AS IslemTarihi,
+            NULL AS IslemAciklama, k.Ad AS IslemYapanAd, k.Soyad AS IslemYapanSoyad,
+            NULL AS AliciMusteriId, NULL AS AliciMusteriAd
+          FROM Portfoyler p
+          LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+          WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
+            AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
+        `);
+    }
 
     const list = result.recordset.map((p: any) => {
       const islemBedeliNum = p.IslemBedeli !== null && p.IslemBedeli !== undefined ? Number(p.IslemBedeli) : Number(p.Fiyat || 0);
@@ -450,16 +583,11 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
       };
     });
 
-    console.log(`[DEBUG] getCompletedPortfolios => userId=${userId} firmaId=${firmaId} => ${list.length} rows returned`);
-    if (list.length > 0) {
-      console.log('[DEBUG] First row sample:', JSON.stringify(list[0]));
-    }
-
     res.json(list);
 
   } catch (error: any) {
     console.error('[HOMEY API] getCompletedPortfolios Error:', error);
-    res.status(500).json({ message: 'Tamamlanan portföyler çekilirken sunucu hatası oluştu.', error: error.message });
+    res.json([]);
   }
 };
 

@@ -19,20 +19,17 @@ export const getDashboardSummary = async (req: any, res: Response) => {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    // 1. Aylık Toplam Ofis Cirosu (Bu Ay)
+    // 1. Toplam Ofis Cirosu (FirmaId'ye ait tüm kullanıcıların ciroları toplamı)
     const ciroThisMonth = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, thisMonthStart)
-      .input('endDate', sql.DateTime, thisMonthEnd)
       .query(`
         SELECT ISNULL(SUM(s.HizmetBedeliCiro), 0) AS toplam
         FROM SatisIslemleri s
         INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
         WHERE p.FirmaId = @firmaId
-          AND s.IslemTarihi >= @startDate AND s.IslemTarihi <= @endDate
       `);
 
-    // 2. Aylık Toplam Ofis Cirosu (Geçen Ay)
+    // 2. Geçen Ay Toplam Ofis Cirosu (Karşılaştırma için)
     const ciroLastMonth = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
       .input('startDate', sql.DateTime, lastMonthStart)
@@ -45,41 +42,39 @@ export const getDashboardSummary = async (req: any, res: Response) => {
           AND s.IslemTarihi >= @startDate AND s.IslemTarihi <= @endDate
       `);
 
-    // 3. Yeni Müşteri Sayısı (Bu Ay)
+    // 3. Yeni Müşteri Sayısı (FirmaID ve Son 1 Hafta içinde kayıt olanlar)
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const musteriThisMonth = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, thisMonthStart)
-      .input('endDate', sql.DateTime, thisMonthEnd)
+      .input('oneWeekAgo', sql.DateTime, oneWeekAgo)
       .query(`
         SELECT COUNT(*) AS toplam
         FROM Musteriler
         WHERE FirmaId = @firmaId
-          AND KayitTarihi >= @startDate AND KayitTarihi <= @endDate
+          AND KayitTarihi >= @oneWeekAgo
       `);
 
-    // 4. Yeni Müşteri Sayısı (Geçen Ay)
+    // 4. Yeni Müşteri Sayısı (Önceki 1 Hafta karşılaştırması)
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const musteriLastMonth = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, lastMonthStart)
-      .input('endDate', sql.DateTime, lastMonthEnd)
+      .input('twoWeeksAgo', sql.DateTime, twoWeeksAgo)
+      .input('oneWeekAgo', sql.DateTime, oneWeekAgo)
       .query(`
         SELECT COUNT(*) AS toplam
         FROM Musteriler
         WHERE FirmaId = @firmaId
-          AND KayitTarihi >= @startDate AND KayitTarihi <= @endDate
+          AND KayitTarihi >= @twoWeeksAgo AND KayitTarihi < @oneWeekAgo
       `);
 
-    // 5. Kapanan İşlem Sayısı (Bu Ay)
+    // 5. Kapanan İşlem Sayısı (FirmaID'ye ait bütün satışların toplam sayısı)
     const kapananIslem = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, thisMonthStart)
-      .input('endDate', sql.DateTime, thisMonthEnd)
       .query(`
         SELECT COUNT(*) AS toplam
         FROM SatisIslemleri s
         INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
         WHERE p.FirmaId = @firmaId
-          AND s.IslemTarihi >= @startDate AND s.IslemTarihi <= @endDate
       `);
 
     // 6. Aktif İlan Stoğu Bedeli

@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Calculator, Users, Home, Calendar, DollarSign,
   Percent, Shield, Plus, Lock, Check, X, Building,
   Search, AlertTriangle, TrendingUp, Menu,
-  ChevronLeft, ChevronDown, ChevronUp, LogOut, MapPin, User, Briefcase,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LogOut, MapPin, User, Briefcase,
   FileText, Clock, LayoutDashboard, Loader2,
-  Trophy, Banknote, UserPlus, BadgeCheck, Building2,
-  Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw
+  Trophy, Banknote, UserPlus, BadgeCheck, Building2, Bell,
+  Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles,
+  GitPullRequest, Layers
 } from 'lucide-react';
 
 // ─── Dikey Portföy Kart Bileşeni (Üstte Görsel Carousel, Altta Bilgiler) ─────
-function PortfolioCardItem({ portfolio, photos, onSelect }: { portfolio: any; photos: string[]; onSelect: () => void }) {
+function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onTogglePublish, publishLoading, isOwner }: { portfolio: any; photos: string[]; onSelect: () => void; isPublished: boolean; onTogglePublish: () => void; publishLoading: boolean; isOwner: boolean }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const hasPhotos = photos && photos.length > 0;
 
@@ -24,6 +25,11 @@ function PortfolioCardItem({ portfolio, photos, onSelect }: { portfolio: any; ph
     e.stopPropagation();
     if (!hasPhotos) return;
     setCurrentIdx(prev => (prev === 0 ? photos.length - 1 : prev - 1));
+  };
+
+  const handleTogglePublishClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTogglePublish();
   };
 
   return (
@@ -95,10 +101,26 @@ function PortfolioCardItem({ portfolio, photos, onSelect }: { portfolio: any; ph
             }`}>
             {portfolio.tur}
           </span>
-          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border border-charcoal/80 uppercase tracking-wider shadow-sm ${portfolio.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-950' : 'bg-[#FEF08A] text-amber-950'
-            }`}>
-            {(portfolio.durum || 'BOSTA').replace('_', ' ')}
-          </span>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border border-charcoal/80 uppercase tracking-wider shadow-sm ${portfolio.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-950' : 'bg-[#FEF08A] text-amber-950'
+              }`}>
+              {(portfolio.durum || 'BOSTA').replace('_', ' ')}
+            </span>
+            <button
+              type="button"
+              onClick={handleTogglePublishClick}
+              disabled={publishLoading || !isOwner}
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider shadow-sm transition-all ${isPublished
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-zinc-200 bg-white text-zinc-600'} ${publishLoading ? 'opacity-60' : ''}`}
+              title={isPublished ? 'Yayından kaldır' : 'Yayınla'}
+            >
+              <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${isPublished ? 'bg-emerald-500' : 'bg-zinc-300'}`}>
+                <span className={`inline-block h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${isPublished ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+              </span>
+              <span>{isPublished ? 'Gizle' : 'Yayınla'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -154,6 +176,7 @@ export default function App() {
   });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
+
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -179,7 +202,8 @@ export default function App() {
   const [changePassError, setChangePassError] = useState<string | null>(null);
 
   // Navigation & Layout States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'processManagement' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   // Completed Portfolios States
   const [completedPortfolios, setCompletedPortfolios] = useState<any[]>([]);
@@ -188,8 +212,19 @@ export default function App() {
   const [completedTypeFilter, setCompletedTypeFilter] = useState<'all' | 'SATILDI' | 'KIRALANDI'>('all');
   const [completedSearchQuery, setCompletedSearchQuery] = useState('');
   const [selectedCompletedPortfolio, setSelectedCompletedPortfolio] = useState<any | null>(null);
-
-
+  // Process Stages State (Süreç Aşamaları)
+  const [processStages, setProcessStages] = useState<any[]>([
+    { id: 1, asamaAdi: 'Sonuç Bekleyenler / Yeni Gösterim', sira: 1 },
+    { id: 2, asamaAdi: 'Düşünme Aşaması', sira: 2 },
+    { id: 3, asamaAdi: 'Pazarlık / Teklif', sira: 3 },
+    { id: 4, asamaAdi: 'Kapora Alındı', sira: 4 },
+    { id: 5, asamaAdi: 'Sözleşme / Tapu', sira: 5 },
+    { id: 6, asamaAdi: 'Tamamlandı (Satıldı/Kiralandı)', sira: 6 }
+  ]);
+  const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
+  // Müşteri Süreçleri (MusteriSurecleri tablosundan)
+  const [clientProcesses, setClientProcesses] = useState<any[]>([]);
+  const [clientProcessesLoading, setClientProcessesLoading] = useState(false);
 
 
 
@@ -249,10 +284,65 @@ export default function App() {
           console.error(e);
         }
       };
+      const fetchProcessStages = async () => {
+        try {
+          const res = await fetch('/api/appointments/process-stages', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) setProcessStages(data);
+          }
+        } catch (e) {
+          console.error('Process stages error:', e);
+        }
+      };
+      const fetchCompletedPortfolios = async (authToken?: string) => {
+        const t = authToken || token;
+        if (!t) return;
+        setCompletedLoading(true);
+        try {
+          const res = await fetch('/api/portfolios/completed', {
+            headers: { 'Authorization': `Bearer ${t}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCompletedPortfolios(Array.isArray(data) ? data : []);
+          }
+        } catch (e) {
+          console.error('Completed portfolios error:', e);
+        } finally {
+          setCompletedLoading(false);
+        }
+      };
+
+      const fetchPortfolios = async (authToken?: string) => {
+        const t = authToken || token;
+        if (!t) return;
+        try {
+          const res = await fetch('/api/portfolios/list', {
+            headers: { 'Authorization': `Bearer ${t}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setPortfolios(Array.isArray(data) ? data : []);
+          }
+        } catch (e) {
+          console.error('Portfolios error:', e);
+        }
+      };
+
       fetchSettings();
       fetchPersonalStats();
+      fetchProcessStages();
+      fetchPortfolios();
+      fetchCompletedPortfolios();
     }
   }, [user, token]);
+
+
+
+
 
 
 
@@ -433,7 +523,20 @@ export default function App() {
     return String(id1).trim().toLowerCase() === String(id2).trim().toLowerCase();
   };
 
+  const isOwnPortfolio = (portfolio: any) => {
+    const myName = `${user?.ad || ''} ${user?.soyad || ''}`.trim();
+    return compareIds(portfolio.gorevliUzmanId, user?.id) || portfolio.gorevliUzman === myName;
+  };
+
+  const isPortfolioPublished = (portfolio: any) => {
+    const value = portfolio.isPublished;
+    if (value === undefined || value === null || value === '') return true;
+    return value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE';
+  };
+
   const [portfolioScope, setPortfolioScope] = useState<'all' | 'mine'>('all');
+  const [portfolioVisibilityMode, setPortfolioVisibilityMode] = useState<'published' | 'unpublished'>('published');
+  const [publishLoadingPortfolioId, setPublishLoadingPortfolioId] = useState<string | null>(null);
 
   // Add Portfolio Modal Form States
   const [showAddPortfolioModal, setShowAddPortfolioModal] = useState(false);
@@ -458,6 +561,18 @@ export default function App() {
   const [newPortDepozito, setNewPortDepozito] = useState('');
   const [newPortLandlordName, setNewPortLandlordName] = useState('');
   const [newPortLandlordPhone, setNewPortLandlordPhone] = useState('');
+  const [newPortAciklama, setNewPortAciklama] = useState('');
+  const [newPortOtoparkTipi, setNewPortOtoparkTipi] = useState('');
+  const [newPortIsinmaTipi, setNewPortIsinmaTipi] = useState('');
+  const [newPortBalkonDurumu, setNewPortBalkonDurumu] = useState('');
+  const [newPortEsyaDurumu, setNewPortEsyaDurumu] = useState('');
+  const [newPortKullanimDurumu, setNewPortKullanimDurumu] = useState('');
+  const [newPortTapuDurumu, setNewPortTapuDurumu] = useState('');
+  const [newPortHasAsansor, setNewPortHasAsansor] = useState(false);
+  const [newPortIsKrediyeUygun, setNewPortIsKrediyeUygun] = useState(false);
+  const [newPortIsTakasaUygun, setNewPortIsTakasaUygun] = useState(false);
+  const [newPortIsAcilSatilik, setNewPortIsAcilSatilik] = useState(false);
+  const [newPortIsFiyatiDustu, setNewPortIsFiyatiDustu] = useState(false);
   const [newPortFiles, setNewPortFiles] = useState<File[]>([]);
   const [newPortSubmitting, setNewPortSubmitting] = useState(false);
 
@@ -472,10 +587,24 @@ export default function App() {
   const [editPortIlce, setEditPortIlce] = useState('');
   const [editPortSemt, setEditPortSemt] = useState('');
   const [editPortMahalle, setEditPortMahalle] = useState('');
+  const [editPortCadde, setEditPortCadde] = useState('');
+  const [editPortSokak, setEditPortSokak] = useState('');
   const [editPortKapora, setEditPortKapora] = useState('');
   const [editPortDepozito, setEditPortDepozito] = useState('');
   const [editPortLandlordName, setEditPortLandlordName] = useState('');
   const [editPortLandlordPhone, setEditPortLandlordPhone] = useState('');
+  const [editPortAciklama, setEditPortAciklama] = useState('');
+  const [editPortOtoparkTipi, setEditPortOtoparkTipi] = useState('');
+  const [editPortIsinmaTipi, setEditPortIsinmaTipi] = useState('');
+  const [editPortBalkonDurumu, setEditPortBalkonDurumu] = useState('');
+  const [editPortEsyaDurumu, setEditPortEsyaDurumu] = useState('');
+  const [editPortKullanimDurumu, setEditPortKullanimDurumu] = useState('');
+  const [editPortTapuDurumu, setEditPortTapuDurumu] = useState('');
+  const [editPortHasAsansor, setEditPortHasAsansor] = useState(false);
+  const [editPortIsKrediyeUygun, setEditPortIsKrediyeUygun] = useState(false);
+  const [editPortIsTakasaUygun, setEditPortIsTakasaUygun] = useState(false);
+  const [editPortIsAcilSatilik, setEditPortIsAcilSatilik] = useState(false);
+  const [editPortIsFiyatiDustu, setEditPortIsFiyatiDustu] = useState(false);
 
   // Close Portfolio Transaction Modal States
   const [expandedCompletedCardId, setExpandedCompletedCardId] = useState<string | null>(null);
@@ -578,6 +707,109 @@ export default function App() {
     }
   };
 
+  // Interactive Chart States (Dashboard Cards)
+  const [portfoyTimeframe, setPortfoyTimeframe] = useState<'HAFTALIK' | 'AYLIK'>('HAFTALIK');
+  const [hoveredPortfoyIndex, setHoveredPortfoyIndex] = useState<number | null>(null);
+  const portfoyBarContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollPortfoyChart = (direction: 'left' | 'right') => {
+    if (portfoyBarContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      portfoyBarContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const [ciroTimeframe, setCiroTimeframe] = useState<'6A_1' | '6A_2' | '1Y'>('6A_1');
+  const [hoveredCiroIndex, setHoveredCiroIndex] = useState<number | null>(null);
+  const ciroBarContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollCiroChart = (direction: 'left' | 'right') => {
+    if (ciroBarContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      ciroBarContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Dynamic Real-Database-Driven Datasets for Interactive Dashboard Bento Cards
+  const portfoyChartData = useMemo(() => {
+    const weeklyDays = [
+      { label: 'Pzt', dayIndex: 1 },
+      { label: 'Sal', dayIndex: 2 },
+      { label: 'Çar', dayIndex: 3 },
+      { label: 'Per', dayIndex: 4 },
+      { label: 'Cum', dayIndex: 5 },
+      { label: 'Cmt', dayIndex: 6 },
+      { label: 'Paz', dayIndex: 0 },
+    ];
+
+    const totalActivePortfolios = portfolios.filter(p => !['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI'].includes((p.durum || '').toUpperCase()));
+
+    const haftalikRaw = weeklyDays.map(({ label, dayIndex }) => {
+      const dayPorts = totalActivePortfolios.filter(p => {
+        const d = p.createdAt ? new Date(p.createdAt) : null;
+        return d ? d.getDay() === dayIndex : true;
+      });
+      const satilik = dayPorts.filter(p => (p.tur || '').toUpperCase() === 'SATILIK').length;
+      const kiralik = dayPorts.filter(p => (p.tur || '').toUpperCase() === 'KIRALIK').length;
+      const val = satilik + kiralik;
+      return { label, val, satilik, kiralik };
+    });
+
+    const maxHaftalikVal = Math.max(...haftalikRaw.map(d => d.val), 1);
+    const HAFTALIK = haftalikRaw.map(d => ({
+      ...d,
+      pct: Math.max(15, Math.round((d.val / maxHaftalikVal) * 100))
+    }));
+
+    const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    const aylikRaw = monthNames.map((label, monthIndex) => {
+      const monthPorts = totalActivePortfolios.filter(p => {
+        const d = p.createdAt ? new Date(p.createdAt) : null;
+        return d ? d.getMonth() === monthIndex : false;
+      });
+      const satilik = monthPorts.filter(p => (p.tur || '').toUpperCase() === 'SATILIK').length;
+      const kiralik = monthPorts.filter(p => (p.tur || '').toUpperCase() === 'KIRALIK').length;
+      const val = satilik + kiralik;
+      return { label, val, satilik, kiralik };
+    });
+
+    const maxAylikVal = Math.max(...aylikRaw.map(d => d.val), 1);
+    const AYLIK = aylikRaw.map(d => ({
+      ...d,
+      pct: Math.max(15, Math.round((d.val / maxAylikVal) * 100))
+    }));
+
+    return { HAFTALIK, AYLIK };
+  }, [portfolios]);
+
+  const ciroChartData = useMemo(() => {
+    const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+
+    const monthlyCiroSums = monthNames.map((label, monthIndex) => {
+      const monthCompleted = completedPortfolios.filter(p => {
+        const dateStr = p.islemTarihi || p.updatedAt || p.createdAt;
+        const d = dateStr ? new Date(dateStr) : null;
+        return d ? d.getMonth() === monthIndex : false;
+      });
+      const totalCiro = monthCompleted.reduce((sum, p) => sum + (Number(p.hizmetBedeliCiro) || Number(p.ciro) || 0), 0);
+      return { label, ciro: totalCiro };
+    });
+
+    const maxCiroVal = Math.max(...monthlyCiroSums.map(d => d.ciro), 100000);
+
+    const mapCiroToY = (ciro: number) => {
+      if (ciro <= 0) return 25;
+      const ratio = ciro / maxCiroVal;
+      return Math.max(2, Math.round(25 - ratio * 23));
+    };
+
+    return {
+      '6A_1': monthlyCiroSums.slice(0, 6).map(d => ({ label: d.label, ciro: d.ciro, y: mapCiroToY(d.ciro) })),
+      '6A_2': monthlyCiroSums.slice(6, 12).map(d => ({ label: d.label, ciro: d.ciro, y: mapCiroToY(d.ciro) })),
+      '1Y': monthlyCiroSums.map(d => ({ label: d.label, ciro: d.ciro, y: mapCiroToY(d.ciro) }))
+    };
+  }, [completedPortfolios]);
+
   // Dynamic Month/Year Navigation States for Mini Calendar
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date(2026, 6, 1)); // Default July 2026
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(22);
@@ -585,8 +817,8 @@ export default function App() {
   const calendarYear = currentCalendarDate.getFullYear();
   const calendarMonth = currentCalendarDate.getMonth(); // 0-indexed (0 = Jan, 6 = Jul)
 
-  // Month Name in Turkish (e.g. "Temmuz 2026")
-  const calendarMonthName = currentCalendarDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  // Month Name in Turkish (e.g. "Temmuz")
+  const calendarMonthName = currentCalendarDate.toLocaleDateString('tr-TR', { month: 'long' });
 
   // First day of month (Monday = 0 ... Sunday = 6)
   const rawFirstDay = new Date(calendarYear, calendarMonth, 1).getDay();
@@ -622,7 +854,7 @@ export default function App() {
 
   const popYear = popCalendarDate.getFullYear();
   const popMonth = popCalendarDate.getMonth();
-  const popMonthName = popCalendarDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  const popMonthName = popCalendarDate.toLocaleDateString('tr-TR', { month: 'long' });
   const popRawFirstDay = new Date(popYear, popMonth, 1).getDay();
   const popFirstDayOfWeek = (popRawFirstDay + 6) % 7;
   const popDaysInMonth = new Date(popYear, popMonth + 1, 0).getDate();
@@ -689,17 +921,17 @@ export default function App() {
   };
 
   // Fetch completed portfolios (Satıldı / Kiralandı) from backend
-  const fetchCompletedPortfolios = async (currentToken: string) => {
+  const fetchCompletedPortfolios = async (currentToken?: string) => {
+    const t = currentToken || token;
+    if (!t) return;
     setCompletedLoading(true);
     try {
       const res = await fetch('/api/portfoyler/completed', {
         headers: {
-          'Authorization': `Bearer ${currentToken}`
+          'Authorization': `Bearer ${t}`
         }
       });
-      console.log('[DEBUG] /api/portfoyler/completed status:', res.status);
       const data = await res.json();
-      console.log('[DEBUG] completed portfolios response:', data);
       if (res.ok) {
         setCompletedPortfolios(Array.isArray(data) ? data : []);
       } else {
@@ -748,6 +980,24 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to fetch appointments:', err);
+    }
+  };
+
+  // Müşteri Süreçlerini Getir (MusteriSurecleri tablosundan)
+  const fetchClientProcesses = async (currentToken: string) => {
+    setClientProcessesLoading(true);
+    try {
+      const res = await fetch('/api/appointments/client-processes', {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClientProcesses(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch client processes:', err);
+    } finally {
+      setClientProcessesLoading(false);
     }
   };
 
@@ -1042,10 +1292,32 @@ export default function App() {
     }
   }, [token, currentCalendarDate]);
 
+  // Mevcut randevuları MusteriSurecleri'ne sadece bir kez ekle (uygulama ilk açıldığında)
+  const backfillDoneRef = useRef(false);
+  useEffect(() => {
+    if (token && !backfillDoneRef.current) {
+      backfillDoneRef.current = true;
+      fetch('/api/appointments/backfill-stages', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      })
+        .then(r => r.json())
+        .then(d => console.log('[HOMEY] Backfill:', d.message))
+        .catch(e => console.warn('[HOMEY] Backfill skipped:', e));
+    }
+  }, [token]);
+
   // Fetch dashboard data when analytics tab is activated
   useEffect(() => {
     if (token && activeTab === 'analytics' && user?.rol === 'YETKILI') {
       fetchDashboardData(token);
+    }
+  }, [token, activeTab]);
+
+  // Süreç yönetimi tabı açıldığında MusteriSurecleri verilerini çek
+  useEffect(() => {
+    if (token && activeTab === 'processManagement') {
+      fetchClientProcesses(token);
     }
   }, [token, activeTab]);
 
@@ -1340,7 +1612,19 @@ export default function App() {
           kaporaMiktari: newPortKapora,
           depozitoMiktari: newPortDepozito,
           evSahibiAdi: newPortLandlordName,
-          evSahibiTelefon: newPortLandlordPhone
+          evSahibiTelefon: newPortLandlordPhone,
+          aciklama: newPortAciklama,
+          otoparkTipi: newPortOtoparkTipi,
+          isinmaTipi: newPortIsinmaTipi,
+          balkonDurumu: newPortBalkonDurumu,
+          esyaDurumu: newPortEsyaDurumu,
+          kullanimDurumu: newPortKullanimDurumu,
+          tapuDurumu: newPortTapuDurumu,
+          hasAsansor: newPortHasAsansor,
+          isKrediyeUygun: newPortIsKrediyeUygun,
+          isTakasaUygun: newPortIsTakasaUygun,
+          isAcilSatilik: newPortIsAcilSatilik,
+          isFiyatiDustu: newPortIsFiyatiDustu
         })
       });
 
@@ -1386,6 +1670,18 @@ export default function App() {
         setNewPortDepozito('');
         setNewPortLandlordName('');
         setNewPortLandlordPhone('');
+        setNewPortAciklama('');
+        setNewPortOtoparkTipi('');
+        setNewPortIsinmaTipi('');
+        setNewPortBalkonDurumu('');
+        setNewPortEsyaDurumu('');
+        setNewPortKullanimDurumu('');
+        setNewPortTapuDurumu('');
+        setNewPortHasAsansor(false);
+        setNewPortIsKrediyeUygun(false);
+        setNewPortIsTakasaUygun(false);
+        setNewPortIsAcilSatilik(false);
+        setNewPortIsFiyatiDustu(false);
         setNewPortFiles([]);
         fetchPortfolios(token!);
       } else {
@@ -1409,10 +1705,24 @@ export default function App() {
     setEditPortIlce(p.ilce);
     setEditPortSemt(p.semt || '');
     setEditPortMahalle(p.mahalle || '');
+    setEditPortCadde(p.cadde || '');
+    setEditPortSokak(p.sokak || '');
     setEditPortKapora(p.kapora ? String(p.kapora) : '');
     setEditPortDepozito(p.depozito ? String(p.depozito) : '');
     setEditPortLandlordName(p.evSahibiAdi);
     setEditPortLandlordPhone(p.evSahibiTelefon);
+    setEditPortAciklama(p.aciklama || '');
+    setEditPortOtoparkTipi(p.otoparkTipi || '');
+    setEditPortIsinmaTipi(p.isinmaTipi || '');
+    setEditPortBalkonDurumu(p.balkonDurumu || '');
+    setEditPortEsyaDurumu(p.esyaDurumu || '');
+    setEditPortKullanimDurumu(p.kullanimDurumu || '');
+    setEditPortTapuDurumu(p.tapuDurumu || '');
+    setEditPortHasAsansor(Boolean(p.hasAsansor) || false);
+    setEditPortIsKrediyeUygun(Boolean(p.isKrediyeUygun) || false);
+    setEditPortIsTakasaUygun(Boolean(p.isTakasaUygun) || false);
+    setEditPortIsAcilSatilik(Boolean(p.isAcilSatilik) || false);
+    setEditPortIsFiyatiDustu(Boolean(p.isFiyatiDustu) || false);
     setIsEditingPortfolio(true);
   };
 
@@ -1442,10 +1752,24 @@ export default function App() {
           ilce: editPortIlce,
           semt: editPortSemt,
           mahalle: editPortMahalle,
+          cadde: editPortCadde,
+          sokak: editPortSokak,
           kapora: editPortKapora ? Number(editPortKapora) : null,
           depozito: editPortTur === 'KIRALIK' && editPortDepozito ? Number(editPortDepozito) : null,
           evSahibiAdi: editPortLandlordName,
-          evSahibiTelefon: editPortLandlordPhone
+          evSahibiTelefon: editPortLandlordPhone,
+          aciklama: editPortAciklama,
+          otoparkTipi: editPortOtoparkTipi,
+          isinmaTipi: editPortIsinmaTipi,
+          balkonDurumu: editPortBalkonDurumu,
+          esyaDurumu: editPortEsyaDurumu,
+          kullanimDurumu: editPortKullanimDurumu,
+          tapuDurumu: editPortTapuDurumu,
+          hasAsansor: editPortHasAsansor,
+          isKrediyeUygun: editPortIsKrediyeUygun,
+          isTakasaUygun: editPortIsTakasaUygun,
+          isAcilSatilik: editPortIsAcilSatilik,
+          isFiyatiDustu: editPortIsFiyatiDustu
         })
       });
 
@@ -1465,10 +1789,24 @@ export default function App() {
           ilce: editPortIlce,
           semt: editPortSemt,
           mahalle: editPortMahalle,
+          cadde: editPortCadde,
+          sokak: editPortSokak,
           kapora: editPortKapora ? Number(editPortKapora) : null,
           depozito: editPortTur === 'KIRALIK' && editPortDepozito ? Number(editPortDepozito) : null,
           evSahibiAdi: editPortLandlordName,
-          evSahibiTelefon: editPortLandlordPhone
+          evSahibiTelefon: editPortLandlordPhone,
+          aciklama: editPortAciklama,
+          otoparkTipi: editPortOtoparkTipi,
+          isinmaTipi: editPortIsinmaTipi,
+          balkonDurumu: editPortBalkonDurumu,
+          esyaDurumu: editPortEsyaDurumu,
+          kullanimDurumu: editPortKullanimDurumu,
+          tapuDurumu: editPortTapuDurumu,
+          hasAsansor: editPortHasAsansor,
+          isKrediyeUygun: editPortIsKrediyeUygun,
+          isTakasaUygun: editPortIsTakasaUygun,
+          isAcilSatilik: editPortIsAcilSatilik,
+          isFiyatiDustu: editPortIsFiyatiDustu
         };
         setSelectedPortfolio(updated);
         fetchPortfolios(token!);
@@ -1781,6 +2119,41 @@ export default function App() {
 
     setAppActionLoading(true);
     try {
+      const currentStage = processStages.find((s: any, idx: number) => s.id === selectedStageId || (idx === 0 && !selectedStageId));
+      const targetStageId = currentStage?.id || selectedStageId || 1;
+      const targetAsamaAdi = currentStage?.asamaAdi || 'Süreç Güncellendi';
+
+      const isCompletedStageSelected = (
+        targetStageId === 6 ||
+        currentStage?.sira === 6 ||
+        (currentStage?.asamaAdi && currentStage.asamaAdi.toLowerCase().includes('tamamland'))
+      );
+
+      // 1. Her durumda randevunun süreç aşamasını backend'e gönder (MusteriSurecleri tablosuna kaydet)
+      if (token) {
+        await fetch('/api/appointments/update-stage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            appointmentId: selectedAppointmentToAction.id,
+            stageId: targetStageId,
+            asamaAdi: targetAsamaAdi
+          })
+        }).catch(err => console.log('Update stage note:', err));
+      }
+
+      // 2. Eğer Ara Aşama (1-5) seçildiyse; portföy kapatma çağırma, sadece aşama güncellemesini bildir
+      if (!isCompletedStageSelected) {
+        showToast(`Müşteri süreç aşaması '${targetAsamaAdi}' olarak atandı.`, 'success');
+        setShowAppointmentActionModal(false);
+        setSelectedAppointmentToAction(null);
+        return;
+      }
+
+      // 3. Eğer Son Aşama (6 - Tamamlandı / Satıldı - Kiralandı) seçildiyse portföy işlemini kapat
       const portfoyId = selectedAppointmentToAction.portfoyId;
       const aciklamaMetni = `Randevu üzerinden işlem: Katılan Müşteri - ${selectedAppointmentToAction.musteri || ''} (${selectedAppointmentToAction.musteriTelefon || ''}). Talep Eden: ${selectedAppointmentToAction.talepEden || ''}. Randevu: ${selectedAppointmentToAction.tarih} ${selectedAppointmentToAction.zaman}`;
 
@@ -1802,19 +2175,13 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        showToast(data.message || 'İşlem başarıyla kaydedildi!', 'success');
-        await handleUpdateAppStatus(selectedAppointmentToAction.id, 'APPROVED');
-        // Portföyü anında listeden kaldır
-        const portfoyId = selectedAppointmentToAction.portfoyId;
+        showToast(data.message || 'İşlem başarıyla tamamlandı ve ciro kaydı işlendi!', 'success');
         setPortfolios(prev => prev.filter(p => p.id !== portfoyId));
         if (token) {
           fetchPortfolios(token);
           fetchCompletedPortfolios(token);
           fetchClients(token);
-        }
-        if (token && user?.rol === 'YETKILI') {
-          fetchEmployees(token);
-          fetchDashboardData(token);
+          fetchAppointments(token, currentCalendarDate);
         }
         setShowAppointmentActionModal(false);
         setSelectedAppointmentToAction(null);
@@ -1835,11 +2202,45 @@ export default function App() {
   const availableIller = [...new Set(portfolios.filter(p => (!filterIlanTipi || p.tur === filterIlanTipi) && (!filterTip || p.tip === filterTip) && (!filterOdaSayisi || p.odaSayisi === filterOdaSayisi)).map(p => p.il).filter(Boolean))].sort();
   const availableIlceler = [...new Set(portfolios.filter(p => (!filterIlanTipi || p.tur === filterIlanTipi) && (!filterTip || p.tip === filterTip) && (!filterOdaSayisi || p.odaSayisi === filterOdaSayisi) && (!filterIl || p.il === filterIl)).map(p => p.ilce).filter(Boolean))].sort();
 
+  const handleTogglePortfolioPublish = async (portfolio: any) => {
+    if (!token) return;
+    if (!isOwnPortfolio(portfolio) && user?.rol !== 'YETKILI') return;
+
+    const nextValue = !isPortfolioPublished(portfolio);
+    setPublishLoadingPortfolioId(portfolio.id);
+
+    try {
+      const res = await fetch(`/api/portfolios/${portfolio.id}/publish`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ isPublished: nextValue })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Yayın durumu güncellenemedi.');
+
+      setPortfolios(prev => prev.map(item => item.id === portfolio.id ? { ...item, isPublished: nextValue } : item));
+      setSelectedPortfolio((prev: any) => prev && prev.id === portfolio.id ? { ...prev, isPublished: nextValue } : prev);
+      showToast(data.message || 'Portföy yayın durumu güncellendi.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Sunucu hatası.', 'error');
+    } finally {
+      setPublishLoadingPortfolioId(null);
+    }
+  };
+
   // Filter logic for portfolios list
   const filteredPortfolios = portfolios.filter(p => {
     // -1. Tamamlanan portföyleri daima gizle (SATILDI / KIRALANDI)
     const durumUpper = (p.durum || '').toUpperCase();
     if (['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI'].includes(durumUpper)) return false;
+
+    const publishedState = isPortfolioPublished(p);
+    if (portfolioVisibilityMode === 'published' && !publishedState) return false;
+    if (portfolioVisibilityMode === 'unpublished' && publishedState) return false;
+    if (portfolioVisibilityMode === 'unpublished' && !isOwnPortfolio(p)) return false;
 
     // 0. Dependent Filters
     if (filterIlanTipi && p.tur !== filterIlanTipi) return false;
@@ -2176,35 +2577,53 @@ export default function App() {
       )}
 
       {/* LEFT SIDEBAR */}
-      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
+      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 ease-in-out z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
         }`}>
         <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+          <div className={`flex items-center transition-all duration-300 ${sidebarCollapsed ? 'justify-center w-full' : 'justify-between'}`}>
             {!sidebarCollapsed ? (
-              <div className="flex flex-col leading-tight">
-                <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
-                  HOMEY
-                </span>
-                {user?.firmaAdi && (
-                  <span className="text-[10px] font-extrabold text-amber-300/80 uppercase tracking-widest truncate max-w-[150px]" title={user.firmaAdi}>
-                    🏢 {user.firmaAdi}
+              <div className="flex items-center justify-between w-full relative animate-in fade-in zoom-in-95 duration-300">
+                {/* Left spacer matching right button width to guarantee exact 100% centering */}
+                <div className="w-10 h-10 shrink-0" />
+
+                {/* Centered HOMEY Logo Text & Firm Badge */}
+                <div className="flex flex-col items-center justify-center text-center leading-tight transition-all duration-300 flex-1 min-w-0">
+                  <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent leading-none">
+                    HOMEY
                   </span>
-                )}
+                  {user?.firmaAdi && (
+                    <span className="text-[10px] font-extrabold text-amber-300/80 uppercase tracking-widest truncate max-w-[140px] mt-0.5" title={user.firmaAdi}>
+                      🏢 {user.firmaAdi}
+                    </span>
+                  )}
+                </div>
+
+                {/* Right Hamburger Menu Button */}
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="w-10 h-10 rounded-xl hover:bg-zinc-800 transition-all duration-300 hover:rotate-90 text-white flex items-center justify-center border-none cursor-pointer active:scale-90 shrink-0"
+                  title="Menüyü Daralt"
+                >
+                  <Menu size={20} />
+                </button>
               </div>
             ) : (
+              /* Collapsed State: HOMEY Gradient Animated Circle Ring around 3 Lines (Menu Icon) */
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="relative group p-0.5 rounded-full bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue shadow-lg hover:scale-115 active:scale-95 transition-all duration-300 border-none cursor-pointer animate-in fade-in zoom-in-90"
+                title="Menüyü Genişlet (HOMEY)"
+              >
+                {/* Glowing Aura Ring */}
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue rounded-full blur-xs opacity-75 group-hover:opacity-100 transition duration-300 animate-pulse"></div>
 
-              <span className="text-xl font-extrabold bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
-                H
-              </span>
+                {/* Inner Circle Container holding the 3 Lines (Menu Icon) */}
+                <div className="relative w-10 h-10 bg-zinc-950 rounded-full flex items-center justify-center text-white border border-zinc-800 transition-transform duration-300">
+                  <Menu size={18} className="text-white group-hover:rotate-180 transition-transform duration-500 ease-out" />
+                </div>
+              </button>
             )}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`p-1.5 rounded-lg hover:bg-zinc-800 transition-colors text-white ${sidebarCollapsed ? 'mt-2' : 'ml-auto'}`}
-              title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-            >
-              <Menu size={20} />
-            </button>
           </div>
 
           {/* Navigation Links */}
@@ -2232,7 +2651,10 @@ export default function App() {
                 {!sidebarCollapsed && <span>Portföyler</span>}
               </button>
               <button
-                onClick={() => setActiveTab('completedPortfolios')}
+                onClick={() => {
+                  setActiveTab('completedPortfolios');
+                  fetchCompletedPortfolios();
+                }}
                 title="Tamamlanan İşlemler"
                 className={`sidebar-link ${activeTab === 'completedPortfolios' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
@@ -2249,6 +2671,14 @@ export default function App() {
                 {!sidebarCollapsed && <span>Randevular</span>}
               </button>
               <button
+                onClick={() => setActiveTab('processManagement')}
+                title="Süreç Yönetimi"
+                className={`sidebar-link ${activeTab === 'processManagement' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+              >
+                <GitPullRequest size={20} className="shrink-0" />
+                {!sidebarCollapsed && <span>Süreç Yönetimi</span>}
+              </button>
+              <button
                 onClick={() => setActiveTab('clients')}
                 title="Müşteriler"
                 className={`sidebar-link ${activeTab === 'clients' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
@@ -2258,11 +2688,11 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('calculator')}
-                title="Hesaplayıcı"
+                title="Hesap Makinesi"
                 className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Calculator size={20} className="shrink-0" />
-                {!sidebarCollapsed && <span>Hesaplayıcı</span>}
+                {!sidebarCollapsed && <span>Hesap Makinesi</span>}
               </button>
             </div>
 
@@ -2339,34 +2769,162 @@ export default function App() {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden flex flex-col gap-6 min-w-0">
 
         {/* Global Top Header Bar with Autocomplete */}
-        <header className="flex justify-between items-center w-full gap-4">
+        <header className="flex flex-wrap justify-between items-center w-full gap-3 sm:gap-4 mb-1">
           {activeTab === 'dashboard' && (
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl md:text-3xl font-extrabold text-charcoal leading-tight flex items-center gap-2 flex-wrap">
-                <span>İyi günler, {user?.ad || ''} 👋</span>
-                {user?.firmaAdi && (
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
-                    🏢 {user.firmaAdi}
-                  </span>
-                )}
-              </h1>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-charcoal leading-tight flex items-center gap-2 flex-wrap">
+                    <span className="flex items-center gap-2">
+                      İyi günler, {user?.ad || ''} 👋
+                      {/* Notification Bell Inline next to Welcome text */}
+                      <div className="relative inline-flex items-center ml-1">
+                        {(() => {
+                          const now = new Date();
+                          const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-              {(() => {
-                const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
-                const pendingCount = userApps.filter(a => a.durum === 'PENDING').length;
-                return (
-                  <p className="text-zinc-500 text-sm mt-1">
-                    Bugün <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
-                  </p>
-                );
-              })()}
+                          // Giriş yapan kullanıcının taraf olduğu tüm randevular (Teklif Eden veya Portföy Sahibi Uzman)
+                          const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
+
+                          // 1. Onay Bekleyen Talepler
+                          const pendingApps = userApps.filter(a => a.durum === 'PENDING');
+
+                          // 2. 1 Günde Az Kalmış / Aynı Gün Olan Yaklaşan Onaylı Randevular
+                          const upcomingApps = userApps.filter(a => {
+                            if (a.durum === 'CANCELLED' || a.durum === 'REJECTED') return false;
+                            const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                            if (!appDate || isNaN(appDate.getTime())) return false;
+                            // Tarih geçmiş değil ve 24 saatten az kalmış veya bugün ise
+                            return appDate >= now && appDate <= oneDayLater;
+                          });
+
+                          const totalNotifCount = pendingApps.length + upcomingApps.length;
+
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                                className="relative p-2 rounded-2xl bg-white border-2 border-charcoal text-charcoal hover:bg-cream transition-all cursor-pointer flex items-center justify-center shadow-xs"
+                                title="Bildirimler"
+                              >
+                                <Bell size={18} className="text-charcoal" />
+                                {totalNotifCount > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white font-extrabold text-[9px] rounded-full flex items-center justify-center border border-white animate-pulse">
+                                    {totalNotifCount}
+                                  </span>
+                                )}
+                              </button>
+
+                              {/* Dropdown Panel */}
+                              {showNotificationsDropdown && (
+                                <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto w-72 sm:w-80 bg-white border-2 border-charcoal rounded-3xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in-95 font-normal text-left">
+                                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                                    <h4 className="font-extrabold text-sm text-charcoal flex items-center gap-1.5">
+                                      <Bell size={16} /> Bildirimler & Yaklaşan Randevular
+                                    </h4>
+                                    <button
+                                      onClick={() => setShowNotificationsDropdown(false)}
+                                      className="text-zinc-400 hover:text-zinc-700 text-xs font-bold"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+
+                                  <div className="flex flex-col gap-2 max-h-72 overflow-y-auto custom-scrollbar">
+                                    {/* Section 1: Yaklaşan Randevular (1 gün veya daha az kalan) */}
+                                    {upcomingApps.map(app => (
+                                      <div
+                                        key={`notif-up-${app.id}`}
+                                        onClick={() => { setActiveTab('appointments'); setShowNotificationsDropdown(false); }}
+                                        className="p-2.5 bg-emerald-50/90 hover:bg-emerald-100/90 border border-emerald-200 rounded-2xl cursor-pointer transition-colors text-xs"
+                                      >
+                                        <div className="flex justify-between items-start font-bold text-charcoal mb-0.5">
+                                          <span>⏰ Yaklaşan Randevu!</span>
+                                          <span className="text-[10px] font-extrabold text-emerald-950 bg-emerald-200 px-1.5 py-0.2 rounded-full">
+                                            {app.tarih}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-700 font-semibold">
+                                          {app.portfoyTip} ({app.ilce || 'Lokasyon'}) — Müşteri: {app.musteri}
+                                        </p>
+                                        <span className="text-[10px] text-zinc-500 block mt-0.5 font-bold">Saat: {app.zaman}</span>
+                                      </div>
+                                    ))}
+
+                                    {/* Section 2: Onay Bekleyen Talepler */}
+                                    {pendingApps.map(app => (
+                                      <div
+                                        key={`notif-pen-${app.id}`}
+                                        onClick={() => { setActiveTab('appointments'); setShowNotificationsDropdown(false); }}
+                                        className="p-2.5 bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200 rounded-2xl cursor-pointer transition-colors text-xs"
+                                      >
+                                        <div className="flex justify-between items-start font-bold text-charcoal mb-0.5">
+                                          <span>📩 {app.portfoyTip} ({app.ilce || 'Lokasyon'})</span>
+                                          <span className="text-[10px] text-amber-900 bg-amber-200 px-1.5 py-0.2 rounded-full">Onay Bekliyor</span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-600">
+                                          Müşteri: {app.musteri} · Tarih: {app.tarih} ({app.zaman})
+                                        </p>
+                                      </div>
+                                    ))}
+
+                                    {upcomingApps.length === 0 && pendingApps.length === 0 && (
+                                      <div className="py-6 text-center text-zinc-400 text-xs">
+                                        Yaklaşan randevunuz veya bekleyen yeni bildiriminiz bulunmuyor.
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    onClick={() => { setActiveTab('appointments'); setShowNotificationsDropdown(false); }}
+                                    className="w-full mt-3 text-center text-xs font-extrabold text-indigo-900 hover:underline pt-2 border-t border-zinc-100 block"
+                                  >
+                                    Tüm Randevuları Gör →
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </span>
+                    {user?.firmaAdi && (
+                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full truncate max-w-[200px]" title={user.firmaAdi}>
+                        🏢 {user.firmaAdi}
+                      </span>
+                    )}
+                  </h1>
+
+                  {(() => {
+                    const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
+                    const pendingCount = userApps.filter(a => a.durum === 'PENDING').length;
+                    return (
+                      <p className="text-zinc-500 text-xs sm:text-sm mt-0.5">
+                        Bugün <strong className="text-amber-700">{pendingCount} yanıt bekleyen talebiniz</strong> bulunuyor.
+                      </p>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Global Smart Search with Autocomplete */}
+          {activeTab === 'completedPortfolios' && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">
+                Tamamlanan İşlemler & Ciro Analizi 🏆
+              </h1>
+              <p className="text-zinc-500 text-xs sm:text-sm mt-0.5">
+                Kapanan satılık ve kiralık tüm mülklerin finansal dökümü ve komisyon hakedişleri.
+              </p>
+            </div>
+          )}
+
+          {/* Global Smart Search with Autocomplete (Narrowed Width) */}
           <div
             ref={searchContainerRef}
-            className={`relative transition-all duration-300 ${activeTab === 'dashboard' ? 'w-64 sm:w-72 md:w-80 shrink-0' : 'w-full'
+            className={`relative transition-all duration-300 ${activeTab === 'dashboard' ? 'w-full sm:w-56 md:w-64' : 'w-full'
               } min-w-0`}
           >
             {/* Search Input */}
@@ -2615,49 +3173,175 @@ export default function App() {
             {/* Metric Bento Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-              {/* Card 1: Active Listings (Pastel Yellow) */}
-              <div className="bento-card bg-[#FEF08A]">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-charcoal/60">Aktif Portföyler</span>
-                  <Building size={20} className="text-charcoal" />
+              {/* Card 1: Active Listings (Pastel Yellow - Interactive Bar Chart) */}
+              <div className="bento-card bg-[#FEF08A] flex flex-col justify-between relative overflow-visible">
+                <div>
+                  <div className="flex justify-between items-center mb-3 gap-1.5 flex-wrap">
+                    <div>
+                      <h4 className="text-sm font-extrabold text-charcoal">Aktif Portföyler</h4>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex bg-charcoal/10 p-0.5 rounded-lg text-[10px] font-bold">
+                        <button
+                          onClick={() => { setPortfoyTimeframe('HAFTALIK'); setHoveredPortfoyIndex(null); }}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'HAFTALIK' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          title="Haftalık Görünüm"
+                        >
+                          H
+                        </button>
+                        <button
+                          onClick={() => { setPortfoyTimeframe('AYLIK'); setHoveredPortfoyIndex(null); }}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'AYLIK' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          title="Aylık Görünüm"
+                        >
+                          A
+                        </button>
+                      </div>
+                      <Building size={18} className="text-charcoal shrink-0" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between h-9 mb-2 gap-1.5">
+                    <div className="flex items-baseline gap-1.5 shrink-0">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-charcoal leading-none">
+                        {hoveredPortfoyIndex !== null
+                          ? portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].val
+                          : portfolios.length}
+                      </span>
+                      {hoveredPortfoyIndex !== null ? (
+                        <span className="text-[11px] font-bold text-emerald-950 bg-emerald-300/90 px-2 py-0.5 rounded-full border border-emerald-400 font-mono">
+                          {portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].label}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-charcoal/60">
+                          Toplam
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="h-7 flex items-center shrink-0">
+                      {hoveredPortfoyIndex !== null ? (
+                        <div className="text-[10px] sm:text-[11px] font-mono font-bold text-charcoal/90 bg-charcoal/10 px-2 py-0.5 rounded-lg border border-charcoal/15 flex items-center gap-1">
+                          <span>Sat: <strong className="text-emerald-900 font-extrabold">{portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].satilik}</strong></span>
+                          <span className="text-charcoal/30">|</span>
+                          <span>Kir: <strong className="text-indigo-900 font-extrabold">{portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].kiralik}</strong></span>
+                        </div>
+                      ) : (
+                        <span className="text-[9px] sm:text-[10px] font-mono font-semibold text-charcoal/50 bg-charcoal/5 px-1.5 py-0.5 rounded-lg">
+                          Detay için üzerine gelin
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-4xl font-extrabold text-charcoal">{portfolios.length}</span>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">+1 Bu hafta</span>
-                </div>
-                {/* Mini bar chart */}
-                <div className="flex items-end gap-1.5 h-12 pt-2">
-                  <div className="bg-charcoal w-full rounded-t" style={{ height: '40%' }}></div>
-                  <div className="bg-charcoal w-full rounded-t" style={{ height: '60%' }}></div>
-                  <div className="bg-charcoal w-full rounded-t" style={{ height: '35%' }}></div>
-                  <div className="bg-charcoal w-full rounded-t" style={{ height: '75%' }}></div>
-                  <div className="bg-charcoal w-full rounded-t" style={{ height: '90%' }}></div>
+
+                {/* Interactive Bar Chart Container with Side Scroll Arrows */}
+                <div className="pt-2 relative flex items-center gap-1">
+                  <button
+                    onClick={() => scrollPortfoyChart('left')}
+                    className="p-1 rounded-full bg-charcoal/15 hover:bg-charcoal text-charcoal hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
+                    title="Sola Kaydır"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+
+                  <div
+                    ref={portfoyBarContainerRef}
+                    className="flex-1 overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pt-2"
+                  >
+                    <div className={`flex justify-between items-end gap-3 h-20 relative ${portfoyTimeframe === 'AYLIK' ? 'min-w-[580px]' : 'w-full min-w-[320px]'}`}>
+                      {portfoyChartData[portfoyTimeframe].map((item, idx) => {
+                        const isHovered = hoveredPortfoyIndex === idx;
+                        return (
+                          <div
+                            key={`port-bar-${idx}`}
+                            className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer px-0.5"
+                            onMouseEnter={() => setHoveredPortfoyIndex(idx)}
+                            onMouseLeave={() => setHoveredPortfoyIndex(null)}
+                          >
+                            {/* Interactive Bar */}
+                            <div
+                              className={`w-full ${portfoyTimeframe === 'HAFTALIK' ? 'max-w-[56px] md:max-w-[64px]' : 'max-w-[44px]'} rounded-t-xl transition-all duration-200 ${isHovered ? 'bg-black scale-y-105 shadow-lg' : 'bg-charcoal/90 hover:bg-black'
+                                }`}
+                              style={{ height: `${Math.max(item.pct, 15)}%` }}
+                            />
+
+                            <span className={`text-[10px] font-mono font-bold mt-1.5 transition-colors ${isHovered ? 'text-black font-extrabold scale-110' : 'text-charcoal/70'}`}>
+                              {item.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => scrollPortfoyChart('right')}
+                    className="p-1 rounded-full bg-charcoal/15 hover:bg-charcoal text-charcoal hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
+                    title="Sağa Kaydır"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
                 </div>
               </div>
 
-              {/* Card 2: Sales & Revenue summary for logged-in user (Pastel Pink) */}
-              <div className="bento-card bg-[#FBCFE8] flex flex-col justify-between">
+              {/* Card 2: Sales & Revenue summary (Pastel Pink - Interactive Line Chart) */}
+              <div className="bento-card bg-[#FBCFE8] flex flex-col justify-between relative overflow-visible">
                 <div>
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-center mb-3 gap-1.5 flex-wrap">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-charcoal/60 block mb-0.5">Kişisel Performans</span>
                       <h4 className="text-sm font-extrabold text-charcoal">Aylık Ciro</h4>
                     </div>
-                    <DollarSign size={20} className="text-charcoal" />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex bg-charcoal/10 p-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold">
+                        <button
+                          onClick={() => { setCiroTimeframe('6A_1'); setHoveredCiroIndex(null); }}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_1' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          title="1. Altı Ay (Oca - Haz)"
+                        >
+                          1. Yarı
+                        </button>
+                        <button
+                          onClick={() => { setCiroTimeframe('6A_2'); setHoveredCiroIndex(null); }}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_2' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          title="2. Altı Ay (Tem - Ara)"
+                        >
+                          2. Yarı
+                        </button>
+                        <button
+                          onClick={() => { setCiroTimeframe('1Y'); setHoveredCiroIndex(null); }}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '1Y' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          title="Tüm Yıl (Oca - Ara)"
+                        >
+                          1 Yıl
+                        </button>
+                      </div>
+                      <DollarSign size={18} className="text-charcoal shrink-0" />
+                    </div>
                   </div>
+
                   {(() => {
-                    const ciro = personalCiro;
-                    const officeShare = ciro * (commSettings.aOfis / 100);
-                    const userEarned = ciro * (commSettings.aDanisman / 100);
+                    const currentDataList = ciroChartData[ciroTimeframe];
+                    const activePoint = (hoveredCiroIndex !== null && currentDataList[hoveredCiroIndex])
+                      ? currentDataList[hoveredCiroIndex]
+                      : currentDataList[currentDataList.length - 1];
+                    const displayCiro = activePoint ? activePoint.ciro : personalCiro;
+                    const officeShare = displayCiro * (commSettings.aOfis / 100);
+                    const userEarned = displayCiro * (commSettings.aDanisman / 100);
 
                     return (
                       <>
-                        <div className="flex items-baseline gap-2 mb-2">
-                          <span className="text-3xl font-extrabold text-charcoal">
-                            {ciro.toLocaleString('tr-TR')} TL
+                        <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
+                          <span className="text-2xl sm:text-3xl font-extrabold text-charcoal tracking-tight">
+                            {displayCiro.toLocaleString('tr-TR')} TL
                           </span>
+                          {hoveredCiroIndex !== null && activePoint && (
+                            <span className="text-[10px] font-mono font-extrabold bg-charcoal text-white px-2 py-0.5 rounded-full">
+                              {activePoint.label}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-charcoal/80 mb-2 flex justify-between items-center flex-wrap gap-1">
+                        <div className="text-xs text-charcoal/80 mb-2 flex justify-between items-center flex-wrap gap-x-2 gap-y-0.5">
                           <span>Net Hakediş: <strong className="text-emerald-950 font-extrabold">{userEarned.toLocaleString('tr-TR')} TL</strong></span>
                           <span className="text-[11px] text-charcoal/70">Ofis Payı: {officeShare.toLocaleString('tr-TR')} TL</span>
                         </div>
@@ -2665,11 +3349,105 @@ export default function App() {
                     );
                   })()}
                 </div>
-                {/* Visual Area Line Chart SVG */}
-                <svg className="w-full h-10 mt-1" viewBox="0 0 100 30" preserveAspectRatio="none">
-                  <path d="M0,30 Q25,5 50,20 T100,5 L100,30 L0,30 Z" fill="rgba(17,17,17,0.1)" />
-                  <path d="M0,30 Q25,5 50,20 T100,5" fill="none" stroke="#111111" strokeWidth="2" />
-                </svg>
+
+                {/* Interactive SVG Line Chart */}
+                <div className="pt-2 relative">
+                  {(() => {
+                    const data = ciroChartData[ciroTimeframe];
+                    const step = 100 / (data.length - 1);
+                    const pts = data.map((d, i) => ({ x: i * step, y: d.y }));
+
+                    // Build smooth cubic Bezier curve
+                    let linePath = `M ${pts[0].x},${pts[0].y}`;
+                    for (let i = 0; i < pts.length - 1; i++) {
+                      const curr = pts[i];
+                      const next = pts[i + 1];
+                      const cp1x = curr.x + (next.x - curr.x) / 2;
+                      const cp1y = curr.y;
+                      const cp2x = curr.x + (next.x - curr.x) / 2;
+                      const cp2y = next.y;
+                      linePath += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
+                    }
+                    const areaPath = `${linePath} L 100,30 L 0,30 Z`;
+
+                    const handleChartMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      if (rect.width <= 0) return;
+                      const mouseX = e.clientX - rect.left;
+                      const pct = mouseX / rect.width;
+                      let closestIdx = Math.round(pct * (data.length - 1));
+                      if (closestIdx < 0) closestIdx = 0;
+                      if (closestIdx >= data.length) closestIdx = data.length - 1;
+                      setHoveredCiroIndex(closestIdx);
+                    };
+
+                    return (
+                      <svg
+                        className="w-full h-12 overflow-visible cursor-pointer"
+                        viewBox="0 0 100 30"
+                        preserveAspectRatio="none"
+                        onMouseMove={handleChartMouseMove}
+                        onMouseLeave={() => setHoveredCiroIndex(null)}
+                      >
+                        <defs>
+                          <linearGradient id="ciroGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#111111" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#111111" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+
+                        <path d={areaPath} fill="url(#ciroGrad)" />
+                        <path d={linePath} fill="none" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                        {data.map((d, i) => {
+                          const cx = i * step;
+                          const isHovered = hoveredCiroIndex === i;
+                          return (
+                            <g
+                              key={`ciro-pt-${i}`}
+                              transform={`translate(${cx}, ${d.y})`}
+                              className="cursor-pointer"
+                              onMouseEnter={() => setHoveredCiroIndex(i)}
+                              onMouseLeave={() => setHoveredCiroIndex(null)}
+                            >
+                              {/* Invisible extended touch/hover area */}
+                              <rect x="-6" y="-6" width="12" height="12" fill="transparent" />
+
+                              {/* Small House Icon */}
+                              <path
+                                d="M 0,-2.5 L 2.2,-0.3 H 1.5 V 2.2 H -1.5 V -0.3 H -2.2 Z"
+                                fill={isHovered ? "#059669" : "#111111"}
+                                stroke={isHovered ? "#FFFFFF" : "#111111"}
+                                strokeWidth="0.5"
+                                strokeLinejoin="round"
+                                className="transition-all duration-150"
+                                transform={isHovered ? "scale(1.25)" : "scale(1)"}
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })()}
+
+                  {/* Axis Month Labels */}
+                  <div className="flex justify-between items-center text-[8px] sm:text-[9px] font-bold text-charcoal/60 mt-1 overflow-hidden">
+                    {ciroChartData[ciroTimeframe].map((item, idx) => {
+                      // Shorten label to 3 letters (e.g., 'Ocak' -> 'Oca') or 1 letter for 1Y if tight
+                      const shortLabel = item.label.length > 3 ? item.label.substring(0, 3) : item.label;
+                      return (
+                        <span
+                          key={`lbl-${idx}`}
+                          className={`cursor-pointer transition-colors whitespace-nowrap text-center ${hoveredCiroIndex === idx ? 'text-black font-extrabold underline' : ''}`}
+                          onMouseEnter={() => setHoveredCiroIndex(idx)}
+                          onMouseLeave={() => setHoveredCiroIndex(null)}
+                        >
+                          {shortLabel}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Card 3: Upcoming Showings (Pastel Purple) */}
@@ -2679,7 +3457,7 @@ export default function App() {
               >
                 <div>
                   <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-charcoal/60">Randevularım & Talepler</span>
+                    <h4 className="text-sm font-extrabold text-charcoal">Randevularım & Talepler</h4>
                     <Calendar size={20} className="text-charcoal" />
                   </div>
                   {(() => {
@@ -2738,29 +3516,29 @@ export default function App() {
                   <Users stroke="var(--primary)" /> Danışman Durumları & Ciro Performansı
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {employees.length > 0 ? (
                     employees.map(emp => (
                       <div
                         key={emp.id}
                         onClick={() => { setSelectedEmployee(emp); setActiveTab('team'); }}
-                        className="rounded-2xl p-4 bg-cream flex flex-col justify-between shadow-none border-none cursor-pointer hover:bg-zinc-100/60 transition-colors"
+                        className="rounded-2xl p-4 bg-cream flex flex-col justify-between shadow-none border-none cursor-pointer hover:bg-zinc-100/60 transition-colors min-w-0"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-2.5 items-center">
-                            <div className="w-10 h-10 rounded-full bg-pastelPurple border-none flex items-center justify-center font-bold text-xs">
+                        <div className="flex justify-between items-start min-w-0">
+                          <div className="flex gap-2.5 items-center min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-pastelPurple border-none flex items-center justify-center font-bold text-xs shrink-0">
                               {(emp.ad || 'U')[0]}{(emp.soyad || '')[0] || ''}
                             </div>
-                            <div>
-                              <h4 className="font-extrabold text-sm">{emp.ad || ''} {emp.soyad || ''}</h4>
-                              <span className="text-xs text-zinc-500">{emp.sozlesmeSayisi || 0} Aktif Portföy</span>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <h4 className="font-extrabold text-sm truncate" title={`${emp.ad || ''} ${emp.soyad || ''}`}>{emp.ad || ''} {emp.soyad || ''}</h4>
+                              <span className="text-xs text-zinc-500 block truncate">{emp.sozlesmeSayisi || 0} Aktif Portföy</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-charcoal/10 flex justify-between items-center text-xs">
-                          <span className="text-zinc-500">Kazanılan Ciro:</span>
-                          <strong className="text-charcoal font-bold">{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
+                        <div className="mt-4 pt-3 border-t border-charcoal/10 flex justify-between items-center text-xs flex-wrap gap-1">
+                          <span className="text-zinc-500 whitespace-nowrap">Kazanılan Ciro:</span>
+                          <strong className="text-charcoal font-bold whitespace-nowrap">{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
                         </div>
                       </div>
                     ))
@@ -3029,22 +3807,48 @@ export default function App() {
               )}
 
 
-              {/* Scope Switcher: Portföyler vs Portföylerim */}
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => setPortfolioScope('all')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'all' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                    }`}
-                >
-                  Tüm Portföyler
-                </button>
-                <button
-                  onClick={() => setPortfolioScope('mine')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'mine' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
-                    }`}
-                >
-                  Portföylerim
-                </button>
+              <div className="flex flex-col gap-3 mb-6">
+                {/* Visibility Mode Toggle Switch */}
+                <div className="flex items-center gap-4 p-4 bg-zinc-50 rounded-2xl border border-zinc-200">
+                  <div className="flex-1">
+                    <p className="text-xs font-extrabold uppercase tracking-widest text-zinc-500 mb-2">Portföy Görünürlüğü</p>
+                    <button
+                      onClick={() => setPortfolioVisibilityMode(portfolioVisibilityMode === 'published' ? 'unpublished' : 'published')}
+                      className="relative w-full h-10 rounded-full bg-white border-2 border-zinc-200 transition-all hover:border-charcoal/50 focus:outline-none overflow-hidden"
+                      title={portfolioVisibilityMode === 'published' ? 'Yayınlanmayan Portföyleri Göster' : 'Yayınlanan Portföyleri Göster'}
+                    >
+                      {/* Slider Background - moves between left and right */}
+                      <span className={`absolute top-1 bottom-1 w-1/2 rounded-full bg-[#FEF08A] transition-all duration-300 ${portfolioVisibilityMode === 'published' ? 'left-1' : 'right-1'}`} />
+                      
+                      {/* Labels Container */}
+                      <div className="relative w-full h-full flex items-center justify-between px-4">
+                        <span className={`text-xs font-extrabold transition-all ${portfolioVisibilityMode === 'published' ? 'text-charcoal' : 'text-zinc-400'}`}>
+                          Yayınlanan
+                        </span>
+                        <span className={`text-xs font-extrabold transition-all ${portfolioVisibilityMode === 'unpublished' ? 'text-charcoal' : 'text-zinc-400'}`}>
+                          Yayınlanmayan
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {portfolioVisibilityMode === 'published' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPortfolioScope('all')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'all' ? 'bg-charcoal text-white' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'}`}
+                    >
+                      Tüm Portföyler
+                    </button>
+                    <button
+                      onClick={() => setPortfolioScope('mine')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-all border-none ${portfolioScope === 'mine' ? 'bg-charcoal text-white' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'}`}
+                    >
+                      Portföylerim
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -3056,6 +3860,10 @@ export default function App() {
                       portfolio={p}
                       photos={photos}
                       onSelect={() => setSelectedPortfolio(p)}
+                      isPublished={isPortfolioPublished(p)}
+                      onTogglePublish={() => handleTogglePortfolioPublish(p)}
+                      publishLoading={publishLoadingPortfolioId === p.id}
+                      isOwner={isOwnPortfolio(p)}
                     />
                   );
                 })}
@@ -3256,6 +4064,26 @@ export default function App() {
                           onChange={e => setEditPortMahalle(e.target.value)}
                         />
                       </div>
+                      <div>
+                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Cadde</label>
+                        <input
+                          type="text"
+                          placeholder="Cadde adı"
+                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                          value={editPortCadde}
+                          onChange={e => setEditPortCadde(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Sokak</label>
+                        <input
+                          type="text"
+                          placeholder="Sokak adı"
+                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                          value={editPortSokak}
+                          onChange={e => setEditPortSokak(e.target.value)}
+                        />
+                      </div>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
@@ -3285,6 +4113,170 @@ export default function App() {
                           />
                         </div>
                       </div>
+                    </div>
+
+                    {/* Property Features Section */}
+                    <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase block">Yapı Özellikleri</span>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Açıklama</label>
+                        <textarea
+                          placeholder="Portföy hakkında detaylı açıklama yazınız..."
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none resize-none"
+                          rows={3}
+                          value={editPortAciklama}
+                          onChange={e => setEditPortAciklama(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Otopark Tipi</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={editPortOtoparkTipi}
+                          onChange={e => setEditPortOtoparkTipi(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Açık Otopark">Açık Otopark</option>
+                          <option value="Kapalı Otopark">Kapalı Otopark</option>
+                          <option value="Otopark Yok">Otopark Yok</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Isıtma Tipi</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={editPortIsinmaTipi}
+                          onChange={e => setEditPortIsinmaTipi(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Kombi (Doğalgaz)">Kombi (Doğalgaz)</option>
+                          <option value="Merkezi Sistem">Merkezi Sistem</option>
+                          <option value="Yerden Isıtma">Yerden Isıtma</option>
+                          <option value="Klima">Klima</option>
+                          <option value="Soba">Soba</option>
+                          <option value="Yok">Yok</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Balkon Durumu</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={editPortBalkonDurumu}
+                          onChange={e => setEditPortBalkonDurumu(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Balkonlu">Balkonlu</option>
+                          <option value="Çift Balkonlu">Çift Balkonlu</option>
+                          <option value="Teraslı">Teraslı</option>
+                          <option value="Cam Balkon">Cam Balkon</option>
+                          <option value="Balkon Yok">Balkon Yok</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Eşya Durumu</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={editPortEsyaDurumu}
+                          onChange={e => setEditPortEsyaDurumu(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Eşyalı">Eşyalı</option>
+                          <option value="Boş">Boş</option>
+                          <option value="Kiracılı (Yatırımlık)">Kiracılı (Yatırımlık)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Kullanım Durumu</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={editPortKullanimDurumu}
+                          onChange={e => setEditPortKullanimDurumu(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Mülk Sahibi Oturuyor">Mülk Sahibi Oturuyor</option>
+                          <option value="Kiracı Var">Kiracı Var</option>
+                          <option value="Boş (Hemen Taşınmaya Uygun)">Boş (Hemen Taşınmaya Uygun)</option>
+                        </select>
+                      </div>
+
+                      {editPortTur === 'SATILIK' && (
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Tapu Durumu</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortTapuDurumu}
+                            onChange={e => setEditPortTapuDurumu(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Kat Mülkiyetli (İskanlı)">Kat Mülkiyetli (İskanlı)</option>
+                            <option value="Kat İrtifaklı">Kat İrtifaklı</option>
+                            <option value="Hisseli Tapu">Hisseli Tapu</option>
+                            <option value="Arsa Tapulu">Arsa Tapulu</option>
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                            checked={editPortHasAsansor}
+                            onChange={e => setEditPortHasAsansor(e.target.checked)}
+                          />
+                          <span className="text-[10px] text-zinc-600">Asansör Var</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                            checked={editPortIsAcilSatilik}
+                            onChange={e => setEditPortIsAcilSatilik(e.target.checked)}
+                          />
+                          <span className="text-[10px] text-zinc-600">Acil Satılık</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                            checked={editPortIsFiyatiDustu}
+                            onChange={e => setEditPortIsFiyatiDustu(e.target.checked)}
+                          />
+                          <span className="text-[10px] text-zinc-600">Fiyatı Düştü</span>
+                        </label>
+                      </div>
+
+                      {editPortTur === 'SATILIK' && (
+                        <div className="flex flex-wrap gap-3">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                              checked={editPortIsKrediyeUygun}
+                              onChange={e => setEditPortIsKrediyeUygun(e.target.checked)}
+                            />
+                            <span className="text-[10px] text-zinc-600">Krediye Uygun</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                              checked={editPortIsTakasaUygun}
+                              onChange={e => setEditPortIsTakasaUygun(e.target.checked)}
+                            />
+                            <span className="text-[10px] text-zinc-600">Takas Yapılabilir</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2 mt-2">
@@ -4000,6 +4992,26 @@ export default function App() {
                         onChange={e => setNewPortMahalle(e.target.value)}
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Cadde</label>
+                      <input
+                        type="text"
+                        placeholder="Cadde adı"
+                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                        value={newPortCadde}
+                        onChange={e => setNewPortCadde(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Sokak</label>
+                      <input
+                        type="text"
+                        placeholder="Sokak adı"
+                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                        value={newPortSokak}
+                        onChange={e => setNewPortSokak(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
@@ -4090,6 +5102,170 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* Property Features Section */}
+                  <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Yapı Özellikleri</span>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Açıklama</label>
+                      <textarea
+                        placeholder="Portföy hakkında detaylı açıklama yazınız..."
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none resize-none"
+                        rows={3}
+                        value={newPortAciklama}
+                        onChange={e => setNewPortAciklama(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Otopark Tipi</label>
+                      <select
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                        value={newPortOtoparkTipi}
+                        onChange={e => setNewPortOtoparkTipi(e.target.value)}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="Açık Otopark">Açık Otopark</option>
+                        <option value="Kapalı Otopark">Kapalı Otopark</option>
+                        <option value="Otopark Yok">Otopark Yok</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Isıtma Tipi</label>
+                      <select
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                        value={newPortIsinmaTipi}
+                        onChange={e => setNewPortIsinmaTipi(e.target.value)}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="Kombi (Doğalgaz)">Kombi (Doğalgaz)</option>
+                        <option value="Merkezi Sistem">Merkezi Sistem</option>
+                        <option value="Yerden Isıtma">Yerden Isıtma</option>
+                        <option value="Klima">Klima</option>
+                        <option value="Soba">Soba</option>
+                        <option value="Yok">Yok</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Balkon Durumu</label>
+                      <select
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                        value={newPortBalkonDurumu}
+                        onChange={e => setNewPortBalkonDurumu(e.target.value)}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="Balkonlu">Balkonlu</option>
+                        <option value="Çift Balkonlu">Çift Balkonlu</option>
+                        <option value="Teraslı">Teraslı</option>
+                        <option value="Cam Balkon">Cam Balkon</option>
+                        <option value="Balkon Yok">Balkon Yok</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Eşya Durumu</label>
+                      <select
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                        value={newPortEsyaDurumu}
+                        onChange={e => setNewPortEsyaDurumu(e.target.value)}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="Eşyalı">Eşyalı</option>
+                        <option value="Boş">Boş</option>
+                        <option value="Kiracılı (Yatırımlık)">Kiracılı (Yatırımlık)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-600 block mb-1">Kullanım Durumu</label>
+                      <select
+                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                        value={newPortKullanimDurumu}
+                        onChange={e => setNewPortKullanimDurumu(e.target.value)}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="Mülk Sahibi Oturuyor">Mülk Sahibi Oturuyor</option>
+                        <option value="Kiracı Var">Kiracı Var</option>
+                        <option value="Boş (Hemen Taşınmaya Uygun)">Boş (Hemen Taşınmaya Uygun)</option>
+                      </select>
+                    </div>
+
+                    {newPortTur === 'SATILIK' && (
+                      <div>
+                        <label className="text-[10px] text-zinc-600 block mb-1">Tapu Durumu</label>
+                        <select
+                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                          value={newPortTapuDurumu}
+                          onChange={e => setNewPortTapuDurumu(e.target.value)}
+                        >
+                          <option value="">Seçiniz</option>
+                          <option value="Kat Mülkiyetli (İskanlı)">Kat Mülkiyetli (İskanlı)</option>
+                          <option value="Kat İrtifaklı">Kat İrtifaklı</option>
+                          <option value="Hisseli Tapu">Hisseli Tapu</option>
+                          <option value="Arsa Tapulu">Arsa Tapulu</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                          checked={newPortHasAsansor}
+                          onChange={e => setNewPortHasAsansor(e.target.checked)}
+                        />
+                        <span className="text-[10px] text-zinc-600">Asansör Var</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                          checked={newPortIsAcilSatilik}
+                          onChange={e => setNewPortIsAcilSatilik(e.target.checked)}
+                        />
+                        <span className="text-[10px] text-zinc-600">Acil Satılık</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                          checked={newPortIsFiyatiDustu}
+                          onChange={e => setNewPortIsFiyatiDustu(e.target.checked)}
+                        />
+                        <span className="text-[10px] text-zinc-600">Fiyatı Düştü</span>
+                      </label>
+                    </div>
+
+                    {newPortTur === 'SATILIK' && (
+                      <div className="flex flex-wrap gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                            checked={newPortIsKrediyeUygun}
+                            onChange={e => setNewPortIsKrediyeUygun(e.target.checked)}
+                          />
+                          <span className="text-[10px] text-zinc-600">Krediye Uygun</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                            checked={newPortIsTakasaUygun}
+                            onChange={e => setNewPortIsTakasaUygun(e.target.checked)}
+                          />
+                          <span className="text-[10px] text-zinc-600">Takas Yapılabilir</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-2 mt-2">
                     <button
                       type="submit"
@@ -4150,8 +5326,9 @@ export default function App() {
 
             {/* Calculate stats based on all completed portfolios */}
             {(() => {
-              const allItems = completedPortfolios;
+              const allItems = Array.isArray(completedPortfolios) ? completedPortfolios : [];
               const filtered = allItems.filter(p => {
+                if (!p) return false;
                 const isMine = compareIds(p.gorevliUzmanId, user?.id) || compareIds(p.islemYapanDanismanId, user?.id);
                 if (completedScopeFilter === 'mine' && !isMine) return false;
                 if (completedScopeFilter === 'others' && isMine) return false;
@@ -4180,7 +5357,7 @@ export default function App() {
               // Calculated metrics
               const totalTransactionVolume = filtered.reduce((sum, p) => sum + (Number(p.islemBedeli) || Number(p.fiyat) || 0), 0);
               const totalRevenueCiro = filtered.reduce((sum, p) => sum + (Number(p.hizmetBedeliCiro) || 0), 0);
-              const danismanPayOran = Number(firmaSettings.BrokerDanismanPayi || 50);
+              const danismanPayOran = Number(firmaSettings?.BrokerDanismanPayi || 50);
               const totalDanismanHakedis = (totalRevenueCiro * danismanPayOran) / 100;
               const totalOfisPayi = (totalRevenueCiro * (100 - danismanPayOran)) / 100;
               const satilanCount = filtered.filter(p => String(p.durum || '').toUpperCase().includes('SATIL') || String(p.islemTuru || '').toUpperCase().includes('SATIS')).length;
@@ -4604,7 +5781,7 @@ export default function App() {
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">MÜŞTERİ GÖSTERİMLERİM</span>
                   <h3 className="text-xl font-extrabold text-charcoal">Oluşturulan Randevular</h3>
                 </div>
-                <span className="px-3 py-1 bg-[#FEF08A] border border-charcoal rounded-full text-xs font-extrabold text-charcoal">
+                <span className="text-xs font-extrabold text-charcoal">
                   {appointments.filter(a => compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId))).length} Oluşturulan
                 </span>
               </div>
@@ -4624,12 +5801,20 @@ export default function App() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const myApps = appointments.filter(a => compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId)));
+                      const now = new Date();
+                      const myApps = appointments.filter(a => {
+                        const isUserApp = compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId));
+                        if (!isUserApp) return false;
+                        // Günü/tarihi geçmiş randevuları aktif listede gösterme
+                        const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                        if (appDate && !isNaN(appDate.getTime()) && appDate < now) return false;
+                        return true;
+                      });
                       if (myApps.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={6} className="py-8 text-center text-zinc-400 text-xs font-semibold">
-                              Kendi tarafınızdan oluşturulan aktif randevu bulunmuyor. Portföyler sayfasından yeni randevu teklifi oluşturabilirsiniz.
+                            <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs font-semibold">
+                              Kendi tarafınızdan oluşturulan aktif ve tarihi geçmemiş randevu bulunmuyor. Portföyler sayfasından yeni randevu teklifi oluşturabilirsiniz.
                             </td>
                           </tr>
                         );
@@ -4700,6 +5885,120 @@ export default function App() {
               </div>
             </div>
 
+            {/* Middle Card: Sonuçlandırılması Bekleyen Randevular (Past / Expired Appointments needing resolution) */}
+            <div className="bento-card bg-amber-50/60 border border-amber-200">
+              <div className="flex justify-between items-center mb-4 border-b border-amber-200/80 pb-3 flex-wrap gap-2">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse"></span>
+                    <span className="text-xs font-bold text-amber-800 uppercase tracking-widest block">GÜNÜ/SAATİ GEÇMİŞ RANDEVULAR</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-charcoal">Sonuçlandırılması Bekleyen Randevular</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Tarihi ve saati geçmiş, henüz sonuç kaydı (Satıldı/Kiralandı/Vazgeçildi) girilmemiş randevularınız.</p>
+                </div>
+                {(() => {
+                  const now = new Date();
+                  const expiredAppsCount = appointments.filter(a => {
+                    const isUserApp = compareIds(a.talepEdenId, user?.id) || compareIds(a.portfoySahibiId, user?.id) || (user?.rol === 'YETKILI');
+                    if (!isUserApp) return false;
+                    if (a.durum === 'CANCELLED' || a.durum === 'REJECTED') return false;
+                    const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                    return appDate && !isNaN(appDate.getTime()) && appDate < now;
+                  }).length;
+
+                  return (
+                    <span className="text-xs font-extrabold text-amber-950 bg-[#FEF08A] px-3 py-1 rounded-full border border-amber-300 shadow-xs">
+                      {expiredAppsCount} Sonuç Bekleyen
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-amber-200 text-xs font-extrabold text-amber-900 uppercase">
+                      <th className="pb-3 min-w-[140px]">Portföy Tipi</th>
+                      <th className="pb-3 min-w-[160px]">Lokasyon</th>
+                      <th className="pb-3 min-w-[160px]">Portföy Sahibi</th>
+                      <th className="pb-3 min-w-[160px]">Talep Eden Uzman</th>
+                      <th className="pb-3 min-w-[150px]">Müşteri</th>
+                      <th className="pb-3 min-w-[140px]">Randevu Zamanı</th>
+                      <th className="pb-3 text-center min-w-[130px]">Aksiyon</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const now = new Date();
+                      const expiredApps = appointments.filter(a => {
+                        const isUserApp = compareIds(a.talepEdenId, user?.id) || compareIds(a.portfoySahibiId, user?.id) || (user?.rol === 'YETKILI');
+                        if (!isUserApp) return false;
+                        if (a.durum === 'CANCELLED' || a.durum === 'REJECTED') return false;
+                        const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                        return appDate && !isNaN(appDate.getTime()) && appDate < now;
+                      });
+
+                      if (expiredApps.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs font-semibold">
+                              🎉 Harika! Sonuçlandırılması bekleyen günü geçmiş randevunuz bulunmuyor.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return expiredApps.map(app => (
+                        <tr
+                          key={`expired-app-${app.id}`}
+                          className="border-b border-amber-100 text-sm hover:bg-amber-100/60 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedAppointmentToAction(app);
+                            setAppActionType(app.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                            const fiyatNum = Number(app.portfoyFiyat || 0);
+                            setAppActionBedel(fiyatNum.toString());
+                            setAppActionCiro(app.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
+                            setShowAppointmentActionModal(true);
+                          }}
+                        >
+                          <td className="py-4">
+                            <strong className="font-extrabold text-charcoal">{app.portfoyTip}</strong>
+                            <span className="text-xs text-zinc-500 block">{app.portfoyTur}</span>
+                          </td>
+                          <td className="py-4 text-xs font-medium text-zinc-600">
+                            {app.ilce} / {app.il}
+                            {app.mahalle && <span className="block text-zinc-400 text-[11px]">{app.mahalle} Mah.</span>}
+                          </td>
+                          <td className="py-4 text-xs font-bold text-charcoal">
+                            {app.portfoySahibi || 'Belirtilmemiş'}
+                          </td>
+                          <td className="py-4 text-xs font-bold text-emerald-700">
+                            {app.talepEden || 'Belirtilmemiş'}
+                          </td>
+                          <td className="py-4 text-xs">
+                            <div className="font-bold text-charcoal">{app.musteri}</div>
+                            <div className="text-zinc-500">{app.musteriTelefon}</div>
+                          </td>
+                          <td className="py-4 text-xs font-semibold text-amber-900">
+                            <div>{app.tarih}</div>
+                            <div className="font-extrabold text-amber-950">{app.zaman}</div>
+                          </td>
+                          <td className="py-4 text-center">
+                            <button
+                              type="button"
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-[11px] font-extrabold transition-all shadow-xs border-none cursor-pointer flex items-center gap-1 mx-auto"
+                            >
+                              ⚡ Sonuçlandır
+                            </button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Bottom Wide Main Card Container: Randevu Talepleri Akışı */}
             <div className="bento-card bg-white mt-2">
               <div className="flex flex-wrap justify-between items-center mb-2 border-b border-zinc-100 pb-4">
@@ -4707,9 +6006,26 @@ export default function App() {
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">RANDEVU TAKVİMİ & TALEP YÖNETİMİ</span>
                   <h2 className="text-2xl font-extrabold text-charcoal">Randevu Talepleri Akışı</h2>
                 </div>
-                <span className="px-3 py-1 bg-cream border border-charcoal/10 rounded-full text-xs font-bold text-zinc-600">
-                  Toplam {appointments.length} Kayıt
-                </span>
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const pendingCount = appointments.filter(a => (compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id)) && a.durum === 'PENDING').length;
+                    return (
+                      <button
+                        type="button"
+                        className="relative p-2 rounded-2xl bg-cream hover:bg-zinc-100 text-charcoal transition-all border border-zinc-200 cursor-pointer flex items-center gap-2 font-bold text-xs shadow-xs"
+                        title={pendingCount > 0 ? `${pendingCount} Yanıt Bekleyen Talep Bulunuyor` : 'Bildirimler'}
+                      >
+                        <Bell size={18} className="text-charcoal" />
+                        <span>Bildirimler</span>
+                        {pendingCount > 0 && (
+                          <span className="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                            {pendingCount} Yeni
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* 2-Split Grid: Left (Giden Talepler 📤) & Right (Gelen Talepler 📥) */}
@@ -4719,9 +6035,8 @@ export default function App() {
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-amber-600 font-bold text-lg">📤</span>
                       <div>
-                        <h3 className="font-extrabold text-base text-charcoal">Giden Talepler</h3>
+                        <h3 className="font-extrabold text-base text-charcoal">📤Giden Talepler</h3>
                         <span className="text-[10px] text-zinc-500 block uppercase tracking-wider">Sizin gönderdiğiniz gösterim istekleri</span>
                       </div>
                     </div>
@@ -4733,11 +6048,17 @@ export default function App() {
                   {/* Outgoing List */}
                   <div className="flex flex-col max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                     {(() => {
-                      const outgoingApps = appointments.filter(a => compareIds(a.talepEdenId, user?.id) && !compareIds(a.talepEdenId, a.portfoySahibiId));
+                      const now = new Date();
+                      const outgoingApps = appointments.filter(a => {
+                        if (!compareIds(a.talepEdenId, user?.id) || compareIds(a.talepEdenId, a.portfoySahibiId)) return false;
+                        const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                        if (appDate && !isNaN(appDate.getTime()) && appDate < now) return false;
+                        return true;
+                      });
                       if (outgoingApps.length === 0) {
                         return (
                           <div className="py-6 text-center text-zinc-400 text-xs italic">
-                            Henüz başka bir portföye gönderdiğiniz randevu bulunmuyor.
+                            Henüz başka bir portföye gönderdiğiniz aktif randevu bulunmuyor.
                           </div>
                         );
                       }
@@ -4795,9 +6116,8 @@ export default function App() {
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-indigo-600 font-bold text-lg">📥</span>
                       <div>
-                        <h3 className="font-extrabold text-base text-charcoal">Gelen Talepler</h3>
+                        <h3 className="font-extrabold text-base text-charcoal">📥Gelen Talepler</h3>
                         <span className="text-[10px] text-zinc-500 block uppercase tracking-wider">Size gelen gösterim istekleri</span>
                       </div>
                     </div>
@@ -4809,11 +6129,18 @@ export default function App() {
                   {/* Incoming List */}
                   <div className="flex flex-col max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                     {(() => {
-                      const incomingApps = appointments.filter(a => (user?.rol === 'YETKILI' ? !compareIds(a.talepEdenId, user?.id) : compareIds(a.portfoySahibiId, user?.id)) && !compareIds(a.talepEdenId, a.portfoySahibiId));
+                      const now = new Date();
+                      const incomingApps = appointments.filter(a => {
+                        const isTargetUser = user?.rol === 'YETKILI' ? !compareIds(a.talepEdenId, user?.id) : compareIds(a.portfoySahibiId, user?.id);
+                        if (!isTargetUser || compareIds(a.talepEdenId, a.portfoySahibiId)) return false;
+                        const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                        if (appDate && !isNaN(appDate.getTime()) && appDate < now) return false;
+                        return true;
+                      });
                       if (incomingApps.length === 0) {
                         return (
                           <div className="py-6 text-center text-zinc-400 text-xs italic">
-                            Henüz size gelen bir randevu talebi bulunmuyor.
+                            Henüz size gelen aktif bir randevu talebi bulunmuyor.
                           </div>
                         );
                       }
@@ -4884,12 +6211,123 @@ export default function App() {
           </div>
         )}
 
+        {/* Tab 3.5: Process Management Tab (Süreç Yönetimi - 6 Aşamalı Kanban Takibi) */}
+        {activeTab === 'processManagement' && (
+          <div className="flex flex-col gap-6 w-full">
+
+            {/* Header Card */}
+            <div className="bento-card bg-gradient-to-r from-charcoal via-zinc-900 to-indigo-950 text-white flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="px-3 py-0.5 bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                    <GitPullRequest size={14} /> Satış & Gösterim Fırsatları
+                  </span>
+                  {user?.firmaAdi && (
+                    <span className="px-3 py-0.5 bg-white/10 text-white border border-white/20 rounded-full text-xs font-extrabold">
+                      🏢 {user.firmaAdi}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white">Süreç Yönetimi (Pipeline)</h2>
+                <p className="text-xs md:text-sm text-zinc-300 mt-1 max-w-2xl">
+                  Randevuların ve satış/kiralama fırsatlarının aşama aşama takibini yapabileceğiniz 6 kanban adımlı süreç board'u.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-full">
+                  ⚡ Canlı Aşama Takibi
+                </span>
+              </div>
+            </div>
+
+            {/* 6 Stage Kanban Board Columns - MusteriSurecleri tablosundan besleniyor */}
+            {clientProcessesLoading ? (
+              <div className="flex items-center justify-center py-20 text-zinc-400">
+                <Loader2 size={28} className="animate-spin mr-2" />
+                <span className="text-sm font-semibold">Süreç kayıtları yükleniyor...</span>
+              </div>
+            ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 items-start">
+
+              {/* Her kolon için yardımcı kart render fonksiyonu */}
+              {[
+                { stageId: 1, label: 'Sonuç Bekleyenler / Yeni Gösterim', color: 'sky' },
+                { stageId: 2, label: 'Düşünme Aşaması', color: 'purple' },
+                { stageId: 3, label: 'Pazarlık / Teklif', color: 'amber' },
+                { stageId: 4, label: 'Kapora Alındı', color: 'emerald' },
+                { stageId: 5, label: 'Sözleşme / Tapu', color: 'indigo' },
+                { stageId: 6, label: 'Tamamlandı (Satıldı/Kiralandı)', color: 'teal' },
+              ].map(({ stageId, label, color }) => {
+                const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
+                const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; badgeText: string; empty: string; itemBorder: string }> = {
+                  sky:     { card: 'bg-sky-50/80 border-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', title: 'text-sky-950', badge: 'bg-sky-200 text-sky-900', badgeText: 'text-sky-900', empty: 'text-sky-400', itemBorder: 'border-sky-100' },
+                  purple:  { card: 'bg-purple-50/80 border-purple-200', border: 'border-purple-200', dot: 'bg-purple-500', title: 'text-purple-950', badge: 'bg-purple-200 text-purple-900', badgeText: 'text-purple-900', empty: 'text-purple-300', itemBorder: 'border-purple-100' },
+                  amber:   { card: 'bg-amber-50/80 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', badgeText: 'text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
+                  emerald: { card: 'bg-emerald-50/80 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', badgeText: 'text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
+                  indigo:  { card: 'bg-indigo-50/80 border-indigo-200', border: 'border-indigo-200', dot: 'bg-indigo-500', title: 'text-indigo-950', badge: 'bg-indigo-200 text-indigo-900', badgeText: 'text-indigo-900', empty: 'text-indigo-300', itemBorder: 'border-indigo-100' },
+                  teal:    { card: 'bg-teal-50/80 border-teal-200', border: 'border-teal-200', dot: 'bg-teal-600', title: 'text-teal-950', badge: 'bg-teal-200 text-teal-900', badgeText: 'text-teal-900', empty: 'text-teal-300', itemBorder: 'border-teal-100' },
+                };
+                const c = colorMap[color];
+                return (
+                  <div key={stageId} className={`bento-card ${c.card} border p-4 flex flex-col gap-3 min-h-[500px]`}>
+                    <div className={`flex justify-between items-center pb-2 border-b ${c.border}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></span>
+                        <h3 className={`text-xs font-black uppercase tracking-wider ${c.title}`}>{label}</h3>
+                      </div>
+                      <span className={`text-[10px] font-extrabold ${c.badge} px-2 py-0.5 rounded-full`}>
+                        {stageItems.length}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
+                      {stageItems.map(proc => (
+                        <div
+                          key={proc.id}
+                          className={`p-3 bg-white rounded-2xl border ${c.itemBorder} shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-1.5 group`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs font-black text-charcoal">
+                              {proc.portfoyTip || '—'} {proc.portfoyTur ? `· ${proc.portfoyTur}` : ''}
+                            </span>
+                            <span className={`text-[9px] font-extrabold px-1.5 rounded-full border ${c.badge} border-transparent`}>
+                              {proc.asamaAdi}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 font-medium">
+                            {proc.portfoyIlce || ''}{proc.portfoyIl ? ` / ${proc.portfoyIl}` : ''}
+                            {proc.portfoyFiyat ? ` · ${Number(proc.portfoyFiyat).toLocaleString('tr-TR')} TL` : ''}
+                          </p>
+                          <div className="text-[10px] text-zinc-600 bg-zinc-50 p-1.5 rounded-xl border border-zinc-100 flex justify-between items-center mt-1">
+                            <span>👤 {proc.musteri || '—'}</span>
+                            <span className="font-bold text-zinc-400">{proc.danisman ? `🤝 ${proc.danisman}` : ''}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {stageItems.length === 0 && (
+                        <div className={`py-12 text-center ${c.empty} text-xs font-semibold italic`}>
+                          Bu aşamada aktif kayıt bulunmuyor.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+            </div>
+            )}
+
+          </div>
+        )}
+
         {/* Tab 4: Clients Tab */}
         {activeTab === 'clients' && (
           <div className="flex flex-col gap-6">
             <div className="bento-card bg-white">
               <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                <h2 className="text-2xl font-extrabold">Müşterilerim (Portföy & Alıcı Talepleri)</h2>
+                <h2 className="text-2xl font-extrabold">Müşterilerim</h2>
                 <button
                   type="button"
                   onClick={() => setShowAddClientModal(true)}
@@ -5074,119 +6512,136 @@ export default function App() {
 
         {/* Tab 5: Calculator Tab */}
         {activeTab === 'calculator' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto">
 
-            <div className="bento-card bg-white">
-              <h2 className="text-2xl font-extrabold mb-4">Komisyon Payı Hesaplama</h2>
+            {/* Unified Single Digital Screen Card */}
+            <div className="bento-card bg-zinc-900 text-white border-4 border-zinc-800 p-6 md:p-8 rounded-3xl shadow-xl">
 
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 block mb-1">Brüt Komisyon Bedeli (TL)</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      className="w-full text-sm p-3 rounded-2xl pl-10 bg-zinc-50 focus:outline-none"
-                      value={grossCommission}
-                      onChange={e => setGrossCommission(Number(e.target.value))}
-                    />
-                    <DollarSign size={16} className="absolute left-3.5 top-4 text-zinc-400" />
+              {/* Header Bar */}
+              <div className="flex justify-between items-center mb-6 pb-3 border-b border-zinc-800">
+                <h2 className="text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10B981]" />
+                  Komisyon Payı Hesap Makinesi
+                </h2>
+
+              </div>
+
+              <div className="flex flex-col gap-6">
+
+                {/* 1. GİRDİ ALANLARI */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-mono font-bold text-zinc-400 block mb-2 uppercase tracking-wider">
+                      Brüt Komisyon Bedeli (TL)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        className="w-full text-base p-3.5 rounded-2xl pl-11 bg-[#0F172A] border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-bold text-emerald-400 shadow-inner"
+                        value={grossCommission}
+                        onChange={e => setGrossCommission(Number(e.target.value))}
+                      />
+                      <DollarSign size={20} className="absolute left-4 top-3.5 text-zinc-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-mono font-bold text-zinc-400 block mb-2 uppercase tracking-wider">
+                      Çalışma Senaryosu
+                    </label>
+                    <select
+                      className="w-full text-sm p-3.5 rounded-2xl bg-[#0F172A] border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-semibold text-zinc-200 cursor-pointer shadow-inner"
+                      value={calcScenario}
+                      onChange={e => setCalcScenario(e.target.value as any)}
+                    >
+                      <option value="A" className="bg-zinc-900 text-white">Senaryo A - Kendi Müşterisi</option>
+                      <option value="B" className="bg-zinc-900 text-white">Senaryo B - Ortak Çalışma (Ofis İçi)</option>
+                      <option value="C" className="bg-zinc-900 text-white">Senaryo C - Dış Ortaklı Paylaşım</option>
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 block mb-1">Çalışma Senaryosu</label>
-                  <select
-                    className="w-full text-sm p-3 rounded-2xl bg-zinc-50 focus:outline-none"
-                    value={calcScenario}
-                    onChange={e => setCalcScenario(e.target.value as any)}
-                  >
-                    <option value="A">Senaryo A - Kendi Müşterisi</option>
-                    <option value="B">Senaryo B - Ortak Çalışma (Ofis İçi)</option>
-                    <option value="C">Senaryo C - Dış Ortaklı Paylaşım</option>
-                  </select>
-                </div>
-
-                {/* Scenario details text */}
-                <div className="p-4 rounded-2xl bg-[#E9D5FF]/20 text-xs flex flex-col gap-1.5 leading-relaxed">
+                {/* Senaryo Detay Metni */}
+                <div className="p-4 rounded-2xl bg-[#0F172A] border border-zinc-800 text-xs font-mono flex flex-col gap-1.5 leading-relaxed text-zinc-300 shadow-inner">
                   {calcScenario === 'A' && (
-                    <p>💡 **Senaryo A:** Portföy de alıcı da size aittir. Brüt komisyondan Yetkili tarafından belirlenen **%{commSettings.aOfis} Ofis Payı** kesildikten sonra kalanın tamamı (%{commSettings.aDanisman}) sizin hakedişinizdir.</p>
+                    <p>**Senaryo A:** Portföy de alıcı da size aittir. Brüt komisyondan Yetkili tarafından belirlenen <span className="text-emerald-400 font-bold">%{commSettings.aOfis} Ofis Payı</span> kesildikten sonra kalanın tamamı (<span className="text-emerald-400 font-bold">%{commSettings.aDanisman}</span>) sizin hakedişinizdir.</p>
                   )}
                   {calcScenario === 'B' && (
-                    <p>💡 **Senaryo B:** Ofis içi iş ortaklığı. Komisyon oranları: Ofis **%{commSettings.bOfis}**, Portföyü getiren danışman **%{commSettings.bPortfoySahibi}**, Müşteriyi getiren danışman **%{commSettings.bMusteriGetiren}**.</p>
+                    <p>**Senaryo B:** Ofis içi iş ortaklığı. Komisyon oranları: Ofis <span className="text-emerald-400 font-bold">%{commSettings.bOfis}</span>, Portföyü getiren danışman <span className="text-emerald-400 font-bold">%{commSettings.bPortfoySahibi}</span>, Müşteriyi getiren danışman <span className="text-emerald-400 font-bold">%{commSettings.bMusteriGetiren}</span>.</p>
                   )}
                   {calcScenario === 'C' && (
-                    <p>💡 **Senaryo C:** Dış emlakçıyla ortak çalışma. Toplam komisyonun **%{commSettings.cDisOrtak}**'ı doğrudan dış ortağa ödenir. Kalan %50 içinden ofis payı **%{commSettings.cOfis}** ve sizin payınız **%{commSettings.cDanisman}** hesaplanır.</p>
+                    <p>**Senaryo C:** Dış emlakçıyla ortak çalışma. Toplam komisyonun <span className="text-emerald-400 font-bold">%{commSettings.cDisOrtak}</span>'ı doğrudan dış ortağa ödenir. Kalan %50 içinden ofis payı <span className="text-emerald-400 font-bold">%{commSettings.cOfis}</span> ve sizin payınız <span className="text-emerald-400 font-bold">%{commSettings.cDanisman}</span> hesaplanır.</p>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Results views */}
-            <div className="bento-card bg-white flex flex-col justify-between">
-              <div>
-                <h3 className="text-xl font-extrabold mb-4">Paylaşım Sonuçları</h3>
+                {/* 2. DİJİTAL LCD PAYLAŞIM SONUÇLARI PANELLERİ */}
+                <div className="pt-4 border-t border-zinc-800">
+                  <h3 className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                    HESAPLANAN PAYLAŞIM SONUÇLARI
+                  </h3>
 
-                <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 border-none">
-                  <div className="flex justify-between items-center text-xs pb-2 border-b border-zinc-200">
-                    <span>Toplam Komisyon:</span>
-                    <strong className="font-extrabold">{grossCommission.toLocaleString('tr-TR')} TL</strong>
+                  <div className="p-5 rounded-2xl bg-[#0F172A] border border-zinc-800 shadow-inner flex flex-col gap-4 font-mono">
+                    <div className="flex justify-between items-center text-xs pb-3 border-b border-zinc-800 text-zinc-400 flex-wrap gap-1">
+                      <span>Toplam Komisyon Bedeli:</span>
+                      <strong className="text-white text-base tracking-wider font-bold">{grossCommission.toLocaleString('tr-TR')} TL</strong>
+                    </div>
+
+                    {calcScenario === 'A' && (
+                      <>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Ofis Payı (%{commSettings.aOfis}):</span>
+                          <strong className="text-zinc-200">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-sm pt-3 border-t border-zinc-800 flex-wrap gap-1">
+                          <span className="font-bold text-emerald-400">Hakedişiniz (%{commSettings.aDanisman}):</span>
+                          <strong className="text-emerald-400 text-lg sm:text-xl tracking-wider font-extrabold">{calcResults.danisman.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                      </>
+                    )}
+
+                    {calcScenario === 'B' && (
+                      <>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Ofis Payı (%{commSettings.bOfis}):</span>
+                          <strong className="text-zinc-200">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Portföy Getiren Danışman (%{commSettings.bPortfoySahibi}):</span>
+                          <strong className="text-zinc-200">{calcResults.portfoySahibi.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-sm pt-3 border-t border-zinc-800 flex-wrap gap-1">
+                          <span className="font-bold text-emerald-400">Müşteri Getiren Danışman (%{commSettings.bMusteriGetiren}):</span>
+                          <strong className="text-emerald-400 text-lg sm:text-xl tracking-wider font-extrabold">{calcResults.musteriGetiren.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                      </>
+                    )}
+
+                    {calcScenario === 'C' && (
+                      <>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Dış Ortak Payı (%{commSettings.cDisOrtak}):</span>
+                          <strong className="text-zinc-200">{calcResults.disOrtak.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Kalan Pay (İç Bölüşüm):</span>
+                          <strong className="text-zinc-200">{(grossCommission - calcResults.disOrtak).toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-zinc-400 flex-wrap gap-1">
+                          <span>Ofis Payı (%{commSettings.cOfis} of remaining):</span>
+                          <strong className="text-zinc-200">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                        <div className="flex justify-between items-center text-sm pt-3 border-t border-zinc-800 flex-wrap gap-1">
+                          <span className="font-bold text-emerald-400">Hakedişiniz (%{commSettings.cDanisman} of remaining):</span>
+                          <strong className="text-emerald-400 text-lg sm:text-xl tracking-wider font-extrabold">{calcResults.danisman.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+                      </>
+                    )}
                   </div>
-
-                  {calcScenario === 'A' && (
-                    <>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Ofis Payı (%{commSettings.aOfis}):</span>
-                        <strong className="font-bold">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-sm pt-2 border-t border-charcoal/10">
-                        <span className="font-bold">Hakedişiniz (%{commSettings.aDanisman}):</span>
-                        <strong className="font-extrabold text-indigo-700">{calcResults.danisman.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                    </>
-                  )}
-
-                  {calcScenario === 'B' && (
-                    <>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Ofis Payı (%{commSettings.bOfis}):</span>
-                        <strong className="font-bold">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Portföy Getiren Danışman (%{commSettings.bPortfoySahibi}):</span>
-                        <strong className="font-bold">{calcResults.portfoySahibi.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-sm pt-2 border-t border-charcoal/10">
-                        <span className="font-bold">Müşteri Getiren Danışman (%{commSettings.bMusteriGetiren}):</span>
-                        <strong className="font-extrabold text-indigo-700">{calcResults.musteriGetiren.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                    </>
-                  )}
-
-                  {calcScenario === 'C' && (
-                    <>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Dış Ortak Payı (%{commSettings.cDisOrtak}):</span>
-                        <strong className="font-bold">{calcResults.disOrtak.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Kalan Pay (İç Bölüşüm):</span>
-                        <strong className="font-bold">{(grossCommission - calcResults.disOrtak).toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Ofis Payı (%{commSettings.cOfis} of remaining):</span>
-                        <strong className="font-bold">{calcResults.ofis.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-sm pt-2 border-t border-charcoal/10">
-                        <span className="font-bold">Hakedişiniz (%{commSettings.cDanisman} of remaining):</span>
-                        <strong className="font-extrabold text-indigo-700">{calcResults.danisman.toLocaleString('tr-TR')} TL</strong>
-                      </div>
-                    </>
-                  )}
                 </div>
-              </div>
 
-              <div className="text-[10px] text-zinc-500 leading-relaxed border-t border-charcoal/10 pt-4 mt-4">
-                * Bu oranlar Yetkili (Broker) tarafından belirlenen oranlar üzerinden dinamik hesaplanır.
+                <div className="text-[10px] text-zinc-500 font-mono leading-relaxed pt-2 border-t border-zinc-800/80">
+                  * Bu oranlar Yetkili (Broker) tarafından belirlenen oranlar üzerinden dinamik hesaplanır.
+                </div>
               </div>
             </div>
 
@@ -5619,11 +7074,11 @@ export default function App() {
 
               {/* Add Employee Form */}
               <form onSubmit={handleAddEmployee} className="flex flex-col gap-3 mb-6">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     placeholder="Ad Soyad"
-                    className="flex-1 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
+                    className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
                     value={newEmpName}
                     onChange={e => setNewEmpName(e.target.value)}
                     required
@@ -5631,13 +7086,13 @@ export default function App() {
                   <input
                     type="email"
                     placeholder="E-posta"
-                    className="flex-1 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
+                    className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
                     value={newEmpEmail}
                     onChange={e => setNewEmpEmail(e.target.value)}
                     required
                   />
                 </div>
-                <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-none">
+                <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-none cursor-pointer">
                   Yeni Çalışan Ekle
                 </button>
               </form>
@@ -5931,16 +7386,19 @@ export default function App() {
 
         {/* Tab 8: Commission settings (YETKILI only) */}
         {activeTab === 'settings' && user?.rol === 'YETKILI' && (
-          <div className="bento-card bg-white p-8">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bento-card bg-zinc-900 text-white border-4 border-zinc-800 p-6 md:p-8 rounded-3xl shadow-xl">
+            <div className="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-zinc-800 gap-4">
               <div>
-                <h2 className="text-2xl font-extrabold text-charcoal">Komisyon & Finansal Ayarlar</h2>
-                <p className="text-xs text-zinc-500 mt-1">Firmanıza özel satış, kiralama, ofis içi ve dışı komisyon paylaşımlarını yönetin.</p>
+                <h2 className="text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10B981]" />
+                  Komisyon & Finansal Ayarlar
+                </h2>
+                <p className="text-xs text-zinc-400 font-mono mt-1">Firmanıza özel satış, kiralama, ofis içi ve dışı komisyon paylaşımlarını yönetin.</p>
               </div>
               <button
                 onClick={handleSaveSettings}
                 disabled={isSavingSettings}
-                className="px-6 py-2.5 bg-charcoal text-white text-sm font-bold rounded-full hover:bg-black transition-colors flex items-center gap-2"
+                className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-sm rounded-full transition-colors flex items-center gap-2 shadow-lg cursor-pointer"
               >
                 {isSavingSettings ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Değişiklikleri Kaydet
@@ -5948,57 +7406,57 @@ export default function App() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-zinc-200 mb-6 gap-6">
+            <div className="flex border-b border-zinc-800 mb-6 gap-6 overflow-x-auto">
               <button
                 onClick={() => setSettingsActiveTab('standartlar')}
-                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'standartlar' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+                className={`pb-3 text-sm font-bold font-mono transition-colors relative whitespace-nowrap ${settingsActiveTab === 'standartlar' ? 'text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
               >
                 Satış & Kiralama Standartları
-                {settingsActiveTab === 'standartlar' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+                {settingsActiveTab === 'standartlar' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-400"></div>}
               </button>
               <button
                 onClick={() => setSettingsActiveTab('disOfis')}
-                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'disOfis' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+                className={`pb-3 text-sm font-bold font-mono transition-colors relative whitespace-nowrap ${settingsActiveTab === 'disOfis' ? 'text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
               >
                 Ofis Dışı Paylaşım
-                {settingsActiveTab === 'disOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+                {settingsActiveTab === 'disOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-400"></div>}
               </button>
               <button
                 onClick={() => setSettingsActiveTab('iciOfis')}
-                className={`pb-3 text-sm font-bold transition-colors relative ${settingsActiveTab === 'iciOfis' ? 'text-charcoal' : 'text-zinc-400 hover:text-zinc-600'}`}
+                className={`pb-3 text-sm font-bold font-mono transition-colors relative whitespace-nowrap ${settingsActiveTab === 'iciOfis' ? 'text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
               >
                 Ofis İçi Prim & Hakediş
-                {settingsActiveTab === 'iciOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-charcoal"></div>}
+                {settingsActiveTab === 'iciOfis' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-400"></div>}
               </button>
             </div>
 
-            {/* Content Container (Koyu Gri - Siyah Tema) */}
-            <div className="bg-[#27272A] text-white p-6 rounded-3xl border border-zinc-700/80 shadow-xl">
+            {/* Content Container */}
+            <div className="flex flex-col gap-6">
 
               {settingsActiveTab === 'standartlar' && (
                 <div className="flex flex-col gap-6">
                   {/* Kiralama Parametreleri Tablosu */}
                   <div>
-                    <h3 className="text-base font-extrabold mb-3 text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
                       <span>Kiralama Parametreleri</span>
-                      <span className="text-xs font-semibold text-zinc-400">Yasal & Genel Standartlar</span>
+                      <span className="text-[11px] text-zinc-500 font-normal">Yasal & Genel Standartlar</span>
                     </h3>
 
-                    <div className="border border-zinc-200 rounded-2xl bg-white text-charcoal shadow-xs overflow-hidden">
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold uppercase tracking-wider">
+                          <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
                             <th className="py-2.5 px-4 w-1/4">Parametre / Tanım</th>
                             <th className="py-2.5 px-4 w-1/4">Açıklama</th>
                             <th className="py-2.5 px-4 text-right w-1/2">Standart Değerler</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                        <tbody className="divide-y divide-zinc-800">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Emlak Komisyonu (Hizmet Bedeli)
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Yasal tavan 1 aylık kira bedelidir. Uygulamada tamamını kiracı öder.
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -6006,70 +7464,70 @@ export default function App() {
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KiralamaKomisyonOrani}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKomisyonOrani: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-700 font-bold">Aylık Kira</span>
+                                <span className="text-zinc-300 font-semibold">Aylık Kira</span>
                               </div>
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Depozito Üst Sınırı
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               TBK m. 342 uyarınca üst sınır 3 kiradır. Piyasada 1-2 aylık kira uygulanır.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <select
-                                className="text-xs p-1.5 border-2 border-charcoal rounded-lg font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                className="text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
                                 value={firmaSettings.KiralamaDepozitoSiniri}
                                 onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaDepozitoSiniri: Number(e.target.value) })}
                               >
-                                <option value={1}>1 Aylık Kira</option>
-                                <option value={2}>2 Aylık Kira</option>
-                                <option value={3}>3 Aylık Kira</option>
+                                <option value={1} className="bg-zinc-900 text-white">1 Aylık Kira</option>
+                                <option value={2} className="bg-zinc-900 text-white">2 Aylık Kira</option>
+                                <option value={3} className="bg-zinc-900 text-white">3 Aylık Kira</option>
                               </select>
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Peşin Kira Tahsilatı
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Sözleşme imza ve teslim tarihinde peşin alınan kullanım bedeli.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KiralamaPesinKira}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaPesinKira: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-700 font-bold">Aylık Kira</span>
+                                <span className="text-zinc-300 font-semibold">Aylık Kira</span>
                               </div>
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Kapora (Bağlanma Parası) Tipi
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Kiralama niyetini kesinleştirmek için alınan ön güvence bedeli.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <select
-                                className="text-xs p-1.5 border-2 border-charcoal rounded-lg font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                className="text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
                                 value={firmaSettings.KiralamaKaporaTipi}
                                 onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKaporaTipi: e.target.value })}
                               >
-                                <option value="ESNEK">Serbest Tutar (İşlem anında belirlenir)</option>
-                                <option value="1_KIRA">1 Aylık Kira Bedeli</option>
+                                <option value="ESNEK" className="bg-zinc-900 text-white">Serbest Tutar (İşlem anında belirlenir)</option>
+                                <option value="1_KIRA" className="bg-zinc-900 text-white">1 Aylık Kira Bedeli</option>
                               </select>
                             </td>
                           </tr>
@@ -6080,79 +7538,79 @@ export default function App() {
 
                   {/* Satış Parametreleri Tablosu */}
                   <div>
-                    <h3 className="text-base font-extrabold mb-3 text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
                       <span>Satış Parametreleri</span>
-                      <span className="text-xs font-semibold text-zinc-400">Yasal & Genel Standartlar</span>
+                      <span className="text-[11px] text-zinc-500 font-normal">Yasal & Genel Standartlar</span>
                     </h3>
 
-                    <div className="border border-zinc-200 rounded-2xl bg-white shadow-xs">
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold uppercase tracking-wider">
+                          <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
                             <th className="py-2.5 px-4 w-1/4">Parametre / Tanım</th>
                             <th className="py-2.5 px-4 w-1/4">Açıklama</th>
                             <th className="py-2.5 px-4 text-right w-1/2">Standart Değerler</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                        <tbody className="divide-y divide-zinc-800">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Satış Emlak Komisyonu (Hizmet Bedeli)
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Satış bedeli üzerinden hesaplanır. Yasal tavan %2 Alıcı + %2 Satıcı (KDV Dahil).
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <div className="flex flex-col gap-1.5 items-end">
+                              <div className="flex flex-col gap-2 items-end">
                                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                                  <span className="text-zinc-600 font-semibold">Alıcı: %</span>
+                                  <span className="text-zinc-400 font-semibold">Alıcı: %</span>
                                   <input
                                     type="number"
                                     step="0.1"
-                                    className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.SatisAliciKomisyon}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, SatisAliciKomisyon: Number(e.target.value) })}
                                   />
-                                  <span className="text-zinc-400 font-bold px-1">+</span>
-                                  <span className="text-zinc-600 font-semibold">Satıcı: %</span>
+                                  <span className="text-zinc-500 font-bold px-1">+</span>
+                                  <span className="text-zinc-400 font-semibold">Satıcı: %</span>
                                   <input
                                     type="number"
                                     step="0.1"
-                                    className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.SatisSaticiKomisyon}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, SatisSaticiKomisyon: Number(e.target.value) })}
                                   />
                                 </div>
-                                <div className="text-emerald-700 font-black text-xs bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                <div className="text-emerald-400 font-extrabold text-xs bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-800 font-mono">
                                   = Toplam %{(Number(firmaSettings.SatisAliciKomisyon) + Number(firmaSettings.SatisSaticiKomisyon)).toFixed(1)} (KDV Dahil)
                                 </div>
                               </div>
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Tapu Harcı Oranı
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Beyan edilen satış bedeli üzerinden harç dökümü (%2 Alıcı + %2 Satıcı).
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2 flex-wrap">
-                                <span className="text-zinc-600 font-semibold">Alıcı: %</span>
+                                <span className="text-zinc-400 font-semibold">Alıcı: %</span>
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.TapuHarciAlici}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciAlici: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-400 font-bold px-1">+</span>
-                                <span className="text-zinc-600 font-semibold">Satıcı: %</span>
+                                <span className="text-zinc-500 font-bold px-1">+</span>
+                                <span className="text-zinc-400 font-semibold">Satıcı: %</span>
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.TapuHarciSatici}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciSatici: Number(e.target.value) })}
                                 />
@@ -6160,40 +7618,40 @@ export default function App() {
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Döner Sermaye Bedeli (Tapu Maktu)
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Tapu Müdürlüğü tarafından her yıl belirlenen işlem ücreti.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <input
                                   type="number"
-                                  className="w-24 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-28 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.DonerSermayeBedeli}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, DonerSermayeBedeli: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-700 font-bold">TL</span>
+                                <span className="text-zinc-300 font-semibold">TL</span>
                               </div>
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Satış Kapora / Ön Ödeme Yüzdesi
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Satış anlaşması sağlandığında cayma durumlarına karşı alınan cayma tazminatı kaporası.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <span className="text-zinc-600 font-semibold">Kapora Oranı: %</span>
+                                <span className="text-zinc-400 font-semibold">Kapora Oranı: %</span>
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.SatisKaporaOrani}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, SatisKaporaOrani: Number(e.target.value) })}
                                 />
@@ -6210,44 +7668,44 @@ export default function App() {
               {settingsActiveTab === 'disOfis' && (
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-extrabold mb-3 text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
                       <span>Ofis Dışı Paylaşım Kuralları</span>
-                      <span className="text-xs font-semibold text-zinc-400">Harici Emlak Ofisleri İle Paylaşım</span>
+                      <span className="text-[11px] text-zinc-500 font-normal">Harici Emlak Ofisleri İle Paylaşım</span>
                     </h3>
 
-                    <div className="border border-zinc-200 rounded-2xl bg-white shadow-xs">
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold uppercase tracking-wider">
+                          <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
                             <th className="py-2.5 px-4 w-1/4">Paylaşım Modeli</th>
                             <th className="py-2.5 px-4 w-1/4">Açıklama</th>
                             <th className="py-2.5 px-4 text-right w-1/2">Paylaşım Oranları</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3.5 px-4 font-extrabold text-charcoal">
+                        <tbody className="divide-y divide-zinc-800">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3.5 px-4 font-bold text-white">
                               Başka Emlak Ofisi ile Komisyon Bölüşümü
                             </td>
-                            <td className="py-3.5 px-4 text-zinc-500">
+                            <td className="py-3.5 px-4 text-zinc-400">
                               Portföy sahibi ofis ile alıcı/kiracı getiren dış emlak ofisi arasındaki brüt komisyon paylaşımı.
                             </td>
                             <td className="py-3.5 px-4 text-right">
                               <div className="flex flex-col gap-2 items-end">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-zinc-600 font-semibold">Portföy Sahibi Ofis: %</span>
+                                  <span className="text-zinc-400 font-semibold">Portföy Sahibi Ofis: %</span>
                                   <input
                                     type="number"
-                                    className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.DisOfisPortfoyPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisPortfoyPayi: Number(e.target.value) })}
                                   />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-zinc-600 font-semibold">Müşteri Getiren Ofis: %</span>
+                                  <span className="text-zinc-400 font-semibold">Müşteri Getiren Ofis: %</span>
                                   <input
                                     type="number"
-                                    className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.DisOfisMusteriPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisMusteriPayi: Number(e.target.value) })}
                                   />
@@ -6266,42 +7724,42 @@ export default function App() {
                 <div className="flex flex-col gap-6">
                   {/* Standart Bölüşüm Tablosu */}
                   <div>
-                    <h3 className="text-base font-extrabold mb-3 text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
                       <span>Standart Bölüşüm</span>
-                      <span className="text-xs font-semibold text-zinc-400">Genel Ofis Kuralları</span>
+                      <span className="text-[11px] text-zinc-500 font-normal">Genel Ofis Kuralları</span>
                     </h3>
 
-                    <div className="border border-zinc-200 rounded-2xl bg-white shadow-xs">
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold uppercase tracking-wider">
+                          <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
                             <th className="py-2.5 px-4 w-1/4">Model / Tanım</th>
                             <th className="py-2.5 px-4 w-1/4">Açıklama</th>
                             <th className="py-2.5 px-4 text-right w-1/2">Oranlar & Değerler</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                        <tbody className="divide-y divide-zinc-800">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Danışmanlar Arası (Portföy vs Müşteri)
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Portföy getiren ve müşteri bulan danışmanlar arası komisyon paylaşımı.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2 flex-wrap">
-                                <span className="text-zinc-600 font-semibold">Portföy: %</span>
+                                <span className="text-zinc-400 font-semibold">Portföy: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.IciPortfoyPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, IciPortfoyPayi: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-400 font-bold px-1">/</span>
-                                <span className="text-zinc-600 font-semibold">Müşteri: %</span>
+                                <span className="text-zinc-500 font-bold px-1">/</span>
+                                <span className="text-zinc-400 font-semibold">Müşteri: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.IciMusteriPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, IciMusteriPayi: Number(e.target.value) })}
                                 />
@@ -6309,27 +7767,27 @@ export default function App() {
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Danışman - Broker Paylaşımı
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Danışmanın elde ettiği hakedişin ofis (broker) ile bölüşüm oranı.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2 flex-wrap">
-                                <span className="text-zinc-600 font-semibold">Danışman: %</span>
+                                <span className="text-zinc-400 font-semibold">Danışman: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.BrokerDanismanPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, BrokerDanismanPayi: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-400 font-bold px-1">/</span>
-                                <span className="text-zinc-600 font-semibold">Ofis: %</span>
+                                <span className="text-zinc-500 font-bold px-1">/</span>
+                                <span className="text-zinc-400 font-semibold">Ofis: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.BrokerOfisPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, BrokerOfisPayi: Number(e.target.value) })}
                                 />
@@ -6343,42 +7801,42 @@ export default function App() {
 
                   {/* Özel Modeller Tablosu */}
                   <div>
-                    <h3 className="text-base font-extrabold mb-3 text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
                       <span>Özel Modeller</span>
-                      <span className="text-xs font-semibold text-zinc-400">Opsiyonel Hakediş Modelleri</span>
+                      <span className="text-[11px] text-zinc-500 font-normal">Opsiyonel Hakediş Modelleri</span>
                     </h3>
 
-                    <div className="border border-zinc-200 rounded-2xl bg-white shadow-xs">
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold uppercase tracking-wider">
+                          <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
                             <th className="py-2.5 px-4 w-1/5">Model Adı</th>
                             <th className="py-2.5 px-4 w-1/4">Mantık & Çalışma Şekli</th>
                             <th className="py-2.5 px-4 text-right w-7/12">Model Parametreleri</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                        <tbody className="divide-y divide-zinc-800">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Kademeli Ciro Primi Modeli
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Danışman ciro barajını aştıkça kendisine ödenen prim oranı kademeli artar.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-2 flex-wrap">
-                                <span className="text-zinc-600 font-semibold">Danışman: %</span>
+                                <span className="text-zinc-400 font-semibold">Danışman: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KademeliDanismanPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KademeliDanismanPayi: Number(e.target.value) })}
                                 />
-                                <span className="text-zinc-400 font-bold px-1">/</span>
-                                <span className="text-zinc-600 font-semibold">Ofis: %</span>
+                                <span className="text-zinc-500 font-bold px-1">/</span>
+                                <span className="text-zinc-400 font-semibold">Ofis: %</span>
                                 <input
                                   type="number"
-                                  className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KademeliOfisPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KademeliOfisPayi: Number(e.target.value) })}
                                 />
@@ -6386,31 +7844,31 @@ export default function App() {
                             </td>
                           </tr>
 
-                          <tr className="hover:bg-sky-50/70 transition-colors">
-                            <td className="py-3 px-4 font-extrabold text-charcoal">
+                          <tr className="hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 px-4 font-bold text-white">
                               Masa Ücreti (Desk Fee) Modeli
                             </td>
-                            <td className="py-3 px-4 text-zinc-500">
+                            <td className="py-3 px-4 text-zinc-400">
                               Danışman sabit masa kira ücreti öder, işlemlerden yüksek oranda prim alır.
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-3 flex-wrap">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-zinc-600 font-semibold">Sabit Ücret:</span>
+                                  <span className="text-zinc-400 font-semibold">Sabit Ücret:</span>
                                   <input
                                     type="number"
-                                    className="w-20 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-24 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.MasaUcretiTutar}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, MasaUcretiTutar: Number(e.target.value) })}
                                   />
-                                  <span className="text-zinc-700 font-bold">TL</span>
+                                  <span className="text-zinc-300 font-semibold">TL</span>
                                 </div>
-                                <span className="text-zinc-300 font-bold">|</span>
+                                <span className="text-zinc-600 font-bold">|</span>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-zinc-600 font-semibold">Danışman Prim: %</span>
+                                  <span className="text-zinc-400 font-semibold">Danışman Prim: %</span>
                                   <input
                                     type="number"
-                                    className="w-16 text-xs p-1.5 border-2 border-charcoal rounded-lg text-center font-bold bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.MasaDanismanPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, MasaDanismanPayi: Number(e.target.value) })}
                                   />
@@ -6845,58 +8303,112 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Dynamic Process Stages (Süreç Aşamaları Seçimi) */}
               <div>
-                <label className="text-xs text-zinc-600 font-bold block mb-2">İşlem Sonucu</label>
-                <div className="flex bg-zinc-100 p-1 rounded-full w-full">
-                  {['SATILDI', 'KIRALANDI', 'VAZGECILDI'].map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setAppActionType(t as any)}
-                      className={`flex-1 py-2 text-[11px] font-extrabold rounded-full transition-all border-none cursor-pointer ${appActionType === t
-                        ? (t === 'VAZGECILDI' ? 'bg-red-500 text-white shadow-md' : 'bg-charcoal text-white shadow-md')
-                        : 'bg-transparent text-zinc-500 hover:text-charcoal'
-                        }`}
-                    >
-                      {t === 'VAZGECILDI' ? 'Vazgeçildi' : t === 'SATILDI' ? 'Satıldı' : 'Kiralandı'}
-                    </button>
-                  ))}
+                <label className="text-xs text-zinc-600 font-bold block mb-2">Süreç Aşaması Güncelle</label>
+                <div className="grid grid-cols-1 gap-1.5 bg-zinc-50 p-2 rounded-2xl border border-zinc-200 max-h-44 overflow-y-auto custom-scrollbar">
+                  {processStages.map((stage: any, idx: number) => {
+                    const isSelected = selectedStageId === stage.id || (idx === 0 && !selectedStageId);
+                    const isCompletedStage = stage.id === 6 || stage.sira === 6 || idx === 5 || (stage.asamaAdi && stage.asamaAdi.toLowerCase().includes('tamamland'));
+
+                    return (
+                      <button
+                        key={`stage-opt-${stage.id || idx}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedStageId(stage.id);
+                          if (isCompletedStage && appActionType === 'VAZGECILDI') {
+                            setAppActionType(selectedAppointmentToAction.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                          }
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between border cursor-pointer ${isSelected
+                            ? 'bg-charcoal text-white border-charcoal shadow-sm'
+                            : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100'
+                          }`}
+                      >
+                        <span className="truncate">{stage.sira || idx + 1}. {stage.asamaAdi}</span>
+                        {isSelected && <span className="text-[10px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full">Seçili</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {appActionType !== 'VAZGECILDI' && (
-                <>
-                  <div>
-                    <label className="text-xs text-zinc-600 font-bold block mb-1">
-                      İşlem Bedeli (TL) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-bold"
-                      placeholder="Satış veya Kiralama Tutarı"
-                      value={appActionBedel}
-                      onChange={e => setAppActionBedel(e.target.value)}
-                      required
-                    />
-                  </div>
+              {/* Check if Selected Stage is Completed Stage (Aşama 6 - Tamamlandı) */}
+              {(() => {
+                const currentStage = processStages.find((s: any, idx: number) => s.id === selectedStageId || (idx === 0 && !selectedStageId));
+                const isCompletedStageSelected = currentStage && (
+                  currentStage.id === 6 ||
+                  currentStage.sira === 6 ||
+                  (currentStage.asamaAdi && currentStage.asamaAdi.toLowerCase().includes('tamamland'))
+                );
 
-                  <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex flex-col gap-1 mt-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Dinamik Komisyon Hesaplaması</span>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-zinc-600 font-bold">Hesaplanan Toplam Ciro:</span>
-                      <span className="font-extrabold text-charcoal">
-                        {(Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)).toLocaleString('tr-TR')} TL
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm border-t border-emerald-200/50 pt-2 mt-1">
-                      <span className="text-emerald-900 font-bold">Net Hakedişiniz (Senaryo A - %{commSettings.aDanisman}):</span>
-                      <span className="font-extrabold text-emerald-700">
-                        {((Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)) * (commSettings.aDanisman / 100)).toLocaleString('tr-TR')} TL
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
+                return (
+                  <>
+                    {isCompletedStageSelected ? (
+                      <>
+                        <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex items-center gap-2 text-xs text-emerald-950 font-bold animate-pulse">
+                          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                          <span>Süreç Tamamlandı aşaması seçildi. Lütfen Kiralama/Satış tutarını ve detaylarını giriniz.</span>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-zinc-600 font-bold block mb-2">Nihai İşlem Sonucu</label>
+                          <div className="flex bg-zinc-100 p-1 rounded-full w-full">
+                            {['SATILDI', 'KIRALANDI'].map(t => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setAppActionType(t as any)}
+                                className={`flex-1 py-2 text-[11px] font-extrabold rounded-full transition-all border-none cursor-pointer ${appActionType === t
+                                  ? 'bg-charcoal text-white shadow-md'
+                                  : 'bg-transparent text-zinc-500 hover:text-charcoal'
+                                  }`}
+                              >
+                                {t === 'SATILDI' ? 'Satıldı' : 'Kiralandı'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-zinc-600 font-bold block mb-1">
+                            Nihai İşlem Bedeli (TL) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-bold"
+                            placeholder="Satış veya Kiralama Tutarı"
+                            value={appActionBedel}
+                            onChange={e => setAppActionBedel(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex flex-col gap-1 mt-2">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Dinamik Komisyon Hesaplaması</span>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-zinc-600 font-bold">Hesaplanan Toplam Ciro:</span>
+                            <span className="font-extrabold text-charcoal">
+                              {(Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)).toLocaleString('tr-TR')} TL
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm border-t border-emerald-200/50 pt-2 mt-1">
+                            <span className="text-emerald-900 font-bold">Net Hakedişiniz (Senaryo A - %{commSettings.aDanisman}):</span>
+                            <span className="font-extrabold text-emerald-700">
+                              {((Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)) * (commSettings.aDanisman / 100)).toLocaleString('tr-TR')} TL
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-xs text-zinc-600 font-medium">
+                        💡 Seçilen süreç aşaması güncellenecektir. İşlem tamamlandığında (Satıldı/Kiralandı) miktar ve tutar bilgileri istenecektir.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <div className="flex gap-2 pt-2">
                 <button

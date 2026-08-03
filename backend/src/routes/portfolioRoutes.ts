@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addPortfolio, listPortfolios, editPortfolio, closePortfolioTransaction, getCompletedPortfolios } from '../controllers/portfolioController';
+import { addPortfolio, listPortfolios, editPortfolio, closePortfolioTransaction, getCompletedPortfolios, updatePortfolioPublishState } from '../controllers/portfolioController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
@@ -15,6 +15,9 @@ router.get('/completed', authenticateJWT, getCompletedPortfolios);
 
 // Portföy Düzenleme (Sadece yetkili veya ilgili sorumlu uzman düzenleyebilir)
 router.put('/edit/:id', authenticateJWT, editPortfolio);
+
+// Portföy Yayın Durumu Güncelleme
+router.put('/:id/publish', authenticateJWT, updatePortfolioPublishState);
 
 // Portföy İşlemini Kapat (Satıldı / Kiralandı Yap)
 router.post('/:id/satis-kapat', authenticateJWT, closePortfolioTransaction);
