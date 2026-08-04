@@ -134,28 +134,34 @@ export const getDashboardSummary = async (req: any, res: Response) => {
       .input('startDate', sql.DateTime, thisMonthStart)
       .input('endDate', sql.DateTime, thisMonthEnd)
       .query(`
+        WITH PerformansVerisi AS (
+          SELECT 
+            k.Id AS danismanId,
+            k.Ad,
+            k.Soyad,
+            (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = k.Id AND Durum = 'BOSTA') AS aktifPortfoySayisi,
+            ISNULL((
+              SELECT COUNT(*)
+              FROM SatisIslemleri s2
+              INNER JOIN Portfoyler p2 ON s2.PortfoyID = p2.Id
+              WHERE s2.DanismanID = k.Id
+                AND s2.IslemTarihi >= @startDate AND s2.IslemTarihi <= @endDate
+            ), 0) AS buAyKapananIslem,
+            ISNULL((
+              SELECT SUM(s3.HizmetBedeliCiro)
+              FROM SatisIslemleri s3
+              INNER JOIN Portfoyler p3 ON s3.PortfoyID = p3.Id
+              WHERE s3.DanismanID = k.Id
+                AND s3.IslemTarihi >= @startDate AND s3.IslemTarihi <= @endDate
+            ), 0) AS buAyCiro
+          FROM Kullanicilar k
+          WHERE k.FirmaId = @firmaId AND k.Rol != 'YETKILI'
+        )
         SELECT 
-          k.Id AS danismanId,
-          k.Ad,
-          k.Soyad,
-          (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = k.Id AND Durum = 'BOSTA') AS aktifPortfoySayisi,
-          ISNULL((
-            SELECT COUNT(*)
-            FROM SatisIslemleri s2
-            INNER JOIN Portfoyler p2 ON s2.PortfoyID = p2.Id
-            WHERE s2.DanismanID = k.Id
-              AND s2.IslemTarihi >= @startDate AND s2.IslemTarihi <= @endDate
-          ), 0) AS buAyKapananIslem,
-          ISNULL((
-            SELECT SUM(s3.HizmetBedeliCiro)
-            FROM SatisIslemleri s3
-            INNER JOIN Portfoyler p3 ON s3.PortfoyID = p3.Id
-            WHERE s3.DanismanID = k.Id
-              AND s3.IslemTarihi >= @startDate AND s3.IslemTarihi <= @endDate
-          ), 0) AS buAyCiro
-        FROM Kullanicilar k
-        WHERE k.FirmaId = @firmaId AND k.Rol != 'YETKILI'
-        ORDER BY buAyCiro DESC
+          *,
+          ((buAyKapananIslem * 50) + (aktifPortfoySayisi * 10) + (buAyCiro / 1000)) AS performansPuani
+        FROM PerformansVerisi
+        ORDER BY performansPuani DESC, buAyCiro DESC
       `);
 
     // --- Yanıt ---

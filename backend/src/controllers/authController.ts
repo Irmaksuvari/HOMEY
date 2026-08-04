@@ -158,7 +158,7 @@ export const login = async (req: Request, res: Response) => {
     const result = await pool.request()
       .input('eposta', sql.NVarChar, cleanEmail)
       .query(`
-        SELECT k.Id, k.FirmaId, k.Ad, k.Soyad, k.Eposta, k.SifreHash, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi,
+        SELECT k.Id, k.FirmaId, k.Ad, k.Soyad, k.Eposta, k.SifreHash, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, k.ProfilFoto,
                f.FirmaAdi, f.PaketTipi, f.AbonelikBitisTarihi
         FROM Kullanicilar k
         LEFT JOIN Firmalar f ON k.FirmaId = f.Id
@@ -217,7 +217,8 @@ export const login = async (req: Request, res: Response) => {
         rol: user.Rol,
         ilkGirisMi: user.IlkGirisMi,
         paketTipi: user.PaketTipi || 'DENEME',
-        abonelikBitisTarihi: user.AbonelikBitisTarihi
+        abonelikBitisTarihi: user.AbonelikBitisTarihi,
+        profilFoto: user.ProfilFoto
       }
     });
 

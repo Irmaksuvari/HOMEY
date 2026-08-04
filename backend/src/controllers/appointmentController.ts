@@ -172,13 +172,13 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
     const isYetkili = role === 'YETKILI';
 
     if (requestedStatus === 'CANCELLED' || requestedStatus === 'IPTAL') {
-      // İptal etme yetkisi: Talep eden, Portföy sahibi veya Yetkili
-      if (!isRequester && !isPortfolioOwner && !isYetkili) {
+      // İptal etme yetkisi: Talep eden, Portföy sahibi
+      if (!isRequester && !isPortfolioOwner) {
         return res.status(403).json({ message: 'Bu randevu talebini iptal etme yetkiniz bulunmamaktadır.' });
       }
     } else if (requestedStatus === 'APPROVED' || requestedStatus === 'REJECTED') {
-      // Onaylama / Reddetme yetkisi: Sadece Portföy sahibi veya Yetkili (Talep eden onaylayamaz/reddedemez)
-      if (!isPortfolioOwner && !isYetkili) {
+      // Onaylama / Reddetme yetkisi: Sadece Portföy sahibi (Talep eden onaylayamaz/reddedemez)
+      if (!isPortfolioOwner) {
         return res.status(403).json({ 
           message: 'Gittiğiniz talebi onaylama veya reddetme yetkiniz yoktur. Yalnızca durumu gözlemleyebilir veya talebi iptal edebilirsiniz.' 
         });
@@ -358,13 +358,22 @@ export const updateAppointmentStage = async (req: any, res: Response) => {
     // 1. Randevu bilgilerini al
     const appRes = await pool.request()
       .input('id', sql.UniqueIdentifier, appointmentId)
-      .query('SELECT Id, PortfoyId, MusteriId, TeklifEdenUzmanId FROM Randevular WHERE Id = @id');
+      .query(`
+        SELECT r.Id, r.PortfoyId, r.MusteriId, r.TeklifEdenUzmanId, p.GorevliUzmanId AS PortfoySahibiUzmanId
+        FROM Randevular r
+        LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
+        WHERE r.Id = @id
+      `);
 
     if (appRes.recordset.length === 0) {
       return res.status(404).json({ message: 'Randevu bulunamadı.' });
     }
 
     const app = appRes.recordset[0];
+
+    if (app.TeklifEdenUzmanId !== userId && app.PortfoySahibiUzmanId !== userId) {
+      return res.status(403).json({ message: 'Bu randevu aşamasını güncellemek için yetkiniz bulunmamaktadır.' });
+    }
 
     // 2. MusteriSurecleri tablosuna kaydet/güncelle
     try {

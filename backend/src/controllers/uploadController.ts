@@ -245,3 +245,221 @@ export const getPortfolioImages = async (req: Request, res: Response): Promise<v
   }
 };
 
+// ─── Profil Fotoğrafı Yükle ──────────────────────────────────────────────────
+export const uploadProfilePicture = async (req: any, res: Response): Promise<void> => {
+  console.log('[UploadController] uploadProfilePicture called');
+  try {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      console.log('[UploadController] no file found');
+      res.status(400).json({ message: 'Lütfen bir dosya yükleyin.' });
+      return;
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype) && !file.mimetype.startsWith('video/')) {
+      res.status(400).json({ message: `Desteklenmeyen dosya türü: ${file.mimetype}` });
+      return;
+    }
+
+    const { userId } = req.user;
+    console.log('[UploadController] User ID:', userId);
+    const pool = await poolPromise;
+
+    // Mevcut fotoğrafı al ve Azure'dan sil
+    const userRes = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query('SELECT ProfilFoto FROM Kullanicilar WHERE Id = @userId');
+
+    const currentUrl = userRes.recordset[0]?.ProfilFoto;
+    if (currentUrl) {
+      const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
+      if (oldBlobName) {
+        await deleteFileFromBlob(CONTAINER_NAME, oldBlobName).catch(e => console.error('Eski profil fotoğrafı silinirken hata:', e));
+      }
+    }
+
+    // Yeni fotoğrafı yükle
+    const prefix = `Kullanicilar/${userId}`;
+    const { url } = await uploadFileToBlob(file.buffer, file.originalname, CONTAINER_NAME, prefix);
+
+    // Veritabanını güncelle
+    await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .input('profilFoto', sql.NVarChar, url)
+      .query('UPDATE Kullanicilar SET ProfilFoto = @profilFoto WHERE Id = @userId');
+
+    res.status(201).json({ message: 'Profil fotoğrafı güncellendi.', url });
+  } catch (error: any) {
+    console.error('[UploadController] uploadProfilePicture hatası:', error);
+    res.status(500).json({ message: 'Dosya yüklenirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+// ─── Profil Fotoğrafını Sil ──────────────────────────────────────────────────
+export const deleteProfilePicture = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.user;
+    const pool = await poolPromise;
+
+    const userRes = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query('SELECT ProfilFoto FROM Kullanicilar WHERE Id = @userId');
+
+    const currentUrl = userRes.recordset[0]?.ProfilFoto;
+    if (!currentUrl) {
+      res.status(400).json({ message: 'Silinecek profil fotoğrafı bulunamadı.' });
+      return;
+    }
+
+    const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
+    if (oldBlobName) {
+      await deleteFileFromBlob(CONTAINER_NAME, oldBlobName);
+    }
+
+    await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query('UPDATE Kullanicilar SET ProfilFoto = NULL WHERE Id = @userId');
+
+    res.json({ message: 'Profil fotoğrafı başarıyla silindi.' });
+  } catch (error: any) {
+    console.error('[UploadController] deleteProfilePicture hatası:', error);
+    res.status(500).json({ message: 'Dosya silinirken hata oluştu.', error: error.message });
+  }
+};
+
+// ─── Firma Evrakları ─────────────────────────────────────────────────────────
+
+const ALLOWED_DOC_TYPES = [
+  'KiraKontratSablonu', 
+  'TahliyeTaahhutnamesiSablonu', 
+  'SenetSablonu', 
+  'OnSatisSozlesmesiSablonu', 
+  'YetkilendirmeSozlesmesiSablonu'
+];
+
+export const getFirmDocuments = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { firmaId } = req.user;
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query(`
+        SELECT 
+          KiraKontratSablonu, 
+          TahliyeTaahhutnamesiSablonu, 
+          SenetSablonu, 
+          OnSatisSozlesmesiSablonu, 
+          YetkilendirmeSozlesmesiSablonu 
+        FROM FirmaEvraklari 
+        WHERE FirmaId = @firmaId
+      `);
+
+    res.json(result.recordset[0] || {});
+  } catch (error: any) {
+    console.error('[UploadController] getFirmDocuments hatası:', error);
+    res.status(500).json({ message: 'Evraklar getirilirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+export const uploadFirmDocument = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { firmaId, role } = req.user;
+    const { docType } = req.params;
+
+    if (role !== 'YETKILI') {
+      res.status(403).json({ message: 'Yetkisiz erişim.' });
+      return;
+    }
+
+    if (!ALLOWED_DOC_TYPES.includes(docType)) {
+      res.status(400).json({ message: 'Geçersiz evrak türü.' });
+      return;
+    }
+
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      res.status(400).json({ message: 'Lütfen bir dosya yükleyin.' });
+      return;
+    }
+
+    const pool = await poolPromise;
+
+    // Mevcut evrak var mı kontrol et, varsa Azure'dan sil
+    const existingRes = await pool.request()
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query(`SELECT ${docType} as currentUrl FROM FirmaEvraklari WHERE FirmaId = @firmaId`);
+
+    const currentUrl = existingRes.recordset[0]?.currentUrl;
+    if (currentUrl) {
+      const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
+      if (oldBlobName) {
+        await deleteFileFromBlob(CONTAINER_NAME, oldBlobName).catch(e => console.error('Eski belge silinirken hata:', e));
+      }
+    }
+
+    // Yeni dosyayı Azure Blob Storage'a yükle (Private url olarak)
+    const prefix = `firma-evraklari/${firmaId}/${docType}`;
+    const { url } = await uploadFileToBlob(file.buffer, file.originalname, CONTAINER_NAME, prefix);
+
+    // Veritabanını güncelle veya ekle
+    if (existingRes.recordset.length > 0) {
+      await pool.request()
+        .input('firmaId', sql.UniqueIdentifier, firmaId)
+        .input('docUrl', sql.NVarChar, url)
+        .query(`UPDATE FirmaEvraklari SET ${docType} = @docUrl, GuncellemeTarihi = GETDATE() WHERE FirmaId = @firmaId`);
+    } else {
+      await pool.request()
+        .input('firmaId', sql.UniqueIdentifier, firmaId)
+        .input('docUrl', sql.NVarChar, url)
+        .query(`INSERT INTO FirmaEvraklari (FirmaId, ${docType}, OlusturulmaTarihi, GuncellemeTarihi) VALUES (@firmaId, @docUrl, GETDATE(), GETDATE())`);
+    }
+
+    res.status(201).json({ message: 'Evrak başarıyla yüklendi.', url });
+  } catch (error: any) {
+    console.error('[UploadController] uploadFirmDocument hatası:', error);
+    res.status(500).json({ message: 'Dosya yüklenirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+export const deleteFirmDocument = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { firmaId, role } = req.user;
+    const { docType } = req.params;
+
+    if (role !== 'YETKILI') {
+      res.status(403).json({ message: 'Yetkisiz erişim.' });
+      return;
+    }
+
+    if (!ALLOWED_DOC_TYPES.includes(docType)) {
+      res.status(400).json({ message: 'Geçersiz evrak türü.' });
+      return;
+    }
+
+    const pool = await poolPromise;
+    const existingRes = await pool.request()
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query(`SELECT ${docType} as currentUrl FROM FirmaEvraklari WHERE FirmaId = @firmaId`);
+
+    const currentUrl = existingRes.recordset[0]?.currentUrl;
+    if (!currentUrl) {
+      res.status(400).json({ message: 'Silinecek evrak bulunamadı.' });
+      return;
+    }
+
+    const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
+    if (oldBlobName) {
+      await deleteFileFromBlob(CONTAINER_NAME, oldBlobName);
+    }
+
+    await pool.request()
+      .input('firmaId', sql.UniqueIdentifier, firmaId)
+      .query(`UPDATE FirmaEvraklari SET ${docType} = NULL, GuncellemeTarihi = GETDATE() WHERE FirmaId = @firmaId`);
+
+    res.json({ message: 'Evrak başarıyla silindi.' });
+  } catch (error: any) {
+    console.error('[UploadController] deleteFirmDocument hatası:', error);
+    res.status(500).json({ message: 'Evrak silinirken hata oluştu.', error: error.message });
+  }
+};

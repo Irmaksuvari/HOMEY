@@ -98,7 +98,7 @@ export const listEmployees = async (req: any, res: Response) => {
     const result = await pool.request()
       .input('firmaId', sql.UniqueIdentifier, firmaId)
       .query(`
-        SELECT k.Id, k.Ad, k.Soyad, k.Eposta, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, ISNULL(k.OfisteMi, 0) as OfisteMi, k.KayitTarihi,
+        SELECT k.Id, k.Ad, k.Soyad, k.Eposta, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, k.ProfilFoto, ISNULL(k.OfisteMi, 0) as OfisteMi, k.KayitTarihi,
                (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = k.Id) as SozlesmeSayisi,
                (SELECT ISNULL(SUM(CASE WHEN Tur = 'SATILIK' THEN Fiyat * 0.02 ELSE Fiyat END), 0) 
                 FROM Portfoyler 
@@ -117,6 +117,7 @@ export const listEmployees = async (req: any, res: Response) => {
       telefon: emp.Telefon || '',
       rol: emp.Rol || 'UZMAN',
       ilkGirisMi: emp.IlkGirisMi,
+      profilFoto: emp.ProfilFoto || null,
       sozlesmeSayisi: emp.SozlesmeSayisi || 0,
       getirdigiPara: Number(emp.KazanilanCiro || 0),
       durum: !emp.AktifMi ? 'Pasif' : (emp.OfisteMi ? 'Ofiste' : 'Sahada'),

@@ -159,6 +159,7 @@ export const listPortfolios = async (req: any, res: Response) => {
         isTakasaUygun: p.IsTakasaUygun === true || p.IsTakasaUygun === 1 || p.IsTakasaUygun === '1' || p.IsTakasaUygun === 'true',
         isAcilSatilik: p.IsAcilSatilik === true || p.IsAcilSatilik === 1 || p.IsAcilSatilik === '1' || p.IsAcilSatilik === 'true',
         isFiyatiDustu: p.IsFiyatiDustu === true || p.IsFiyatiDustu === 1 || p.IsFiyatiDustu === '1' || p.IsFiyatiDustu === 'true',
+        yetkilendirmeSozlesmesiYapildi: p.YetkilendirmeSozlesmesiYapildi === true || p.YetkilendirmeSozlesmesiYapildi === 1 || p.YetkilendirmeSozlesmesiYapildi === '1' || p.YetkilendirmeSozlesmesiYapildi === 'true',
         fotograflar: photos,
         kapakFoto: photos[0] || null
       };
@@ -201,7 +202,7 @@ export const editPortfolio = async (req: any, res: Response) => {
 
     const currentGorevliUzmanId = checkResult.recordset[0].GorevliUzmanId;
 
-    if (rol !== 'YETKILI' && currentGorevliUzmanId !== userId) {
+    if (currentGorevliUzmanId !== userId) {
       return res.status(403).json({ message: 'Bu portföyü düzenlemek için yetkiniz bulunmamaktadır.' });
     }
 
@@ -301,7 +302,7 @@ export const updatePortfolioPublishState = async (req: any, res: Response) => {
 
     const currentGorevliUzmanId = checkResult.recordset[0].GorevliUzmanId;
 
-    if (rol !== 'YETKILI' && currentGorevliUzmanId !== userId) {
+    if (currentGorevliUzmanId !== userId) {
       return res.status(403).json({ message: 'Bu portföyün yayın durumunu değiştirmek için yetkiniz yok.' });
     }
 
@@ -353,10 +354,9 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
 
     const portfolio = checkResult.recordset[0];
     const isOwner = portfolio.GorevliUzmanId === userId;
-    const isYetkili = role === 'YETKILI';
 
-    if (!isOwner && !isYetkili) {
-      return res.status(403).json({ message: 'Bu portföy işlemini kapatmak için yetkiniz bulunmamaktadır. Sadece ilgili uzman veya yetkili kapatabilir.' });
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Bu portföy işlemini kapatmak için yetkiniz bulunmamaktadır. Sadece portföy sahibi işlemi kapatabilir.' });
     }
 
     const finalDurum = (islemTuru.toUpperCase() === 'KIRALAMA' || portfolio.Tur === 'KIRALIK') ? 'KIRALANDI' : 'SATILDI';

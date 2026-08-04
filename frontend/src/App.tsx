@@ -7,7 +7,7 @@ import {
   FileText, Clock, LayoutDashboard, Loader2,
   Trophy, Banknote, UserPlus, BadgeCheck, Building2, Bell,
   Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles,
-  GitPullRequest, Layers
+  GitPullRequest, Layers, UploadCloud, Trash2
 } from 'lucide-react';
 
 // ─── Dikey Portföy Kart Bileşeni (Üstte Görsel Carousel, Altta Bilgiler) ─────
@@ -167,6 +167,276 @@ function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onToggleP
   );
 }
 
+const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToast: (msg: string, type?: 'success' | 'error' | 'info') => void }) => {
+  const [docs, setDocs] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  const docTypes = [
+    { id: 'KiraKontratSablonu', label: 'Kira Kontrat Şablonu' },
+    { id: 'TahliyeTaahhutnamesiSablonu', label: 'Tahliye Taahhütnamesi Şablonu' },
+    { id: 'SenetSablonu', label: 'Senet Şablonu' },
+    { id: 'OnSatisSozlesmesiSablonu', label: 'Ön Satış Sözleşmesi Şablonu' },
+    { id: 'YetkilendirmeSozlesmesiSablonu', label: 'Yetkilendirme Sözleşmesi Şablonu' }
+  ];
+
+  const fetchDocs = async () => {
+    try {
+      const res = await fetch('/api/upload/firm-documents', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocs(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) fetchDocs();
+  }, [token]);
+
+  const handleDrop = async (e: React.DragEvent, docType: string) => {
+    e.preventDefault();
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+    const file = e.dataTransfer.files[0];
+    await handleUpload(file, docType);
+  };
+
+  const handleUpload = async (file: File, docType: string) => {
+    const formData = new FormData();
+    formData.append('document', file);
+
+    setUploading(docType);
+    try {
+      const res = await fetch(`/api/upload/firm-document/${docType}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (res.ok) {
+        showToast('Belge başarıyla yüklendi.', 'success');
+        fetchDocs();
+      } else {
+        const data = await res.json();
+        showToast(data.message || 'Yükleme başarısız.', 'error');
+      }
+    } catch (err) {
+      showToast('Sunucu hatası.', 'error');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleDelete = async (docType: string) => {
+    if (!window.confirm('Bu belgeyi silmek istediğinize emin misiniz?')) return;
+    setUploading(docType);
+    try {
+      const res = await fetch(`/api/upload/firm-document/${docType}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        showToast('Belge silindi.', 'success');
+        fetchDocs();
+      } else {
+        showToast('Silme başarısız.', 'error');
+      }
+    } catch (err) {
+      showToast('Sunucu hatası.', 'error');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-zinc-400" size={32} /></div>;
+
+  return (
+    <div className="w-full max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600">
+          <FileText size={20} />
+        </div>
+        <div>
+          <h2 className="text-xl font-extrabold text-charcoal">Firma Evrakları</h2>
+          <p className="text-xs text-zinc-500 font-medium mt-1">Firma genelinde kullanılacak şablon evraklarınızı bu alandan yükleyebilirsiniz.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {docTypes.map(type => (
+          <div key={type.id} className="bg-white p-5 rounded-3xl border border-zinc-200/60 shadow-sm flex flex-col gap-4">
+            <h3 className="text-sm font-bold text-charcoal">{type.label}</h3>
+            
+            {docs[type.id] ? (
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <a 
+                    href={docs[type.id]} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-zinc-700 hover:text-emerald-600 truncate transition-colors"
+                  >
+                    Şablon Yüklendi (Görüntüle)
+                  </a>
+                </div>
+                <button
+                  onClick={() => handleDelete(type.id)}
+                  disabled={uploading === type.id}
+                  className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-full transition-colors cursor-pointer border-none shrink-0"
+                  title="Sil"
+                >
+                  {uploading === type.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              </div>
+            ) : (
+              <div
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 rounded-2xl bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-all text-center group cursor-pointer relative"
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => handleDrop(e, type.id)}
+                onClick={() => document.getElementById(`file-input-${type.id}`)?.click()}
+              >
+                {uploading === type.id ? (
+                  <Loader2 size={24} className="animate-spin text-zinc-400 mb-2" />
+                ) : (
+                  <UploadCloud size={24} className="text-zinc-400 group-hover:text-emerald-500 mb-2 transition-colors" />
+                )}
+                <span className="text-xs font-semibold text-zinc-600">Sürükle bırak veya seç</span>
+                <span className="text-[10px] text-zinc-400 mt-1">PDF, Word, Excel</span>
+                <input 
+                  type="file" 
+                  id={`file-input-${type.id}`} 
+                  className="hidden" 
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0], type.id)}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DocumentOperationsTab = ({ token, portfolios, user }: { token: string | null, portfolios: any[], user: any }) => {
+  const [firmDocs, setFirmDocs] = useState<any>({});
+  const [selectedPortfolio, setSelectedPortfolio] = useState<any>(null);
+
+  const pendingPortfolios = portfolios.filter(p => p.yetkilendirmeSozlesmesiYapildi === false && p.gorevliUzmanId === user?.id);
+
+  useEffect(() => {
+    if (token) {
+      fetch('/api/upload/firm-documents', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => setFirmDocs(data))
+      .catch(console.error);
+    }
+  }, [token]);
+
+  return (
+    <div className="w-full max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600">
+          <Layers size={20} />
+        </div>
+        <div>
+          <h2 className="text-xl font-extrabold text-charcoal">Evrak İşlemleri</h2>
+          <p className="text-xs text-zinc-500 font-medium mt-1">Yetkilendirme sözleşmesi bekleyen portföyleriniz ve evrak işlemleri.</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-bold text-charcoal mb-4">Yetkilendirme Sözleşmesi Beklenenler ({pendingPortfolios.length})</h3>
+        {pendingPortfolios.length === 0 ? (
+          <div className="p-8 text-center bg-zinc-50 border border-dashed border-zinc-200 rounded-3xl text-zinc-500 text-sm">
+            Tüm portföylerinizin yetkilendirme sözleşmeleri tamamlanmış görünüyor.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingPortfolios.map(p => (
+              <div 
+                key={p.id} 
+                onClick={() => setSelectedPortfolio(p)}
+                className="bg-white p-5 rounded-3xl border border-zinc-200/60 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col gap-3 group"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Eksik Evrak</span>
+                    <h4 className="font-bold text-charcoal mt-2 group-hover:text-emerald-600 transition-colors">
+                      {p.il} / {p.ilce}
+                    </h4>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
+                    <FileText size={14} className="text-zinc-400 group-hover:text-emerald-600" />
+                  </div>
+                </div>
+                <div className="text-xs text-zinc-500">
+                  <p>{p.mahalle} Mah. {p.tur} {p.tip}</p>
+                  <p className="font-semibold text-charcoal mt-1">{p.fiyat.toLocaleString('tr-TR')} ₺</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedPortfolio && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100 bg-zinc-50/50">
+              <h2 className="text-lg font-extrabold text-charcoal">Sözleşme Oluştur</h2>
+              <button 
+                onClick={() => setSelectedPortfolio(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <p className="text-sm font-semibold text-charcoal mb-1">Portföy Detayı</p>
+                <p className="text-xs text-zinc-500">{selectedPortfolio.il} / {selectedPortfolio.ilce} - {selectedPortfolio.mahalle} Mah.</p>
+              </div>
+
+              <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl">
+                <h4 className="text-sm font-bold text-emerald-900 mb-2">Yetkilendirme Sözleşmesi Şablonu</h4>
+                {firmDocs.YetkilendirmeSozlesmesiSablonu ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-emerald-700">Firmanızın yüklediği en güncel şablonu bilgisayarınıza indirip düzenleyebilirsiniz.</p>
+                    <a 
+                      href={firmDocs.YetkilendirmeSozlesmesiSablonu}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors"
+                    >
+                      <UploadCloud size={16} className="rotate-180" />
+                      Şablonu İndir
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                    Firmanız henüz yetkilendirme sözleşmesi şablonu yüklememiş. Lütfen yöneticinizle iletişime geçin.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   // Authentication & Session States
   const [token, setToken] = useState<string | null>(localStorage.getItem('homey_token'));
@@ -202,7 +472,7 @@ export default function App() {
   const [changePassError, setChangePassError] = useState<string | null>(null);
 
   // Navigation & Layout States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'processManagement' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'processManagement' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings' | 'firmDocuments' | 'documentOperations'>('dashboard');
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   // Completed Portfolios States
@@ -507,6 +777,56 @@ export default function App() {
     }
   };
 
+  const handleUploadProfileImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !user || !token) return;
+    const file = e.target.files[0];
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch('/api/upload/profile-picture', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const updatedUser = { ...user, profilFoto: data.url };
+        setUser(updatedUser);
+        localStorage.setItem('homey_user', JSON.stringify(updatedUser));
+        showToast("Profil fotoğrafı güncellendi!", "success");
+      } else {
+        alert(data.message || "Fotoğraf yüklenemedi.");
+      }
+    } catch (err) {
+      alert("Sunucu hatası.");
+    }
+    e.target.value = '';
+  };
+
+  const handleDeleteProfileImage = async () => {
+    if (!user || !user.profilFoto || !token) return;
+    if (!confirm("Profil fotoğrafınızı silmek istediğinize emin misiniz?")) return;
+
+    try {
+      const res = await fetch('/api/upload/profile-picture', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const updatedUser = { ...user, profilFoto: null };
+        setUser(updatedUser);
+        localStorage.setItem('homey_user', JSON.stringify(updatedUser));
+        showToast("Profil fotoğrafı silindi.", "info");
+      } else {
+        alert("Fotoğraf silinemedi.");
+      }
+    } catch (err) {
+      alert("Sunucu hatası.");
+    }
+  };
+
   // Auto fetch images when selectedPortfolio changes
   useEffect(() => {
     if (selectedPortfolio?.id && token) {
@@ -537,6 +857,9 @@ export default function App() {
   const [portfolioScope, setPortfolioScope] = useState<'all' | 'mine'>('all');
   const [portfolioVisibilityMode, setPortfolioVisibilityMode] = useState<'published' | 'unpublished'>('published');
   const [publishLoadingPortfolioId, setPublishLoadingPortfolioId] = useState<string | null>(null);
+
+  // Profil Menüsü State'i
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Add Portfolio Modal Form States
   const [showAddPortfolioModal, setShowAddPortfolioModal] = useState(false);
@@ -655,9 +978,9 @@ export default function App() {
   const [isOfisteMi, setIsOfisteMi] = useState<boolean>(false);
   const [officeUsers, setOfficeUsers] = useState<any[]>([]);
   const [presenceLoading, setPresenceLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -811,8 +1134,8 @@ export default function App() {
   }, [completedPortfolios]);
 
   // Dynamic Month/Year Navigation States for Mini Calendar
-  const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date(2026, 6, 1)); // Default July 2026
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(22);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); // Default to current month
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(new Date().getDate());
 
   const calendarYear = currentCalendarDate.getFullYear();
   const calendarMonth = currentCalendarDate.getMonth(); // 0-indexed (0 = Jan, 6 = Jul)
@@ -848,8 +1171,8 @@ export default function App() {
   };
 
   // Portfolio Detail Modal Specific Mini Calendar States
-  const [popCalendarDate, setPopCalendarDate] = useState<Date>(new Date(2026, 6, 1));
-  const [popSelectedDay, setPopSelectedDay] = useState<number>(22);
+  const [popCalendarDate, setPopCalendarDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); // Default to current month
+  const [popSelectedDay, setPopSelectedDay] = useState<number>(new Date().getDate());
   const [popAppointments, setPopAppointments] = useState<any[]>([]);
 
   const popYear = popCalendarDate.getFullYear();
@@ -1684,6 +2007,7 @@ export default function App() {
         setNewPortIsFiyatiDustu(false);
         setNewPortFiles([]);
         fetchPortfolios(token!);
+        setActiveTab('documentOperations');
       } else {
         alert(data.message || "Portföy eklenirken hata oluştu.");
       }
@@ -2204,7 +2528,7 @@ export default function App() {
 
   const handleTogglePortfolioPublish = async (portfolio: any) => {
     if (!token) return;
-    if (!isOwnPortfolio(portfolio) && user?.rol !== 'YETKILI') return;
+    if (!isOwnPortfolio(portfolio)) return;
 
     const nextValue = !isPortfolioPublished(portfolio);
     setPublishLoadingPortfolioId(portfolio.id);
@@ -2577,7 +2901,7 @@ export default function App() {
       )}
 
       {/* LEFT SIDEBAR */}
-      <aside className={`bg-charcoal text-white flex flex-col justify-between transition-all duration-300 ease-in-out z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
+      <aside className={`bg-charcoal text-white flex flex-col justify-start transition-all duration-300 ease-in-out z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
         }`}>
         <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
@@ -2594,7 +2918,7 @@ export default function App() {
                   </span>
                   {user?.firmaAdi && (
                     <span className="text-[10px] font-extrabold text-amber-300/80 uppercase tracking-widest truncate max-w-[140px] mt-0.5" title={user.firmaAdi}>
-                      🏢 {user.firmaAdi}
+                      {user.firmaAdi}
                     </span>
                   )}
                 </div>
@@ -2687,6 +3011,14 @@ export default function App() {
                 {!sidebarCollapsed && <span>Müşteriler</span>}
               </button>
               <button
+                onClick={() => setActiveTab('documentOperations')}
+                title="Evrak İşlemleri"
+                className={`sidebar-link ${activeTab === 'documentOperations' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+              >
+                <Layers size={20} className="shrink-0" />
+                {!sidebarCollapsed && <span>Evrak İşlemleri</span>}
+              </button>
+              <button
                 onClick={() => setActiveTab('calculator')}
                 title="Hesap Makinesi"
                 className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
@@ -2736,16 +3068,57 @@ export default function App() {
                   <Percent size={20} className="shrink-0" />
                   {!sidebarCollapsed && <span>Komisyon Ayarları</span>}
                 </button>
+                <button
+                  onClick={() => setActiveTab('firmDocuments')}
+                  title="Firma Evrakları"
+                  className={`sidebar-link ${activeTab === 'firmDocuments' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <FileText size={20} className="shrink-0" />
+                  {!sidebarCollapsed && <span>Firma Evrakları</span>}
+                </button>
               </div>
             )}
           </nav>
         </div>
 
         {/* Sidebar Footer / User info & Logout */}
-        <div className="flex flex-col gap-4 w-full">
-          <div className={`border-t border-zinc-800 pt-4 flex gap-2 ${sidebarCollapsed ? 'justify-center' : 'items-center'}`}>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0" title={`${user?.ad || ''} ${user?.soyad || ''}`}>
-              {user?.ad ? user.ad[0] : 'C'}{user?.soyad ? user.soyad[0] : 'Y'}
+        <div className="flex flex-col gap-4 w-full mt-12">
+          <div className={`border-t border-zinc-800 pt-4 flex gap-2 ${sidebarCollapsed ? 'justify-center' : 'items-center'} relative`}>
+            <div className="relative">
+              <div
+                className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shrink-0 cursor-pointer overflow-hidden border border-transparent hover:border-indigo-400 transition-colors shadow-sm"
+                title={`${user?.ad || ''} ${user?.soyad || ''}`}
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+              >
+                {user?.profilFoto ? (
+                  <img src={user.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                ) : (
+                  <>{user?.ad ? user.ad[0] : 'C'}{user?.soyad ? user.soyad[0] : 'Y'}</>
+                )}
+              </div>
+
+              {showProfileMenu && (
+                <div className="absolute bottom-20 left-0 w-48 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95">
+                  <label className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg cursor-pointer transition-colors">
+                    <UploadCloud size={14} /> Fotoğraf Değiştir
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      setShowProfileMenu(false);
+                      handleUploadProfileImage(e);
+                    }} />
+                  </label>
+                  {user?.profilFoto && (
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleDeleteProfileImage();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors text-left border-none bg-transparent"
+                    >
+                      <Trash2 size={14} /> Fotoğrafı Kaldır
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col leading-none">
@@ -3526,8 +3899,12 @@ export default function App() {
                       >
                         <div className="flex justify-between items-start min-w-0">
                           <div className="flex gap-2.5 items-center min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-pastelPurple border-none flex items-center justify-center font-bold text-xs shrink-0">
-                              {(emp.ad || 'U')[0]}{(emp.soyad || '')[0] || ''}
+                            <div className="w-10 h-10 rounded-full bg-indigo-600 border-none flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden shadow-sm">
+                              {emp.profilFoto ? (
+                                <img src={emp.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                              ) : (
+                                <>{(emp.ad || 'U')[0]}{(emp.soyad || '')[0] || ''}</>
+                              )}
                             </div>
                             <div className="min-w-0 flex-1 overflow-hidden">
                               <h4 className="font-extrabold text-sm truncate" title={`${emp.ad || ''} ${emp.soyad || ''}`}>{emp.ad || ''} {emp.soyad || ''}</h4>
@@ -3570,8 +3947,7 @@ export default function App() {
                       <th className="pb-3 pr-4 whitespace-nowrap">Tip / Tür</th>
                       <th className="pb-3 px-4 whitespace-nowrap">Lokasyon</th>
                       <th className="pb-3 px-4 whitespace-nowrap">Fiyat</th>
-                      <th className="pb-3 px-4 whitespace-nowrap">Görevli</th>
-                      <th className="pb-3 pl-4 whitespace-nowrap">Durum</th>
+                      <th className="pb-3 pl-4 whitespace-nowrap">Görevli</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3581,23 +3957,16 @@ export default function App() {
                         onClick={() => { setSelectedPortfolio(p); setActiveTab('portfolios'); }}
                         className="border-b border-zinc-100 text-sm hover:bg-cream/40 cursor-pointer transition-colors"
                       >
-                        <td className="py-3.5 pr-4">
+                        <td className="py-3.5 pr-4 whitespace-nowrap">
                           <strong className="font-extrabold">{p.tip}</strong>
-                          <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full border border-charcoal ${p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
+                          <span className={`ml-2 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full border border-charcoal ${p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
                             }`}>
                             {p.tur}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-zinc-500">{p.il || ''} / {p.ilce || ''}</td>
-                        <td className="py-3.5 px-4 font-extrabold">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</td>
-                        <td className="py-3.5 px-4 font-medium">{p.gorevliUzman || ''}</td>
-                        <td className="py-3.5 pl-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-charcoal ${p.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-900' :
-                            p.durum === 'KAPORA_ASAMASINDA' ? 'bg-[#FEF08A] text-amber-950' : 'bg-zinc-200 text-zinc-800'
-                            }`}>
-                            {(p.durum || 'BOSTA').replace('_', ' ')}
-                          </span>
-                        </td>
+                        <td className="py-3.5 px-4 text-zinc-500 whitespace-nowrap">{p.il || ''} / {p.ilce || ''}</td>
+                        <td className="py-3.5 px-4 font-extrabold whitespace-nowrap">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</td>
+                        <td className="py-3.5 pl-4 font-medium whitespace-nowrap">{p.gorevliUzman || ''}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3819,7 +4188,7 @@ export default function App() {
                     >
                       {/* Slider Background - moves between left and right */}
                       <span className={`absolute top-1 bottom-1 w-1/2 rounded-full bg-[#FEF08A] transition-all duration-300 ${portfolioVisibilityMode === 'published' ? 'left-1' : 'right-1'}`} />
-                      
+
                       {/* Labels Container */}
                       <div className="relative w-full h-full flex items-center justify-between px-4">
                         <span className={`text-xs font-extrabold transition-all ${portfolioVisibilityMode === 'published' ? 'text-charcoal' : 'text-zinc-400'}`}>
@@ -4314,7 +4683,7 @@ export default function App() {
                         <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
                           <ImageIcon size={14} /> Fotoğraf Galerisi ({portfolioImages.length}/12)
                         </span>
-                        {(user?.rol === 'YETKILI' || compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length < 12 && (
+                        {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length < 12 && (
                           <label className="cursor-pointer px-3 py-1 bg-charcoal hover:bg-black text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
                             {uploadLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                             <span>Fotoğraf Ekle</span>
@@ -4380,7 +4749,7 @@ export default function App() {
                         <div className="h-44 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center gap-2 text-zinc-400 p-4 text-center">
                           <ImageIcon size={32} className="opacity-40" />
                           <span className="text-xs font-semibold">Bu portföye henüz fotoğraf eklenmemiş.</span>
-                          {(user?.rol === 'YETKILI' || compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && (
+                          {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && (
                             <span className="text-[11px] text-zinc-500">Yukarıdaki "Fotoğraf Ekle" butonunu kullanarak en fazla 12 görsel yükleyebilirsiniz.</span>
                           )}
                         </div>
@@ -4408,7 +4777,7 @@ export default function App() {
                       )}
 
                       {/* Seçili Fotoğraf İşlem Alanı (Kapak Yap / Sil) */}
-                      {(user?.rol === 'YETKILI' || compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length > 0 && (
+                      {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length > 0 && (
                         <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-cream/70 border border-zinc-200 text-xs">
                           <span className="font-semibold text-zinc-600 truncate">Seçili Fotoğraf: #{activeImageIndex + 1}</span>
                           <div className="flex items-center gap-2 shrink-0">
@@ -4500,7 +4869,7 @@ export default function App() {
                         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                           <Building size={12} /> Ev Sahibi İletişim Bilgileri
                         </span>
-                        {user?.rol === 'YETKILI' || compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
+                        {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
                           <div className="flex items-center justify-between gap-2 min-w-0">
                             <strong className="text-xs font-extrabold text-charcoal truncate">{selectedPortfolio.evSahibiAdi}</strong>
                             <span className="text-xs text-indigo-700 font-bold shrink-0">{selectedPortfolio.evSahibiTelefon}</span>
@@ -4515,7 +4884,7 @@ export default function App() {
                     </div>
 
                     {/* Edit & Close actions for owners/admins */}
-                    {(user?.rol === 'YETKILI' || selectedPortfolio.gorevliUzmanId === user?.id) && (
+                    {(selectedPortfolio.gorevliUzmanId === user?.id) && (
                       <div className="flex flex-col gap-2">
                         <button
                           onClick={() => startEditPortfolio(selectedPortfolio)}
@@ -4725,7 +5094,7 @@ export default function App() {
                             return (
                               <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
                                 {dayApps.map((app: any) => {
-                                  const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id) || user?.rol === 'YETKILI';
+                                  const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id);
                                   const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
 
                                   return (
@@ -5273,7 +5642,7 @@ export default function App() {
                       className="flex-1 py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none flex items-center justify-center gap-2"
                     >
                       {newPortSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <span>{newPortSubmitting ? 'Portföy & Fotoğraflar Kaydediliyor...' : 'Portföyü Kaydet'}</span>
+                      <span>{newPortSubmitting ? 'Portföy & Fotoğraflar Kaydediliyor...' : 'Portföy Oluştur ve Yetkilendirme Sözleşmesine Git'}</span>
                     </button>
                     <button
                       type="button"
@@ -6145,7 +6514,7 @@ export default function App() {
                         );
                       }
                       return incomingApps.map((app, idx) => {
-                        const canManageAppointment = compareIds(app.portfoySahibiId, user?.id) || user?.rol === 'YETKILI';
+                        const canManageAppointment = compareIds(app.portfoySahibiId, user?.id);
 
                         return (
                           <div key={app.id} className={`py-4 flex flex-col gap-2 ${idx !== incomingApps.length - 1 ? 'border-b border-zinc-100' : ''}`}>
@@ -6248,75 +6617,75 @@ export default function App() {
                 <span className="text-sm font-semibold">Süreç kayıtları yükleniyor...</span>
               </div>
             ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 items-start">
 
-              {/* Her kolon için yardımcı kart render fonksiyonu */}
-              {[
-                { stageId: 1, label: 'Sonuç Bekleyenler / Yeni Gösterim', color: 'sky' },
-                { stageId: 2, label: 'Düşünme Aşaması', color: 'purple' },
-                { stageId: 3, label: 'Pazarlık / Teklif', color: 'amber' },
-                { stageId: 4, label: 'Kapora Alındı', color: 'emerald' },
-                { stageId: 5, label: 'Sözleşme / Tapu', color: 'indigo' },
-                { stageId: 6, label: 'Tamamlandı (Satıldı/Kiralandı)', color: 'teal' },
-              ].map(({ stageId, label, color }) => {
-                const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
-                const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; badgeText: string; empty: string; itemBorder: string }> = {
-                  sky:     { card: 'bg-sky-50/80 border-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', title: 'text-sky-950', badge: 'bg-sky-200 text-sky-900', badgeText: 'text-sky-900', empty: 'text-sky-400', itemBorder: 'border-sky-100' },
-                  purple:  { card: 'bg-purple-50/80 border-purple-200', border: 'border-purple-200', dot: 'bg-purple-500', title: 'text-purple-950', badge: 'bg-purple-200 text-purple-900', badgeText: 'text-purple-900', empty: 'text-purple-300', itemBorder: 'border-purple-100' },
-                  amber:   { card: 'bg-amber-50/80 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', badgeText: 'text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
-                  emerald: { card: 'bg-emerald-50/80 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', badgeText: 'text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
-                  indigo:  { card: 'bg-indigo-50/80 border-indigo-200', border: 'border-indigo-200', dot: 'bg-indigo-500', title: 'text-indigo-950', badge: 'bg-indigo-200 text-indigo-900', badgeText: 'text-indigo-900', empty: 'text-indigo-300', itemBorder: 'border-indigo-100' },
-                  teal:    { card: 'bg-teal-50/80 border-teal-200', border: 'border-teal-200', dot: 'bg-teal-600', title: 'text-teal-950', badge: 'bg-teal-200 text-teal-900', badgeText: 'text-teal-900', empty: 'text-teal-300', itemBorder: 'border-teal-100' },
-                };
-                const c = colorMap[color];
-                return (
-                  <div key={stageId} className={`bento-card ${c.card} border p-4 flex flex-col gap-3 min-h-[500px]`}>
-                    <div className={`flex justify-between items-center pb-2 border-b ${c.border}`}>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></span>
-                        <h3 className={`text-xs font-black uppercase tracking-wider ${c.title}`}>{label}</h3>
+                {/* Her kolon için yardımcı kart render fonksiyonu */}
+                {[
+                  { stageId: 1, label: 'Sonuç Bekleyenler / Yeni Gösterim', color: 'sky' },
+                  { stageId: 2, label: 'Düşünme Aşaması', color: 'purple' },
+                  { stageId: 3, label: 'Pazarlık / Teklif', color: 'amber' },
+                  { stageId: 4, label: 'Kapora Alındı', color: 'emerald' },
+                  { stageId: 5, label: 'Sözleşme / Tapu', color: 'indigo' },
+                  { stageId: 6, label: 'Tamamlandı (Satıldı/Kiralandı)', color: 'teal' },
+                ].map(({ stageId, label, color }) => {
+                  const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
+                  const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; badgeText: string; empty: string; itemBorder: string }> = {
+                    sky: { card: 'bg-sky-50/80 border-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', title: 'text-sky-950', badge: 'bg-sky-200 text-sky-900', badgeText: 'text-sky-900', empty: 'text-sky-400', itemBorder: 'border-sky-100' },
+                    purple: { card: 'bg-purple-50/80 border-purple-200', border: 'border-purple-200', dot: 'bg-purple-500', title: 'text-purple-950', badge: 'bg-purple-200 text-purple-900', badgeText: 'text-purple-900', empty: 'text-purple-300', itemBorder: 'border-purple-100' },
+                    amber: { card: 'bg-amber-50/80 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', badgeText: 'text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
+                    emerald: { card: 'bg-emerald-50/80 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', badgeText: 'text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
+                    indigo: { card: 'bg-indigo-50/80 border-indigo-200', border: 'border-indigo-200', dot: 'bg-indigo-500', title: 'text-indigo-950', badge: 'bg-indigo-200 text-indigo-900', badgeText: 'text-indigo-900', empty: 'text-indigo-300', itemBorder: 'border-indigo-100' },
+                    teal: { card: 'bg-teal-50/80 border-teal-200', border: 'border-teal-200', dot: 'bg-teal-600', title: 'text-teal-950', badge: 'bg-teal-200 text-teal-900', badgeText: 'text-teal-900', empty: 'text-teal-300', itemBorder: 'border-teal-100' },
+                  };
+                  const c = colorMap[color];
+                  return (
+                    <div key={stageId} className={`bento-card ${c.card} border p-4 flex flex-col gap-3 min-h-[500px]`}>
+                      <div className={`flex justify-between items-center pb-2 border-b ${c.border}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></span>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${c.title}`}>{label}</h3>
+                        </div>
+                        <span className={`text-[10px] font-extrabold ${c.badge} px-2 py-0.5 rounded-full`}>
+                          {stageItems.length}
+                        </span>
                       </div>
-                      <span className={`text-[10px] font-extrabold ${c.badge} px-2 py-0.5 rounded-full`}>
-                        {stageItems.length}
-                      </span>
-                    </div>
 
-                    <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
-                      {stageItems.map(proc => (
-                        <div
-                          key={proc.id}
-                          className={`p-3 bg-white rounded-2xl border ${c.itemBorder} shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-1.5 group`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <span className="text-xs font-black text-charcoal">
-                              {proc.portfoyTip || '—'} {proc.portfoyTur ? `· ${proc.portfoyTur}` : ''}
-                            </span>
-                            <span className={`text-[9px] font-extrabold px-1.5 rounded-full border ${c.badge} border-transparent`}>
-                              {proc.asamaAdi}
-                            </span>
+                      <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
+                        {stageItems.map(proc => (
+                          <div
+                            key={proc.id}
+                            className={`p-3 bg-white rounded-2xl border ${c.itemBorder} shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-1.5 group`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-black text-charcoal">
+                                {proc.portfoyTip || '—'} {proc.portfoyTur ? `· ${proc.portfoyTur}` : ''}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 rounded-full border ${c.badge} border-transparent`}>
+                                {proc.asamaAdi}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-500 font-medium">
+                              {proc.portfoyIlce || ''}{proc.portfoyIl ? ` / ${proc.portfoyIl}` : ''}
+                              {proc.portfoyFiyat ? ` · ${Number(proc.portfoyFiyat).toLocaleString('tr-TR')} TL` : ''}
+                            </p>
+                            <div className="text-[10px] text-zinc-600 bg-zinc-50 p-1.5 rounded-xl border border-zinc-100 flex justify-between items-center mt-1">
+                              <span>👤 {proc.musteri || '—'}</span>
+                              <span className="font-bold text-zinc-400">{proc.danisman ? `🤝 ${proc.danisman}` : ''}</span>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-zinc-500 font-medium">
-                            {proc.portfoyIlce || ''}{proc.portfoyIl ? ` / ${proc.portfoyIl}` : ''}
-                            {proc.portfoyFiyat ? ` · ${Number(proc.portfoyFiyat).toLocaleString('tr-TR')} TL` : ''}
-                          </p>
-                          <div className="text-[10px] text-zinc-600 bg-zinc-50 p-1.5 rounded-xl border border-zinc-100 flex justify-between items-center mt-1">
-                            <span>👤 {proc.musteri || '—'}</span>
-                            <span className="font-bold text-zinc-400">{proc.danisman ? `🤝 ${proc.danisman}` : ''}</span>
+                        ))}
+
+                        {stageItems.length === 0 && (
+                          <div className={`py-12 text-center ${c.empty} text-xs font-semibold italic`}>
+                            Bu aşamada aktif kayıt bulunmuyor.
                           </div>
-                        </div>
-                      ))}
-
-                      {stageItems.length === 0 && (
-                        <div className={`py-12 text-center ${c.empty} text-xs font-semibold italic`}>
-                          Bu aşamada aktif kayıt bulunmuyor.
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-            </div>
+              </div>
             )}
 
           </div>
@@ -6984,13 +7353,14 @@ export default function App() {
                           <th className="pb-3 min-w-[160px]">Danışman</th>
                           <th className="pb-3 text-center min-w-[100px]">Aktif Portföy</th>
                           <th className="pb-3 text-center min-w-[100px]">Kapanan İşlem</th>
+                          <th className="pb-3 text-center min-w-[100px]">Performans Puanı</th>
                           <th className="pb-3 text-right min-w-[140px]">Bu Ay Cirosu</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(dashboardData.danismanPerformans || []).length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-8 text-center text-zinc-400 text-xs font-semibold italic">
+                            <td colSpan={6} className="py-8 text-center text-zinc-400 text-xs font-semibold italic">
                               Henüz danışman performans verisi bulunmamaktadır.
                             </td>
                           </tr>
@@ -7023,8 +7393,11 @@ export default function App() {
                               <td className="py-3.5 text-center">
                                 <span className="text-sm font-extrabold text-slate-700">{d.buAyKapananIslem}</span>
                               </td>
+                              <td className="py-3.5 text-center">
+                                <span className="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{Math.round(d.performansPuani || 0)}</span>
+                              </td>
                               <td className="py-3.5 text-right">
-                                <span className="text-sm font-extrabold text-slate-800">
+                                <span className="text-sm font-extrabold text-emerald-600">
                                   {d.buAyCiro.toLocaleString('tr-TR')} ₺
                                 </span>
                               </td>
@@ -7107,17 +7480,26 @@ export default function App() {
                     className={`p-3 rounded-xl cursor-pointer transition-colors flex justify-between items-center text-xs border-none ${selectedEmployee?.id === emp.id ? 'bg-[#FEF08A]' : 'bg-cream hover:bg-zinc-100'
                       }`}
                   >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
-                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
-                          emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
-                            'bg-zinc-200 text-zinc-700'
-                          }`}>
-                          {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
-                        </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-[10px] shrink-0 overflow-hidden border border-transparent shadow-sm">
+                        {emp.profilFoto ? (
+                          <img src={emp.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                        ) : (
+                          <>{emp.ad ? emp.ad[0] : 'C'}{emp.soyad ? emp.soyad[0] : 'Y'}</>
+                        )}
                       </div>
-                      <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
+                          <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
+                            emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
+                              'bg-zinc-200 text-zinc-700'
+                            }`}>
+                            {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
+                          </span>
+                        </div>
+                        <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
+                      </div>
                     </div>
                     <div className="text-right">
                       <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
@@ -7133,9 +7515,18 @@ export default function App() {
               <div className="bento-card bg-white flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Danışman Detayı</span>
-                      <h3 className="text-xl font-extrabold text-charcoal mt-1">{selectedEmployee.ad} {selectedEmployee.soyad}</h3>
+                    <div className="flex gap-4 items-center">
+                      <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shrink-0 overflow-hidden border border-transparent shadow-sm">
+                        {selectedEmployee.profilFoto ? (
+                          <img src={selectedEmployee.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                        ) : (
+                          <>{selectedEmployee.ad ? selectedEmployee.ad[0] : 'C'}{selectedEmployee.soyad ? selectedEmployee.soyad[0] : 'Y'}</>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Danışman Detayı</span>
+                        <h3 className="text-xl font-extrabold text-charcoal mt-1">{selectedEmployee.ad} {selectedEmployee.soyad}</h3>
+                      </div>
                     </div>
                     <button className="p-1 border border-charcoal rounded-full hover:bg-zinc-100" onClick={() => setSelectedEmployee(null)}>
                       <X size={14} />
@@ -7886,6 +8277,12 @@ export default function App() {
             </div>
           </div>
         )}
+        {activeTab === 'firmDocuments' && user?.rol === 'YETKILI' && (
+          <FirmDocumentsTab token={token} showToast={showToast} />
+        )}
+        {activeTab === 'documentOperations' && (
+          <DocumentOperationsTab token={token} portfolios={portfolios} user={user} />
+        )}
       </main>
 
       {/* RIGHT PANEL (Widgets & Schedule / Ajanda) */}
@@ -8090,7 +8487,7 @@ export default function App() {
                 return (
                   <div className="relative border-l-2 border-charcoal ml-2.5 pl-5 flex flex-col gap-6">
                     {dayAppointments.map((app: any) => {
-                      const canManageAppointment = compareIds(app.portfoySahibiId, user?.id) || user?.rol === 'YETKILI';
+                      const canManageAppointment = compareIds(app.portfoySahibiId, user?.id);
                       const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
 
                       return (
@@ -8322,8 +8719,8 @@ export default function App() {
                           }
                         }}
                         className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between border cursor-pointer ${isSelected
-                            ? 'bg-charcoal text-white border-charcoal shadow-sm'
-                            : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100'
+                          ? 'bg-charcoal text-white border-charcoal shadow-sm'
+                          : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100'
                           }`}
                       >
                         <span className="truncate">{stage.sira || idx + 1}. {stage.asamaAdi}</span>

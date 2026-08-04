@@ -82,7 +82,7 @@ export async function uploadFileToBlob(
 export async function generateBlobSASUrl(containerName: string, blobName: string): Promise<string> {
   try {
     const { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = await import('@azure/storage-blob');
-    
+
     // Connection string'den AccountKey çıkar
     const matches = CONNECTION_STRING.match(/AccountKey=([^;]+)/);
     const accountKey = matches ? matches[1] : '';
