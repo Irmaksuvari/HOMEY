@@ -19,6 +19,7 @@ export const getFirmaSettings = async (req: any, res: Response) => {
     if (result.recordset.length === 0) {
       // Eğer henüz kayıt yoksa varsayılan değerler dönebiliriz.
       return res.status(200).json({
+        YetkilendirmeSarti: false,
         KiralamaKomisyonOrani: 1.00,
         KiralamaKdv: 20.00,
         KiralamaDepozitoSiniri: 3,
@@ -52,6 +53,7 @@ export const getFirmaSettings = async (req: any, res: Response) => {
 
 export const upsertFirmaSettings = async (req: any, res: Response) => {
   try {
+    console.log("upsertFirmaSettings body:", req.body);
     const { firmaId, rol } = req.user;
     
     if (rol !== 'YETKILI') {
@@ -59,6 +61,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
     }
 
     const {
+      YetkilendirmeSarti,
       KiralamaKomisyonOrani, KiralamaKdv, KiralamaDepozitoSiniri, KiralamaPesinKira, KiralamaKaporaTipi,
       SatisAliciKomisyon, SatisSaticiKomisyon, TapuHarciAlici, TapuHarciSatici, DonerSermayeBedeli, SatisKaporaOrani,
       DisOfisPortfoyPayi, DisOfisMusteriPayi,
@@ -76,6 +79,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
       // UPDATE
       await pool.request()
         .input('FirmaId', sql.UniqueIdentifier, firmaId)
+        .input('YetkilendirmeSarti', sql.Bit, YetkilendirmeSarti === true)
         .input('KiralamaKomisyonOrani', sql.Decimal(18,2), KiralamaKomisyonOrani ?? 1.00)
         .input('KiralamaKdv', sql.Decimal(18,2), KiralamaKdv ?? 20.00)
         .input('KiralamaDepozitoSiniri', sql.Int, KiralamaDepozitoSiniri ?? 3)
@@ -99,6 +103,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
         .input('MasaDanismanPayi', sql.Decimal(18,2), MasaDanismanPayi ?? 70.00)
         .query(`
           UPDATE FirmaKomisyonAyarlari SET
+            YetkilendirmeSarti = @YetkilendirmeSarti,
             KiralamaKomisyonOrani = @KiralamaKomisyonOrani,
             KiralamaKdv = @KiralamaKdv,
             KiralamaDepozitoSiniri = @KiralamaDepozitoSiniri,
@@ -127,6 +132,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
       // INSERT
       await pool.request()
         .input('FirmaId', sql.UniqueIdentifier, firmaId)
+        .input('YetkilendirmeSarti', sql.Bit, YetkilendirmeSarti === true)
         .input('KiralamaKomisyonOrani', sql.Decimal(18,2), KiralamaKomisyonOrani ?? 1.00)
         .input('KiralamaKdv', sql.Decimal(18,2), KiralamaKdv ?? 20.00)
         .input('KiralamaDepozitoSiniri', sql.Int, KiralamaDepozitoSiniri ?? 3)
@@ -150,12 +156,12 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
         .input('MasaDanismanPayi', sql.Decimal(18,2), MasaDanismanPayi ?? 70.00)
         .query(`
           INSERT INTO FirmaKomisyonAyarlari (
-            FirmaId, KiralamaKomisyonOrani, KiralamaKdv, KiralamaDepozitoSiniri, KiralamaPesinKira, KiralamaKaporaTipi,
+            FirmaId, YetkilendirmeSarti, KiralamaKomisyonOrani, KiralamaKdv, KiralamaDepozitoSiniri, KiralamaPesinKira, KiralamaKaporaTipi,
             SatisAliciKomisyon, SatisSaticiKomisyon, TapuHarciAlici, TapuHarciSatici, DonerSermayeBedeli, SatisKaporaOrani,
             DisOfisPortfoyPayi, DisOfisMusteriPayi, IciPortfoyPayi, IciMusteriPayi, BrokerDanismanPayi, BrokerOfisPayi,
             KademeliDanismanPayi, KademeliOfisPayi, MasaUcretiTutar, MasaDanismanPayi
           ) VALUES (
-            @FirmaId, @KiralamaKomisyonOrani, @KiralamaKdv, @KiralamaDepozitoSiniri, @KiralamaPesinKira, @KiralamaKaporaTipi,
+            @FirmaId, @YetkilendirmeSarti, @KiralamaKomisyonOrani, @KiralamaKdv, @KiralamaDepozitoSiniri, @KiralamaPesinKira, @KiralamaKaporaTipi,
             @SatisAliciKomisyon, @SatisSaticiKomisyon, @TapuHarciAlici, @TapuHarciSatici, @DonerSermayeBedeli, @SatisKaporaOrani,
             @DisOfisPortfoyPayi, @DisOfisMusteriPayi, @IciPortfoyPayi, @IciMusteriPayi, @BrokerDanismanPayi, @BrokerOfisPayi,
             @KademeliDanismanPayi, @KademeliOfisPayi, @MasaUcretiTutar, @MasaDanismanPayi

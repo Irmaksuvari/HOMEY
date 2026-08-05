@@ -7,11 +7,11 @@ import {
   FileText, Clock, LayoutDashboard, Loader2,
   Trophy, Banknote, UserPlus, BadgeCheck, Building2, Bell,
   Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles,
-  GitPullRequest, Layers, UploadCloud, Trash2
+  GitPullRequest, Layers, UploadCloud, Trash2, Download
 } from 'lucide-react';
 
 // ─── Dikey Portföy Kart Bileşeni (Üstte Görsel Carousel, Altta Bilgiler) ─────
-function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onTogglePublish, publishLoading, isOwner }: { portfolio: any; photos: string[]; onSelect: () => void; isPublished: boolean; onTogglePublish: () => void; publishLoading: boolean; isOwner: boolean }) {
+function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onTogglePublish, publishLoading, isOwner, requireAuthAgreement }: { portfolio: any; photos: string[]; onSelect: () => void; isPublished: boolean; onTogglePublish: () => void; publishLoading: boolean; isOwner: boolean; requireAuthAgreement?: boolean }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const hasPhotos = photos && photos.length > 0;
 
@@ -101,6 +101,9 @@ function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onToggleP
             }`}>
             {portfolio.tur}
           </span>
+          {requireAuthAgreement && !portfolio.yetkilendirmeSozlesmesiYapildi && (
+            <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full border border-red-500/80 bg-red-100 text-red-700 uppercase tracking-wider shadow-sm ml-1 truncate" title="Yetkilendirme Sözleşmesi Eksik">Yetki Sözleşmesi Yok</span>
+          )}
           <div className="flex items-center gap-2 pointer-events-auto">
             <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border border-charcoal/80 uppercase tracking-wider shadow-sm ${portfolio.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-950' : 'bg-[#FEF08A] text-amber-950'
               }`}>
@@ -271,16 +274,16 @@ const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToas
         {docTypes.map(type => (
           <div key={type.id} className="bg-white p-5 rounded-3xl border border-zinc-200/60 shadow-sm flex flex-col gap-4">
             <h3 className="text-sm font-bold text-charcoal">{type.label}</h3>
-            
+
             {docs[type.id] ? (
               <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                     <CheckCircle2 size={16} />
                   </div>
-                  <a 
-                    href={docs[type.id]} 
-                    target="_blank" 
+                  <a
+                    href={docs[type.id]}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-zinc-700 hover:text-emerald-600 truncate transition-colors"
                   >
@@ -310,10 +313,10 @@ const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToas
                 )}
                 <span className="text-xs font-semibold text-zinc-600">Sürükle bırak veya seç</span>
                 <span className="text-[10px] text-zinc-400 mt-1">PDF, Word, Excel</span>
-                <input 
-                  type="file" 
-                  id={`file-input-${type.id}`} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  id={`file-input-${type.id}`}
+                  className="hidden"
                   accept=".pdf,.doc,.docx,.xls,.xlsx"
                   onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0], type.id)}
                 />
@@ -326,20 +329,93 @@ const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToas
   );
 };
 
-const DocumentOperationsTab = ({ token, portfolios, user }: { token: string | null, portfolios: any[], user: any }) => {
+const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], fetchClientProcesses, showToast }: { token: string | null, portfolios: any[], user: any, clientProcesses?: any[], fetchClientProcesses?: () => void, showToast?: (msg: string, type: 'success' | 'error') => void }) => {
   const [firmDocs, setFirmDocs] = useState<any>({});
   const [selectedPortfolio, setSelectedPortfolio] = useState<any>(null);
+  const [expandedProcesses, setExpandedProcesses] = useState<string[]>([]);
+  const [checkedDocs, setCheckedDocs] = useState<Record<string, Record<string, boolean>>>({});
+
+  const toggleDocCheck = (processId: string, docName: string) => {
+    setCheckedDocs(prev => ({
+      ...prev,
+      [processId]: {
+        ...(prev[processId] || {}),
+        [docName]: !prev[processId]?.[docName]
+      }
+    }));
+  };
+
+  const handleQuickCompleteProcess = async (process: any) => {
+    const islemTuru = process.portfoyTur === 'SATILIK' ? 'SATIS' : 'KIRALAMA';
+    const islemBedeli = process.portfoyFiyat || 0;
+    const islemTarihi = new Date().toISOString().split('T')[0];
+
+    if (!window.confirm(`Bu işlemi ${islemTuru === 'SATIS' ? 'Satıldı' : 'Kiralandı'} olarak sonlandırmak istediğinize emin misiniz?`)) return;
+
+    try {
+      const res = await fetch(`/api/portfoyler/${process.portfoyId}/satis-kapat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          islemTuru,
+          islemBedeli,
+          hizmetBedeliCiro: 0,
+          islemTarihi,
+          musteriAciklama: 'Evraklar bölümünden hızlı işlem onaylandı.'
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'İşlem tamamlanamadı.');
+      }
+      if (showToast) showToast('İşlem başarıyla tamamlandı.', 'success');
+      if (fetchClientProcesses) fetchClientProcesses();
+    } catch (err: any) {
+      console.error(err);
+      if (showToast) showToast(err.message || 'İşlem sırasında hata oluştu.', 'error');
+    }
+  };
+
+  const toggleProcessExpand = (id: string) => {
+    setExpandedProcesses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const pendingPortfolios = portfolios.filter(p => p.yetkilendirmeSozlesmesiYapildi === false && p.gorevliUzmanId === user?.id);
+
+  const agreementProcesses = clientProcesses.filter(p => Number(p.asamaId) === 3);
+  const saleProcesses = agreementProcesses.filter(p => p.portfoyTur === 'SATILIK');
+  const rentProcesses = agreementProcesses.filter(p => p.portfoyTur === 'KIRALIK');
+
+  const handleToggleDocumentsComplete = async (processId: string, currentStatus: boolean) => {
+    try {
+      const res = await fetch('/api/appointments/update-documents-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ processId, status: !currentStatus })
+      });
+      if (!res.ok) throw new Error('Evrak güncellenemedi');
+      if (showToast) showToast('Evrak durumu başarıyla güncellendi.', 'success');
+      if (fetchClientProcesses) fetchClientProcesses();
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast('Evrak durumu güncellenirken hata oluştu.', 'error');
+    }
+  };
 
   useEffect(() => {
     if (token) {
       fetch('/api/upload/firm-documents', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      .then(res => res.json())
-      .then(data => setFirmDocs(data))
-      .catch(console.error);
+        .then(res => res.json())
+        .then(data => setFirmDocs(data))
+        .catch(console.error);
     }
   }, [token]);
 
@@ -362,77 +438,308 @@ const DocumentOperationsTab = ({ token, portfolios, user }: { token: string | nu
             Tüm portföylerinizin yetkilendirme sözleşmeleri tamamlanmış görünüyor.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pendingPortfolios.map(p => (
-              <div 
-                key={p.id} 
-                onClick={() => setSelectedPortfolio(p)}
-                className="bg-white p-5 rounded-3xl border border-zinc-200/60 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col gap-3 group"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Eksik Evrak</span>
-                    <h4 className="font-bold text-charcoal mt-2 group-hover:text-emerald-600 transition-colors">
-                      {p.il} / {p.ilce}
-                    </h4>
+          <div className="flex flex-col gap-3">
+            {pendingPortfolios.map(p => {
+              const isExpanded = expandedProcesses.includes(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-3xl border border-zinc-200/60 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all flex flex-col group overflow-hidden"
+                >
+                  <div className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 w-full">
+                      <div className="w-10 h-10 rounded-full bg-zinc-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors shrink-0">
+                        <FileText size={16} className="text-zinc-400 group-hover:text-emerald-600" />
+                      </div>
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:items-center">
+                        <div>
+                          <h4 className="font-bold text-charcoal group-hover:text-emerald-600 transition-colors">
+                            {p.il} / {p.ilce}
+                          </h4>
+                          <p className="text-xs text-zinc-500 mt-1">{p.mahalle} Mah. {p.tur} {p.tip}</p>
+                        </div>
+                        <div className="md:text-center">
+                          <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Eksik Evrak</span>
+                        </div>
+                        <div className="md:text-right">
+                          <p className="font-semibold text-charcoal">{p.fiyat.toLocaleString('tr-TR')} ₺</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 md:mt-0">
+                      <button
+                        onClick={() => toggleProcessExpand(p.id)}
+                        className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded-xl transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
+                      >
+                        {isExpanded ? 'Gizle' : 'Evraklar / Oluştur'}
+                        <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                    </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                    <FileText size={14} className="text-zinc-400 group-hover:text-emerald-600" />
-                  </div>
+
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="bg-zinc-50 border-t border-zinc-200 p-5 flex flex-col gap-5 animate-in fade-in slide-in-from-top-2">
+                      <div>
+                        <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Yetkilendirme Sözleşmesi</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {firmDocs['YetkilendirmeSozlesmesiSablonu'] ? (
+                            <a href={firmDocs['YetkilendirmeSozlesmesiSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-lg hover:border-emerald-300 hover:shadow-sm transition-all text-xs font-semibold text-charcoal">
+                              <Download size={14} className="text-emerald-600" />
+                              Sözleşmeyi İndir
+                            </a>
+                          ) : (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-400 cursor-not-allowed" title="Firma tarafından henüz şablon yüklenmedi.">
+                              <Download size={14} />
+                              Sözleşmeyi İndir
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-3">İndirdiğiniz sözleşmeyi doldurduktan sonra, mülk sahibine onaylatıp dosyalarınızda saklayınız.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-zinc-500">
-                  <p>{p.mahalle} Mah. {p.tur} {p.tip}</p>
-                  <p className="font-semibold text-charcoal mt-1">{p.fiyat.toLocaleString('tr-TR')} ₺</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
-      {selectedPortfolio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-zinc-100 bg-zinc-50/50">
-              <h2 className="text-lg font-extrabold text-charcoal">Sözleşme Oluştur</h2>
-              <button 
-                onClick={() => setSelectedPortfolio(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <p className="text-sm font-semibold text-charcoal mb-1">Portföy Detayı</p>
-                <p className="text-xs text-zinc-500">{selectedPortfolio.il} / {selectedPortfolio.ilce} - {selectedPortfolio.mahalle} Mah.</p>
-              </div>
+      <div className="mt-12">
+        <h3 className="text-lg font-bold text-charcoal mb-4">Anlaşma Aşamasındaki İşlemler</h3>
+        <div className="flex flex-col gap-8">
 
-              <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl">
-                <h4 className="text-sm font-bold text-emerald-900 mb-2">Yetkilendirme Sözleşmesi Şablonu</h4>
-                {firmDocs.YetkilendirmeSozlesmesiSablonu ? (
-                  <div className="flex flex-col gap-3">
-                    <p className="text-xs text-emerald-700">Firmanızın yüklediği en güncel şablonu bilgisayarınıza indirip düzenleyebilirsiniz.</p>
-                    <a 
-                      href={firmDocs.YetkilendirmeSozlesmesiSablonu}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors"
-                    >
-                      <UploadCloud size={16} className="rotate-180" />
-                      Şablonu İndir
-                    </a>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
-                    Firmanız henüz yetkilendirme sözleşmesi şablonu yüklememiş. Lütfen yöneticinizle iletişime geçin.
-                  </p>
-                )}
+          {/* Satış Kısmı */}
+          <div>
+            <h4 className="font-semibold text-emerald-800 bg-emerald-50 py-2 px-4 rounded-xl mb-4 border border-emerald-100 flex items-center justify-between">
+              Satış İşlemleri
+              <span className="text-xs bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">{saleProcesses.length}</span>
+            </h4>
+            {saleProcesses.length === 0 ? (
+              <p className="text-sm text-zinc-400 italic">Satış aşamasında evrak bekleyen işlem yok.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {saleProcesses.map(p => {
+                  const isExpanded = expandedProcesses.includes(p.id);
+                  return (
+                    <div key={p.id} className={`bg-white rounded-3xl border shadow-sm hover:shadow-md transition-all group overflow-hidden ${p.evraklarTamamlandi ? 'border-emerald-200' : 'border-zinc-200/60 hover:border-emerald-200'}`}>
+                      <div className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1 w-full">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${p.evraklarTamamlandi ? 'bg-emerald-100 text-emerald-600' : 'bg-zinc-50 text-zinc-400 group-hover:bg-emerald-50 group-hover:text-emerald-600'}`}>
+                            <FileText size={16} />
+                          </div>
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:items-center">
+                            <div>
+                              <h4 className="font-bold text-charcoal group-hover:text-emerald-600 transition-colors">
+                                {p.portfoyIl} / {p.portfoyIlce}
+                              </h4>
+                              <p className="text-xs text-zinc-500 mt-1">Alıcı: <span className="font-semibold text-charcoal">{p.musteriAd} {p.musteriSoyad}</span></p>
+                            </div>
+                            <div className="md:text-right">
+                              {!p.evraklarTamamlandi ? (
+                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Evrak Bekliyor</span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg uppercase tracking-wider">Onaylandı</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 md:mt-0">
+                          <button
+                            onClick={() => toggleProcessExpand(p.id)}
+                            className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded-xl transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
+                          >
+                            {isExpanded ? 'Gizle' : 'Evraklar / Oluştur'}
+                            <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="bg-zinc-50 border-t border-zinc-200 p-5 flex flex-col gap-5 animate-in fade-in slide-in-from-top-2">
+                          <div>
+                            <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">İndirilebilir Şablonlar</h5>
+                            <div className="flex flex-col gap-2">
+                              {firmDocs['OnSatisSozlesmesiSablonu'] ? (
+                                <div className="flex items-center gap-4 w-full justify-between bg-white px-4 py-2 border border-zinc-200 rounded-xl">
+                                  <a href={firmDocs['OnSatisSozlesmesiSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-emerald-600 transition-all text-sm font-semibold text-charcoal">
+                                    <Download size={16} className="text-emerald-600" />
+                                    Ön Satış Sözleşmesi
+                                  </a>
+                                  <label className="inline-flex items-center cursor-pointer">
+                                    <span className={`mr-3 text-xs font-bold text-right w-16 transition-colors ${checkedDocs[p.id]?.['OnSatis'] ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                                      {checkedDocs[p.id]?.['OnSatis'] ? 'Onaylandı' : 'Onayla'}
+                                    </span>
+                                    <input type="checkbox" className="sr-only peer" checked={!!checkedDocs[p.id]?.['OnSatis']} onChange={() => toggleDocCheck(p.id, 'OnSatis')} />
+                                    <div className="relative w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-400 cursor-not-allowed" title="Firma tarafından henüz şablon yüklenmedi.">
+                                  <Download size={14} />
+                                  Ön Satış Sözleşmesi
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-zinc-200 mt-2">
+                            <button
+                              onClick={() => handleQuickCompleteProcess(p)}
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+                            >
+                              Süreci Tamamla (Satıldı Olarak İşaretle)
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Kiralama Kısmı */}
+          <div>
+            <h4 className="font-semibold text-blue-800 bg-blue-50 py-2 px-4 rounded-xl mb-4 border border-blue-100 flex items-center justify-between">
+              Kiralama İşlemleri
+              <span className="text-xs bg-blue-200 text-blue-900 px-2 py-0.5 rounded-full">{rentProcesses.length}</span>
+            </h4>
+            {rentProcesses.length === 0 ? (
+              <p className="text-sm text-zinc-400 italic">Kiralama aşamasında evrak bekleyen işlem yok.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {rentProcesses.map(p => {
+                  const isExpanded = expandedProcesses.includes(p.id);
+                  return (
+                    <div key={p.id} className={`bg-white rounded-3xl border shadow-sm hover:shadow-md transition-all group overflow-hidden ${p.evraklarTamamlandi ? 'border-blue-200' : 'border-zinc-200/60 hover:border-blue-200'}`}>
+                      <div className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1 w-full">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${p.evraklarTamamlandi ? 'bg-blue-100 text-blue-600' : 'bg-zinc-50 text-zinc-400 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
+                            <FileText size={16} />
+                          </div>
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:items-center">
+                            <div>
+                              <h4 className="font-bold text-charcoal group-hover:text-blue-600 transition-colors">
+                                {p.portfoyIl} / {p.portfoyIlce}
+                              </h4>
+                              <p className="text-xs text-zinc-500 mt-1">Kiracı: <span className="font-semibold text-charcoal">{p.musteriAd} {p.musteriSoyad}</span></p>
+                            </div>
+                            <div className="md:text-right">
+                              {!p.evraklarTamamlandi ? (
+                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Evrak Bekliyor</span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-lg uppercase tracking-wider">Onaylandı</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 md:mt-0">
+                          <button
+                            onClick={() => toggleProcessExpand(p.id)}
+                            className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded-xl transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
+                          >
+                            {isExpanded ? 'Gizle' : 'Evraklar / Oluştur'}
+                            <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="bg-zinc-50 border-t border-zinc-200 p-5 flex flex-col gap-5 animate-in fade-in slide-in-from-top-2">
+                          <div>
+                            <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">İndirilebilir Şablonlar</h5>
+                            <div className="flex flex-col gap-2">
+                              {/* Kira Kontratı */}
+                              {firmDocs['KiraKontratSablonu'] ? (
+                                <div className="flex items-center gap-4 w-full justify-between bg-white px-4 py-2 border border-zinc-200 rounded-xl">
+                                  <a href={firmDocs['KiraKontratSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-blue-600 transition-all text-sm font-semibold text-charcoal">
+                                    <Download size={16} className="text-blue-600" />
+                                    Kira Kontratı
+                                  </a>
+                                  <label className="inline-flex items-center cursor-pointer">
+                                    <span className={`mr-3 text-xs font-bold text-right w-16 transition-colors ${checkedDocs[p.id]?.['KiraKontrati'] ? 'text-blue-600' : 'text-zinc-400'}`}>
+                                      {checkedDocs[p.id]?.['KiraKontrati'] ? 'Onaylandı' : 'Onayla'}
+                                    </span>
+                                    <input type="checkbox" className="sr-only peer" checked={!!checkedDocs[p.id]?.['KiraKontrati']} onChange={() => toggleDocCheck(p.id, 'KiraKontrati')} />
+                                    <div className="relative w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-400 cursor-not-allowed" title="Firma tarafından henüz şablon yüklenmedi.">
+                                  <Download size={14} />
+                                  Kira Kontratı
+                                </div>
+                              )}
+
+                              {/* Tahliye Taahhütnamesi */}
+                              {firmDocs['TahliyeTaahhutnamesiSablonu'] ? (
+                                <div className="flex items-center gap-4 w-full justify-between bg-white px-4 py-2 border border-zinc-200 rounded-xl">
+                                  <a href={firmDocs['TahliyeTaahhutnamesiSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-blue-600 transition-all text-sm font-semibold text-charcoal">
+                                    <Download size={16} className="text-blue-600" />
+                                    Tahliye Taahhütnamesi
+                                  </a>
+                                  <label className="inline-flex items-center cursor-pointer">
+                                    <span className={`mr-3 text-xs font-bold text-right w-16 transition-colors ${checkedDocs[p.id]?.['Tahliye'] ? 'text-blue-600' : 'text-zinc-400'}`}>
+                                      {checkedDocs[p.id]?.['Tahliye'] ? 'Onaylandı' : 'Onayla'}
+                                    </span>
+                                    <input type="checkbox" className="sr-only peer" checked={!!checkedDocs[p.id]?.['Tahliye']} onChange={() => toggleDocCheck(p.id, 'Tahliye')} />
+                                    <div className="relative w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-400 cursor-not-allowed" title="Firma tarafından henüz şablon yüklenmedi.">
+                                  <Download size={14} />
+                                  Tahliye Taahhütnamesi
+                                </div>
+                              )}
+
+                              {/* Senet */}
+                              {firmDocs['SenetSablonu'] ? (
+                                <div className="flex items-center gap-4 w-full justify-between bg-white px-4 py-2 border border-zinc-200 rounded-xl">
+                                  <a href={firmDocs['SenetSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-blue-600 transition-all text-sm font-semibold text-charcoal">
+                                    <Download size={16} className="text-blue-600" />
+                                    Senet
+                                  </a>
+                                  <label className="inline-flex items-center cursor-pointer">
+                                    <span className={`mr-3 text-xs font-bold text-right w-16 transition-colors ${checkedDocs[p.id]?.['Senet'] ? 'text-blue-600' : 'text-zinc-400'}`}>
+                                      {checkedDocs[p.id]?.['Senet'] ? 'Onaylandı' : 'Onayla'}
+                                    </span>
+                                    <input type="checkbox" className="sr-only peer" checked={!!checkedDocs[p.id]?.['Senet']} onChange={() => toggleDocCheck(p.id, 'Senet')} />
+                                    <div className="relative w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-400 cursor-not-allowed" title="Firma tarafından henüz şablon yüklenmedi.">
+                                  <Download size={14} />
+                                  Senet
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-zinc-200 mt-2">
+                            <button
+                              onClick={() => handleQuickCompleteProcess(p)}
+                              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+                            >
+                              Süreci Tamamla (Kiralandı Olarak İşaretle)
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -484,12 +791,10 @@ export default function App() {
   const [selectedCompletedPortfolio, setSelectedCompletedPortfolio] = useState<any | null>(null);
   // Process Stages State (Süreç Aşamaları)
   const [processStages, setProcessStages] = useState<any[]>([
-    { id: 1, asamaAdi: 'Sonuç Bekleyenler / Yeni Gösterim', sira: 1 },
-    { id: 2, asamaAdi: 'Düşünme Aşaması', sira: 2 },
-    { id: 3, asamaAdi: 'Pazarlık / Teklif', sira: 3 },
-    { id: 4, asamaAdi: 'Kapora Alındı', sira: 4 },
-    { id: 5, asamaAdi: 'Sözleşme / Tapu', sira: 5 },
-    { id: 6, asamaAdi: 'Tamamlandı (Satıldı/Kiralandı)', sira: 6 }
+    { id: 1, asamaAdi: 'Portföy & Randevu Süreci', sira: 1 },
+    { id: 3, asamaAdi: 'Anlaşma süreci', sira: 2 },
+    { id: 4, asamaAdi: 'Satıldı/Kiralandı', sira: 3 },
+    { id: 5, asamaAdi: 'Vazgeçildi', sira: 4 }
   ]);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   // Müşteri Süreçleri (MusteriSurecleri tablosundan)
@@ -499,6 +804,7 @@ export default function App() {
 
 
   const [firmaSettings, setFirmaSettings] = useState({
+    YetkilendirmeSarti: false,
     KiralamaKomisyonOrani: 1.00,
     KiralamaKdv: 20.00,
     KiralamaDepozitoSiniri: 3,
@@ -849,6 +1155,9 @@ export default function App() {
   };
 
   const isPortfolioPublished = (portfolio: any) => {
+    if (firmaSettings.YetkilendirmeSarti && !portfolio.yetkilendirmeSozlesmesiYapildi) {
+      return false; // Zorunluluk varken sözleşmesi yoksa yayından kaldırılır
+    }
     const value = portfolio.isPublished;
     if (value === undefined || value === null || value === '') return true;
     return value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE';
@@ -1002,6 +1311,7 @@ export default function App() {
   // Clients (Musteriler)
   const [clients, setClients] = useState<any[]>([]);
   const [clientTabScope, setClientTabScope] = useState<'active' | 'passive'>('active');
+  const [clientTypeScope, setClientTypeScope] = useState<'all' | 'owner' | 'seeker'>('all');
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -2253,6 +2563,11 @@ export default function App() {
       return;
     }
 
+    if (firmaSettings.YetkilendirmeSarti && !portfolio.yetkilendirmeSozlesmesiYapildi) {
+      alert("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için randevu oluşturulamaz.");
+      return;
+    }
+
     const targetStatus = isOwner ? 'APPROVED' : 'PENDING';
 
     if (token) {
@@ -2328,6 +2643,11 @@ export default function App() {
 
     if (targetPortfolio.durum === 'KAPORA_ASAMASINDA' || targetPortfolio.durum === 'KIRALANDI_SATILDI') {
       alert("Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.");
+      return;
+    }
+
+    if (firmaSettings.YetkilendirmeSarti && !targetPortfolio.yetkilendirmeSozlesmesiYapildi) {
+      alert("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için yeni randevu oluşturulamaz.");
       return;
     }
 
@@ -2448,10 +2768,20 @@ export default function App() {
       const targetAsamaAdi = currentStage?.asamaAdi || 'Süreç Güncellendi';
 
       const isCompletedStageSelected = (
-        targetStageId === 6 ||
-        currentStage?.sira === 6 ||
-        (currentStage?.asamaAdi && currentStage.asamaAdi.toLowerCase().includes('tamamland'))
+        targetStageId === 4 ||
+        currentStage?.sira === 3 ||
+        (currentStage?.asamaAdi && (currentStage.asamaAdi.toLowerCase().includes('tamamland') || currentStage.asamaAdi.toLowerCase().includes('satıldı')))
       );
+
+      // EVRAK KONTROLÜ: Eğer hedeflenen aşama Satıldı/Kiralandı ise, evrakların tam olup olmadığını kontrol et
+      if (isCompletedStageSelected) {
+        const process = clientProcesses.find(p => p.randevuId === selectedAppointmentToAction.id || (p.portfoyId === selectedAppointmentToAction.portfoyId && p.musteriId === selectedAppointmentToAction.musteriId));
+        if (process && process.evraklarTamamlandi !== true) {
+          showToast('Satış/Kiralama işlemini kapatmadan önce lütfen Evrak İşlemleri sayfasından evrak onayını yapınız.', 'error');
+          setAppActionLoading(false);
+          return;
+        }
+      }
 
       // 1. Her durumda randevunun süreç aşamasını backend'e gönder (MusteriSurecleri tablosuna kaydet)
       if (token) {
@@ -2529,6 +2859,11 @@ export default function App() {
   const handleTogglePortfolioPublish = async (portfolio: any) => {
     if (!token) return;
     if (!isOwnPortfolio(portfolio)) return;
+
+    if (firmaSettings.YetkilendirmeSarti && !portfolio.yetkilendirmeSozlesmesiYapildi) {
+      showToast('Yetkilendirme sözleşmesi alınmadığı için bu portföy yayınlanamaz.', 'error');
+      return;
+    }
 
     const nextValue = !isPortfolioPublished(portfolio);
     setPublishLoadingPortfolioId(portfolio.id);
@@ -2890,7 +3225,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold transition-all animate-bounce-in border-none ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        <div className={`fixed bottom-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-semibold transition-all animate-bounce-in border-none ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
           }`}>
           {toast.type === 'success'
             ? <Check size={16} className="shrink-0" />
@@ -4232,7 +4567,7 @@ export default function App() {
                       isPublished={isPortfolioPublished(p)}
                       onTogglePublish={() => handleTogglePortfolioPublish(p)}
                       publishLoading={publishLoadingPortfolioId === p.id}
-                      isOwner={isOwnPortfolio(p)}
+                      isOwner={isOwnPortfolio(p)} requireAuthAgreement={firmaSettings.YetkilendirmeSarti === true}
                     />
                   );
                 })}
@@ -4882,6 +5217,29 @@ export default function App() {
                         )}
                       </div>
                     </div>
+
+                    {/* Özellikler Alanı */}
+                    {(selectedPortfolio.hasAsansor || selectedPortfolio.isKrediyeUygun || selectedPortfolio.isTakasaUygun || selectedPortfolio.isAcilSatilik || selectedPortfolio.isFiyatiDustu || selectedPortfolio.otoparkTipi || selectedPortfolio.isinmaTipi || selectedPortfolio.balkonDurumu || selectedPortfolio.esyaDurumu || selectedPortfolio.kullanimDurumu || selectedPortfolio.tapuDurumu) && (
+                      <div className="p-4 rounded-2xl bg-zinc-50/50 border border-zinc-200 flex flex-col gap-3">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles size={12} /> ÖZELLİKLER
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedPortfolio.isAcilSatilik && <span className="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-extrabold rounded-full border border-red-200">Acil Satılık</span>}
+                          {selectedPortfolio.isFiyatiDustu && <span className="px-2.5 py-1 bg-green-100 text-green-700 text-[10px] font-extrabold rounded-full border border-green-200">Fiyatı Düştü</span>}
+                          {selectedPortfolio.isKrediyeUygun && <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-extrabold rounded-full border border-blue-200">Krediye Uygun</span>}
+                          {selectedPortfolio.isTakasaUygun && <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold rounded-full border border-purple-200">Takasa Uygun</span>}
+                          {selectedPortfolio.hasAsansor && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Asansör: Var</span>}
+                          {selectedPortfolio.otoparkTipi && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Otopark: {selectedPortfolio.otoparkTipi}</span>}
+                          {selectedPortfolio.isinmaTipi && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Isınma: {selectedPortfolio.isinmaTipi}</span>}
+                          {selectedPortfolio.balkonDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Balkon: {selectedPortfolio.balkonDurumu}</span>}
+                          {selectedPortfolio.esyaDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Eşya: {selectedPortfolio.esyaDurumu}</span>}
+                          {selectedPortfolio.kullanimDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Kullanım: {selectedPortfolio.kullanimDurumu}</span>}
+                          {selectedPortfolio.tapuDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Tapu: {selectedPortfolio.tapuDurumu}</span>}
+                        </div>
+                      </div>
+                    )}
+
 
                     {/* Edit & Close actions for owners/admins */}
                     {(selectedPortfolio.gorevliUzmanId === user?.id) && (
@@ -6617,16 +6975,14 @@ export default function App() {
                 <span className="text-sm font-semibold">Süreç kayıtları yükleniyor...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 items-start">
 
                 {/* Her kolon için yardımcı kart render fonksiyonu */}
                 {[
-                  { stageId: 1, label: 'Sonuç Bekleyenler / Yeni Gösterim', color: 'sky' },
-                  { stageId: 2, label: 'Düşünme Aşaması', color: 'purple' },
-                  { stageId: 3, label: 'Pazarlık / Teklif', color: 'amber' },
-                  { stageId: 4, label: 'Kapora Alındı', color: 'emerald' },
-                  { stageId: 5, label: 'Sözleşme / Tapu', color: 'indigo' },
-                  { stageId: 6, label: 'Tamamlandı (Satıldı/Kiralandı)', color: 'teal' },
+                  { stageId: 1, label: 'Portföy & Randevu Süreci', color: 'sky' },
+                  { stageId: 3, label: 'Anlaşma süreci', color: 'amber' },
+                  { stageId: 4, label: 'Satıldı/Kiralandı', color: 'emerald' },
+                  { stageId: 5, label: 'Vazgeçildi', color: 'rose' },
                 ].map(({ stageId, label, color }) => {
                   const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
                   const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; badgeText: string; empty: string; itemBorder: string }> = {
@@ -6634,8 +6990,7 @@ export default function App() {
                     purple: { card: 'bg-purple-50/80 border-purple-200', border: 'border-purple-200', dot: 'bg-purple-500', title: 'text-purple-950', badge: 'bg-purple-200 text-purple-900', badgeText: 'text-purple-900', empty: 'text-purple-300', itemBorder: 'border-purple-100' },
                     amber: { card: 'bg-amber-50/80 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', badgeText: 'text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
                     emerald: { card: 'bg-emerald-50/80 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', badgeText: 'text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
-                    indigo: { card: 'bg-indigo-50/80 border-indigo-200', border: 'border-indigo-200', dot: 'bg-indigo-500', title: 'text-indigo-950', badge: 'bg-indigo-200 text-indigo-900', badgeText: 'text-indigo-900', empty: 'text-indigo-300', itemBorder: 'border-indigo-100' },
-                    teal: { card: 'bg-teal-50/80 border-teal-200', border: 'border-teal-200', dot: 'bg-teal-600', title: 'text-teal-950', badge: 'bg-teal-200 text-teal-900', badgeText: 'text-teal-900', empty: 'text-teal-300', itemBorder: 'border-teal-100' },
+                    rose: { card: 'bg-rose-50/80 border-rose-200', border: 'border-rose-200', dot: 'bg-rose-500', title: 'text-rose-950', badge: 'bg-rose-200 text-rose-900', badgeText: 'text-rose-900', empty: 'text-rose-300', itemBorder: 'border-rose-100' },
                   };
                   const c = colorMap[color];
                   return (
@@ -6725,49 +7080,85 @@ export default function App() {
                 </button>
               </div>
 
+              <div className="flex gap-2 mb-4 p-1 bg-zinc-100/70 rounded-full border border-zinc-200">
+                <button
+                  type="button"
+                  onClick={() => setClientTypeScope('all')}
+                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-full transition-colors ${clientTypeScope === 'all' ? 'bg-indigo-500 text-white shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                >
+                  Tümü
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClientTypeScope('owner')}
+                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-full transition-colors ${clientTypeScope === 'owner' ? 'bg-indigo-500 text-white shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                >
+                  🏠 Mülk Sahipleri
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClientTypeScope('seeker')}
+                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-full transition-colors ${clientTypeScope === 'seeker' ? 'bg-indigo-500 text-white shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                >
+                  🔍 Mülk Arayanlar
+                </button>
+              </div>
+
               <div className="flex flex-col gap-3">
-                {clients.filter(c => clientTabScope === 'active' ? (c.isActive !== false) : (c.isActive === false)).length === 0 ? (
-                  <div className="p-8 text-center text-zinc-400 text-xs font-bold border-2 border-dashed border-zinc-200 rounded-2xl">
-                    Bu kategoride müşteri bulunmamaktadır.
-                  </div>
-                ) : (
-                  clients.filter(c => clientTabScope === 'active' ? (c.isActive !== false) : (c.isActive === false)).map(c => (
-                    <div key={c.id} className={`p-4 rounded-2xl flex justify-between items-center border transition-all ${c.isActive !== false ? 'bg-cream border-zinc-200' : 'bg-zinc-100/70 border-zinc-200 opacity-80'}`}>
-                      <div>
-                        <div className="flex gap-2 items-center flex-wrap">
-                          <strong className="font-extrabold text-sm">{c.ad} {c.soyad}</strong>
-                          <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
-                            c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
-                              c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
-                            }`}>
-                            {c.musteriTipi === 'ALICI' ? 'ALICI' :
-                              c.musteriTipi === 'KIRACI' ? 'KİRACI' :
-                                c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-zinc-500 block mt-1">Telefon: {c.telefon}</span>
-                        {c.musteriTipi !== 'SATICI' && c.musteriTipi !== 'KIRAYA_VEREN' && c.butce > 0 && (
-                          <span className="text-xs text-indigo-600 font-semibold block mt-0.5">Bütçe: {c.butce.toLocaleString('tr-TR')} TL</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-pastelYellow">
-                          {c.tip}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleClientStatus(c.id, c.isActive !== false)}
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${c.isActive !== false
-                            ? 'bg-zinc-200 hover:bg-zinc-300 text-zinc-800 border-zinc-400'
-                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-400'
-                            }`}
-                        >
-                          {c.isActive !== false ? 'Pasife Al' : 'Aktife Al'}
-                        </button>
-                      </div>
+                {(() => {
+                  const filteredClients = clients.filter(c => {
+                    const isTabMatch = clientTabScope === 'active' ? (c.isActive !== false) : (c.isActive === false);
+                    if (!isTabMatch) return false;
+
+                    if (clientTypeScope === 'all') return true;
+                    if (clientTypeScope === 'owner') return c.musteriTipi === 'Mülk Sahibi' || c.musteriTipi === 'SATICI' || c.musteriTipi === 'KIRAYA_VEREN' || c.musteriTipi === 'KİRAYA VEREN';
+                    if (clientTypeScope === 'seeker') return c.musteriTipi === 'ALICI' || c.musteriTipi === 'KIRACI' || c.musteriTipi === 'KİRACI';
+                    return true;
+                  });
+
+                  return filteredClients.length === 0 ? (
+                    <div className="p-8 text-center text-zinc-400 text-xs font-bold border-2 border-dashed border-zinc-200 rounded-2xl">
+                      Bu kategoride müşteri bulunmamaktadır.
                     </div>
-                  ))
-                )}
+                  ) : (
+                    filteredClients.map(c => (
+                      <div key={c.id} className={`p-4 rounded-2xl flex justify-between items-center border transition-all ${c.isActive !== false ? 'bg-cream border-zinc-200' : 'bg-zinc-100/70 border-zinc-200 opacity-80'}`}>
+                        <div>
+                          <div className="flex gap-2 items-center flex-wrap">
+                            <strong className="font-extrabold text-sm">{c.ad} {c.soyad}</strong>
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
+                              c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
+                                c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
+                              }`}>
+                              {c.musteriTipi === 'ALICI' ? 'ALICI' :
+                                c.musteriTipi === 'KIRACI' ? 'KİRACI' :
+                                  c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-zinc-500 block mt-1">Telefon: {c.telefon}</span>
+                          {c.musteriTipi !== 'SATICI' && c.musteriTipi !== 'KIRAYA_VEREN' && c.butce > 0 && (
+                            <span className="text-xs text-indigo-600 font-semibold block mt-0.5">Bütçe: {c.butce.toLocaleString('tr-TR')} TL</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-pastelYellow">
+                            {c.tip}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleClientStatus(c.id, c.isActive !== false)}
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${c.isActive !== false
+                              ? 'bg-zinc-200 hover:bg-zinc-300 text-zinc-800 border-zinc-400'
+                              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-400'
+                              }`}
+                          >
+                            {c.isActive !== false ? 'Pasife Al' : 'Aktife Al'}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  );
+                })()}
               </div>
             </div>
 
@@ -7826,6 +8217,31 @@ export default function App() {
 
               {settingsActiveTab === 'standartlar' && (
                 <div className="flex flex-col gap-6">
+                  {/* Sistem & Güvenlik Ayarları */}
+                  <div>
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                      <span>Sistem & Güvenlik Ayarları</span>
+                    </h3>
+
+                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono mb-6">
+                      <div className="flex items-center justify-between p-4 hover:bg-zinc-800/40 transition-colors">
+                        <div>
+                          <h4 className="font-bold text-white mb-1">Portföylerde Yetkilendirme Sözleşmesi Zorunlu Olsun Mu?</h4>
+                          <p className="text-xs text-zinc-400">Aktif edildiğinde, sözleşmesi eksik olan portföylerin yayınlanması ve bu portföylere randevu oluşturulması engellenir.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={firmaSettings.YetkilendirmeSarti === true}
+                            onChange={(e) => setFirmaSettings({ ...firmaSettings, YetkilendirmeSarti: e.target.checked })}
+                          />
+                          <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Kiralama Parametreleri Tablosu */}
                   <div>
                     <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
@@ -8281,7 +8697,7 @@ export default function App() {
           <FirmDocumentsTab token={token} showToast={showToast} />
         )}
         {activeTab === 'documentOperations' && (
-          <DocumentOperationsTab token={token} portfolios={portfolios} user={user} />
+          <DocumentOperationsTab token={token} portfolios={portfolios} user={user} clientProcesses={clientProcesses} fetchClientProcesses={() => { if(token) fetchClientProcesses(token) }} showToast={showToast} />
         )}
       </main>
 
@@ -8706,7 +9122,7 @@ export default function App() {
                 <div className="grid grid-cols-1 gap-1.5 bg-zinc-50 p-2 rounded-2xl border border-zinc-200 max-h-44 overflow-y-auto custom-scrollbar">
                   {processStages.map((stage: any, idx: number) => {
                     const isSelected = selectedStageId === stage.id || (idx === 0 && !selectedStageId);
-                    const isCompletedStage = stage.id === 6 || stage.sira === 6 || idx === 5 || (stage.asamaAdi && stage.asamaAdi.toLowerCase().includes('tamamland'));
+                    const isCompletedStage = stage.id === 4 || stage.sira === 3 || (stage.asamaAdi && (stage.asamaAdi.toLowerCase().includes('tamamland') || stage.asamaAdi.toLowerCase().includes('satıldı')));
 
                     return (
                       <button
@@ -8735,9 +9151,9 @@ export default function App() {
               {(() => {
                 const currentStage = processStages.find((s: any, idx: number) => s.id === selectedStageId || (idx === 0 && !selectedStageId));
                 const isCompletedStageSelected = currentStage && (
-                  currentStage.id === 6 ||
-                  currentStage.sira === 6 ||
-                  (currentStage.asamaAdi && currentStage.asamaAdi.toLowerCase().includes('tamamland'))
+                  currentStage.id === 4 ||
+                  currentStage.sira === 3 ||
+                  (currentStage.asamaAdi && (currentStage.asamaAdi.toLowerCase().includes('tamamland') || currentStage.asamaAdi.toLowerCase().includes('satıldı')))
                 );
 
                 return (

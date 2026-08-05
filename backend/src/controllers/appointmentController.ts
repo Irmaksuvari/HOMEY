@@ -114,7 +114,7 @@ export const createAppointment = async (req: any, res: Response) => {
         .input('danismanId', sql.UniqueIdentifier, userId)
         .input('firmaId', sql.UniqueIdentifier, firmaId || null)
         .input('stageId', sql.Int, 1)
-        .input('asamaAdi', sql.NVarChar, 'Sonuç Bekleyenler / Yeni Gösterim')
+        .input('asamaAdi', sql.NVarChar, 'Portföy yüklendi')
         .query(`
           IF NOT EXISTS (SELECT 1 FROM MusteriSurecleri WHERE MusteriId = @musteriId AND PortfoyId = @portfoyId)
           BEGIN
@@ -220,20 +220,18 @@ export const getProcessStages = async (req: any, res: Response) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request().query(`
-      SELECT Id, AsamaAdi, Sira, Durum, Aciklama
+      SELECT Id, Baslik AS AsamaAdi, SiraNo AS Sira, IsActive AS Durum
       FROM SurecAsamalari
-      ORDER BY Sira ASC
+      ORDER BY SiraNo ASC
     `);
 
-    // Eğer veritabanı tablosu henüz boşsa varsayılan 6 aşamayı döndür
+    // Eğer veritabanı tablosu henüz boşsa varsayılan 4 aşamayı döndür
     if (!result.recordset || result.recordset.length === 0) {
       return res.json([
-        { id: 1, asamaAdi: 'Sonuç Bekleyenler / Yeni Gösterim', sira: 1 },
-        { id: 2, asamaAdi: 'Düşünme Aşaması', sira: 2 },
-        { id: 3, asamaAdi: 'Pazarlık / Teklif', sira: 3 },
-        { id: 4, asamaAdi: 'Kapora Alındı', sira: 4 },
-        { id: 5, asamaAdi: 'Sözleşme / Tapu', sira: 5 },
-        { id: 6, asamaAdi: 'Tamamlandı (Satıldı/Kiralandı)', sira: 6 }
+        { id: 1, asamaAdi: 'Portföy & Randevu Süreci', sira: 1 },
+        { id: 3, asamaAdi: 'Anlaşma süreci', sira: 2 },
+        { id: 4, asamaAdi: 'Satıldı/Kiralandı', sira: 3 },
+        { id: 5, asamaAdi: 'Vazgeçildi', sira: 4 }
       ]);
     }
 
@@ -241,8 +239,7 @@ export const getProcessStages = async (req: any, res: Response) => {
       id: r.Id,
       asamaAdi: r.AsamaAdi,
       sira: r.Sira,
-      durum: r.Durum,
-      aciklama: r.Aciklama
+      durum: r.Durum
     }));
 
     res.json(stages);
@@ -250,12 +247,10 @@ export const getProcessStages = async (req: any, res: Response) => {
     // Veritabanı tablosu henüz sorgulanamıyorsa güvenli varsayılan yanıt döndür
     console.log('[HOMEY API] SurecAsamalari tablosu okunurken varsayılan aşamalar kullanıldı:', error.message);
     res.json([
-      { id: 1, asamaAdi: 'Sonuç Bekleyenler / Yeni Gösterim', sira: 1 },
-      { id: 2, asamaAdi: 'Düşünme Aşaması', sira: 2 },
-      { id: 3, asamaAdi: 'Pazarlık / Teklif', sira: 3 },
-      { id: 4, asamaAdi: 'Kapora Alındı', sira: 4 },
-      { id: 5, asamaAdi: 'Sözleşme / Tapu', sira: 5 },
-      { id: 6, asamaAdi: 'Tamamlandı (Satıldı/Kiralandı)', sira: 6 }
+      { id: 1, asamaAdi: 'Portföy & Randevu Süreci', sira: 1 },
+      { id: 3, asamaAdi: 'Anlaşma süreci', sira: 2 },
+      { id: 4, asamaAdi: 'Satıldı/Kiralandı', sira: 3 },
+      { id: 5, asamaAdi: 'Vazgeçildi', sira: 4 }
     ]);
   }
 };
@@ -287,6 +282,7 @@ export const getClientProcesses = async (req: any, res: Response) => {
           ms.AsamaId,
           ms.AsamaAdi,
           ms.Aciklama,
+          ms.EvraklarTamamlandi,
           ms.OlusturmaTarihi,
           ms.GuncellemeTarihi,
           m.Ad AS MusteriAd,
@@ -318,6 +314,7 @@ export const getClientProcesses = async (req: any, res: Response) => {
       asamaId: row.AsamaId,
       asamaAdi: row.AsamaAdi,
       aciklama: row.Aciklama,
+      evraklarTamamlandi: row.EvraklarTamamlandi,
       kayitTarihi: row.OlusturmaTarihi,
       guncellemeTarihi: row.GuncellemeTarihi,
       musteriAd: row.MusteriAd,
@@ -470,7 +467,7 @@ export const backfillExistingAppointments = async (req: any, res: Response) => {
           .input('danismanId', sql.UniqueIdentifier, row.TeklifEdenUzmanId || null)
           .input('firmaId', sql.UniqueIdentifier, row.PortfoyFirmaId || firmaId || null)
           .input('stageId', sql.Int, 1)
-          .input('asamaAdi', sql.NVarChar, 'Sonuç Bekleyenler / Yeni Gösterim')
+          .input('asamaAdi', sql.NVarChar, 'Portföy yüklendi')
           .query(`
             INSERT INTO MusteriSurecleri (Id, MusteriId, PortfoyId, RandevuId, DanismanId, FirmaId, AsamaId, AsamaAdi, OlusturmaTarihi, GuncellemeTarihi)
             VALUES (NEWID(), @musteriId, @portfoyId, @randevuId, @danismanId, @firmaId, @stageId, @asamaAdi, GETDATE(), GETDATE())
@@ -561,7 +558,37 @@ export const diagnoseMusteriSurecleri = async (req: any, res: Response) => {
 
     res.json(report);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('[HOMEY API] diagnose error:', error.message);
+    res.status(500).json({ message: 'Teşhis sırasında bir hata oluştu.', error: error.message });
   }
 };
 
+// POST /api/appointments/update-documents-status
+export const updateProcessDocumentsStatus = async (req: any, res: Response) => {
+  const { processId, status } = req.body;
+  const firmaId = req.user?.firmaId;
+
+  if (!processId) {
+    return res.status(400).json({ message: 'Süreç ID (processId) gereklidir.' });
+  }
+
+  try {
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('processId', sql.UniqueIdentifier, processId)
+      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
+      .input('status', sql.Bit, status ? 1 : 0)
+      .query(`
+        UPDATE MusteriSurecleri 
+        SET EvraklarTamamlandi = @status,
+            GuncellemeTarihi = GETDATE()
+        WHERE Id = @processId AND (@firmaId IS NULL OR FirmaId = @firmaId)
+      `);
+      
+    res.json({ message: 'Evrak durumu başarıyla güncellendi.' });
+  } catch (error: any) {
+    console.error('[HOMEY API] updateProcessDocumentsStatus error:', error.message);
+    res.status(500).json({ message: 'Evrak durumu güncellenirken bir hata oluştu.' });
+  }
+};

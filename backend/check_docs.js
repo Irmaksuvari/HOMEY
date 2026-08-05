@@ -10,14 +10,9 @@ const config = {
 };
 
 sql.connect(config).then(pool => {
-  return pool.request().query(`
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_NAME IN ('KomisyonAyarlari', 'FirmaKomisyonAyarlari')
-    ORDER BY TABLE_NAME, ORDINAL_POSITION
-  `);
+  return pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE '%Evrak%' OR TABLE_NAME LIKE '%Belge%'");
 }).then(r => {
-  console.table(r.recordset);
+  console.log(r.recordset);
   process.exit(0);
 }).catch(e => {
   console.error(e);

@@ -8,7 +8,8 @@ import {
   updateAppointmentStage,
   backfillExistingAppointments,
   getClientProcesses,
-  diagnoseMusteriSurecleri
+  diagnoseMusteriSurecleri,
+  updateProcessDocumentsStatus
 } from '../controllers/appointmentController';
 
 const router = Router();
@@ -27,6 +28,9 @@ router.get('/client-processes', authenticateJWT, getClientProcesses);
 
 // POST /api/appointments/update-stage
 router.post('/update-stage', authenticateJWT, updateAppointmentStage);
+
+// POST /api/appointments/update-documents-status
+router.post('/update-documents-status', authenticateJWT, updateProcessDocumentsStatus);
 
 // POST /api/appointments/backfill-stages (Mevcut randevuları MusteriSurecleri'ne ekle)
 router.post('/backfill-stages', authenticateJWT, backfillExistingAppointments);

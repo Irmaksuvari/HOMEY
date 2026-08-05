@@ -364,10 +364,10 @@ export const getFirmDocuments = async (req: any, res: Response): Promise<void> =
 
 export const uploadFirmDocument = async (req: any, res: Response): Promise<void> => {
   try {
-    const { firmaId, role } = req.user;
+    const { firmaId, rol } = req.user;
     const { docType } = req.params;
 
-    if (role !== 'YETKILI') {
+    if (rol !== 'YETKILI') {
       res.status(403).json({ message: 'Yetkisiz erişim.' });
       return;
     }
@@ -424,10 +424,10 @@ export const uploadFirmDocument = async (req: any, res: Response): Promise<void>
 
 export const deleteFirmDocument = async (req: any, res: Response): Promise<void> => {
   try {
-    const { firmaId, role } = req.user;
+    const { firmaId, rol } = req.user;
     const { docType } = req.params;
 
-    if (role !== 'YETKILI') {
+    if (rol !== 'YETKILI') {
       res.status(403).json({ message: 'Yetkisiz erişim.' });
       return;
     }

@@ -67,8 +67,18 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
       .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
       .query(`
+        DECLARE @mulkSahibiId UNIQUEIDENTIFIER;
+        SELECT @mulkSahibiId = Id FROM Musteriler WHERE Telefon = @evSahibiTelefon AND FirmaId = @firmaId;
+        
+        IF @mulkSahibiId IS NULL
+        BEGIN
+          SET @mulkSahibiId = NEWID();
+          INSERT INTO Musteriler (Id, FirmaId, KayitEdenUzmanId, Ad, Soyad, Telefon, Müşteri_Tipi, KayitTarihi, IsActive, is_active)
+          VALUES (@mulkSahibiId, @firmaId, @gorevliUzmanId, @evSahibiAdi, '', @evSahibiTelefon, 'Mülk Sahibi', GETDATE(), 1, 1);
+        END
+
         INSERT INTO Portfoyler (
-          FirmaId, GorevliUzmanId, Tip, Tur, Fiyat, Metrekare, OdaSayisi,
+          FirmaId, GorevliUzmanId, MulkSahibiId, Tip, Tur, Fiyat, Metrekare, OdaSayisi,
           KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, Semt, Cadde, Sokak,
           EvSahibiAdi, EvSahibiTelefon, Durum, IsPublished, Aciklama, OtoparkTipi,
           IsinmaTipi, BalkonDurumu, EsyaDurumu, KullanimDurumu, TapuDurumu, HasAsansor,
@@ -76,7 +86,7 @@ export const addPortfolio = async (req: any, res: Response) => {
         )
         OUTPUT inserted.Id
         VALUES (
-          @firmaId, @gorevliUzmanId, @tip, @tur, @fiyat, @metrekare, @odaSayisi,
+          @firmaId, @gorevliUzmanId, @mulkSahibiId, @tip, @tur, @fiyat, @metrekare, @odaSayisi,
           @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle, @semt, @cadde, @sokak,
           @evSahibiAdi, @evSahibiTelefon, 'BOSTA', @isPublished, @aciklama, @otoparkTipi,
           @isinmaTipi, @balkonDurumu, @esyaDurumu, @kullanimDurumu, @tapuDurumu, @hasAsansor,
@@ -109,6 +119,8 @@ export const listPortfolios = async (req: any, res: Response) => {
       .input('firmaId', sql.UniqueIdentifier, firmaId)
       .query(`
         SELECT p.*, k.Ad as UzmanAd, k.Soyad as UzmanSoyad,
+          (ISNULL(ms.Ad, '') + CASE WHEN ms.Soyad IS NOT NULL AND ms.Soyad != '' THEN ' ' + ms.Soyad ELSE '' END) as S_EvSahibiAdi,
+          ms.Telefon as S_EvSahibiTelefon,
           STUFF((
             SELECT ',' + pf.FotoUrl
             FROM PortfoyFotograflari pf
@@ -118,6 +130,7 @@ export const listPortfolios = async (req: any, res: Response) => {
           ).value('.', 'NVARCHAR(MAX)'), 1, 1, '') as TumFotograflar
         FROM Portfoyler p
         INNER JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+        LEFT JOIN Musteriler ms ON p.MulkSahibiId = ms.Id
         WHERE p.FirmaId = @firmaId
           AND UPPER(ISNULL(p.Durum, 'BOSTA')) NOT IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI')
         ORDER BY p.KayitTarihi DESC
@@ -143,8 +156,8 @@ export const listPortfolios = async (req: any, res: Response) => {
         sokak: p.Sokak || '',
         gorevliUzman: `${p.UzmanAd} ${p.UzmanSoyad}`,
         gorevliUzmanId: p.GorevliUzmanId,
-        evSahibiAdi: p.EvSahibiAdi,
-        evSahibiTelefon: p.EvSahibiTelefon,
+        evSahibiAdi: p.S_EvSahibiAdi || p.EvSahibiAdi,
+        evSahibiTelefon: p.S_EvSahibiTelefon || p.EvSahibiTelefon,
         durum: p.Durum,
         isPublished: p.IsPublished === true || p.IsPublished === 1 || p.IsPublished === '1' || p.IsPublished === 'true' || p.IsPublished === 'TRUE',
         aciklama: p.Aciklama || '',
@@ -240,6 +253,17 @@ export const editPortfolio = async (req: any, res: Response) => {
       .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
       .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
       .query(`
+        DECLARE @mulkSahibiId UNIQUEIDENTIFIER;
+        SELECT @mulkSahibiId = Id FROM Musteriler WHERE Telefon = @evSahibiTelefon AND FirmaId = (SELECT FirmaId FROM Portfoyler WHERE Id = @id);
+        
+        IF @mulkSahibiId IS NULL
+        BEGIN
+          SET @mulkSahibiId = NEWID();
+          INSERT INTO Musteriler (Id, FirmaId, KayitEdenUzmanId, Ad, Soyad, Telefon, Müşteri_Tipi, KayitTarihi, IsActive, is_active)
+          SELECT @mulkSahibiId, FirmaId, GorevliUzmanId, @evSahibiAdi, '', @evSahibiTelefon, 'Mülk Sahibi', GETDATE(), 1, 1 
+          FROM Portfoyler WHERE Id = @id;
+        END
+
         UPDATE Portfoyler
         SET Tip = @tip,
             Tur = @tur,
@@ -256,6 +280,7 @@ export const editPortfolio = async (req: any, res: Response) => {
             Sokak = @sokak,
             EvSahibiAdi = @evSahibiAdi,
             EvSahibiTelefon = @evSahibiTelefon,
+            MulkSahibiId = @mulkSahibiId,
             Aciklama = @aciklama,
             OtoparkTipi = @otoparkTipi,
             IsinmaTipi = @isinmaTipi,
@@ -463,8 +488,8 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
             ISNULL(p.Il, 'İstanbul') AS Il, 
             ISNULL(p.Ilce, 'Merkez') AS Ilce, 
             p.Mahalle,
-            p.EvSahibiAdi, 
-            p.EvSahibiTelefon,
+            ISNULL(NULLIF((ISNULL(mms.Ad, '') + ' ' + ISNULL(mms.Soyad, '')), ' '), p.EvSahibiAdi) AS EvSahibiAdi, 
+            ISNULL(mms.Telefon, p.EvSahibiTelefon) AS EvSahibiTelefon,
             ISNULL(p.Durum, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALANDI' ELSE 'SATILDI' END) AS Durum,
             ISNULL(p.GorevliUzmanId, s.DanismanID) AS GorevliUzmanId,
             k.Ad AS UzmanAd, 
@@ -485,6 +510,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
           LEFT JOIN Kullanicilar dk ON s.DanismanID = dk.Id
           LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
           LEFT JOIN Musteriler m ON s.AliciMusteriID = m.Id
+          LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
           WHERE (@firmaId IS NULL OR dk.FirmaId = @firmaId OR p.FirmaId = @firmaId)
 
           UNION ALL
@@ -501,8 +527,8 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
             p.Il,
             p.Ilce,
             p.Mahalle,
-            p.EvSahibiAdi,
-            p.EvSahibiTelefon,
+            ISNULL(NULLIF((ISNULL(mms.Ad, '') + ' ' + ISNULL(mms.Soyad, '')), ' '), p.EvSahibiAdi) AS EvSahibiAdi,
+            ISNULL(mms.Telefon, p.EvSahibiTelefon) AS EvSahibiTelefon,
             p.Durum,
             p.GorevliUzmanId,
             k.Ad AS UzmanAd,
@@ -520,6 +546,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
             NULL AS AliciMusteriAd
           FROM Portfoyler p
           LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+          LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
           WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
             AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
 
@@ -535,7 +562,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
             CAST(p.Id AS NVARCHAR(36)) AS Id,
             p.Tip, p.Tur, p.Fiyat, p.Metrekare, p.OdaSayisi,
             p.KaporaMiktari, p.DepozitoMiktari, p.Il, p.Ilce, p.Mahalle,
-            p.EvSahibiAdi, p.EvSahibiTelefon, p.Durum, p.GorevliUzmanId,
+            ISNULL(NULLIF((ISNULL(mms.Ad, '') + ' ' + ISNULL(mms.Soyad, '')), ' '), p.EvSahibiAdi) AS EvSahibiAdi, ISNULL(mms.Telefon, p.EvSahibiTelefon) AS EvSahibiTelefon, p.Durum, p.GorevliUzmanId,
             k.Ad AS UzmanAd, k.Soyad AS UzmanSoyad,
             NULL AS SatisIslemId, p.GorevliUzmanId AS IslemYapanDanismanId,
             CASE WHEN p.Tur = 'KIRALIK' THEN 'KIRALAMA' ELSE 'SATIS' END AS IslemTuru,
@@ -544,6 +571,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
             NULL AS AliciMusteriId, NULL AS AliciMusteriAd
           FROM Portfoyler p
           LEFT JOIN Kullanicilar k ON p.GorevliUzmanId = k.Id
+          LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
           WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
             AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
         `);
