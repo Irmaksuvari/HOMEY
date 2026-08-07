@@ -189,10 +189,15 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
       .input('appointmentId', sql.UniqueIdentifier, appointmentId)
       .input('durum', sql.NVarChar, requestedStatus);
 
-    if (requestedStatus === 'REJECTED') {
+    if (requestedStatus === 'REJECTED' || requestedStatus === 'CANCELLED' || requestedStatus === 'IPTAL') {
       await request.query(`
+        INSERT INTO RandevularArsivi (Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, Durum, KayitTarihi)
+        SELECT Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, @durum, KayitTarihi
+        FROM Randevular
+        WHERE Id = @appointmentId;
+
         DELETE FROM Randevular
-        WHERE Id = @appointmentId
+        WHERE Id = @appointmentId;
       `);
     } else {
       await request.query(`
@@ -285,10 +290,12 @@ export const getClientProcesses = async (req: any, res: Response) => {
           ms.EvraklarTamamlandi,
           ms.OlusturmaTarihi,
           ms.GuncellemeTarihi,
+          ms.RandevuId,
           m.Ad AS MusteriAd,
           m.Soyad AS MusteriSoyad,
           m.Telefon AS MusteriTelefon,
           m.[Müşteri_Tipi] AS MusteriTipi,
+          p.Baslik AS PortfoyBaslik,
           p.Tip AS PortfoyTip,
           p.Tur AS PortfoyTur,
           p.Fiyat AS PortfoyFiyat,
@@ -296,10 +303,13 @@ export const getClientProcesses = async (req: any, res: Response) => {
           p.Ilce AS PortfoyIlce,
           p.Mahalle AS PortfoyMahalle,
           k.Ad AS DanismanAd,
-          k.Soyad AS DanismanSoyad
+          k.Soyad AS DanismanSoyad,
+          mms.Ad AS MulkSahibiAd,
+          mms.Soyad AS MulkSahibiSoyad
         FROM MusteriSurecleri ms
         LEFT JOIN Musteriler m ON ms.MusteriId = m.Id
         LEFT JOIN Portfoyler p ON ms.PortfoyId = p.Id
+        LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
         LEFT JOIN Kullanicilar k ON ms.DanismanId = k.Id
         WHERE (@firmaId IS NULL OR ms.FirmaId = @firmaId OR p.FirmaId = @firmaId)
         ORDER BY ms.GuncellemeTarihi DESC
@@ -313,6 +323,7 @@ export const getClientProcesses = async (req: any, res: Response) => {
       firmaId: row.FirmaId,
       asamaId: row.AsamaId,
       asamaAdi: row.AsamaAdi,
+      randevuId: row.RandevuId,
       aciklama: row.Aciklama,
       evraklarTamamlandi: row.EvraklarTamamlandi,
       kayitTarihi: row.OlusturmaTarihi,
@@ -320,17 +331,17 @@ export const getClientProcesses = async (req: any, res: Response) => {
       musteriAd: row.MusteriAd,
       musteriSoyad: row.MusteriSoyad,
       musteriTelefon: row.MusteriTelefon,
+      musteri: row.MusteriAd || row.MusteriSoyad ? `${row.MusteriAd || ''} ${row.MusteriSoyad || ''}`.trim() : null,
       musteriTipi: row.MusteriTipi,
-      musteri: `${row.MusteriAd || ''} ${row.MusteriSoyad || ''}`.trim(),
+      portfoyBaslik: row.PortfoyBaslik,
       portfoyTip: row.PortfoyTip,
       portfoyTur: row.PortfoyTur,
       portfoyFiyat: row.PortfoyFiyat,
       portfoyIl: row.PortfoyIl,
       portfoyIlce: row.PortfoyIlce,
       portfoyMahalle: row.PortfoyMahalle,
-      danismanAd: row.DanismanAd,
-      danismanSoyad: row.DanismanSoyad,
-      danisman: `${row.DanismanAd || ''} ${row.DanismanSoyad || ''}`.trim(),
+      danisman: row.DanismanAd || row.DanismanSoyad ? `${row.DanismanAd || ''} ${row.DanismanSoyad || ''}`.trim() : null,
+      evSahibi: row.MulkSahibiAd || row.MulkSahibiSoyad ? `${row.MulkSahibiAd || ''} ${row.MulkSahibiSoyad || ''}`.trim() : null
     }));
 
     res.json(processes);

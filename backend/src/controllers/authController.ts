@@ -158,7 +158,7 @@ export const login = async (req: Request, res: Response) => {
     const result = await pool.request()
       .input('eposta', sql.NVarChar, cleanEmail)
       .query(`
-        SELECT k.Id, k.FirmaId, k.Ad, k.Soyad, k.Eposta, k.SifreHash, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, k.ProfilFoto,
+        SELECT k.Id, k.FirmaId, k.Ad, k.Soyad, k.Eposta, k.SifreHash, k.Telefon, k.Rol, k.IlkGirisMi, k.AktifMi, k.ProfilFoto, k.TemaTercihi,
                f.FirmaAdi, f.PaketTipi, f.AbonelikBitisTarihi
         FROM Kullanicilar k
         LEFT JOIN Firmalar f ON k.FirmaId = f.Id
@@ -218,7 +218,8 @@ export const login = async (req: Request, res: Response) => {
         ilkGirisMi: user.IlkGirisMi,
         paketTipi: user.PaketTipi || 'DENEME',
         abonelikBitisTarihi: user.AbonelikBitisTarihi,
-        profilFoto: user.ProfilFoto
+        profilFoto: user.ProfilFoto,
+        temaTercihi: user.TemaTercihi
       }
     });
 
@@ -275,5 +276,35 @@ export const changePassword = async (req: any, res: Response) => {
   } catch (error: any) {
     console.error('[HOMEY API] changePassword Error:', error);
     res.status(500).json({ message: 'Şifre güncellenirken sunucu hatası oluştu.', error: error.message });
+  }
+};
+
+export const updateTheme = async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const { theme } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Yetkisiz erişim.' });
+  }
+
+  if (!['light', 'dark', 'system'].includes(theme)) {
+    return res.status(400).json({ message: 'Geçersiz tema tercihi.' });
+  }
+
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('id', sql.UniqueIdentifier, userId)
+      .input('tema', sql.NVarChar, theme)
+      .query(`
+        UPDATE Kullanicilar
+        SET TemaTercihi = @tema
+        WHERE Id = @id
+      `);
+
+    res.json({ message: 'Tema başarıyla güncellendi.' });
+  } catch (error: any) {
+    console.error('[HOMEY API] updateTheme Error:', error);
+    res.status(500).json({ message: 'Tema güncellenirken hata oluştu.', error: error.message });
   }
 };

@@ -7,7 +7,8 @@ import {
   FileText, Clock, LayoutDashboard, Loader2,
   Trophy, Banknote, UserPlus, BadgeCheck, Building2, Bell,
   Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles,
-  GitPullRequest, Layers, UploadCloud, Trash2, Download
+  GitPullRequest, Layers, UploadCloud, Trash2, Download, Settings, Moon, Sun, Monitor,
+  ArrowUpDown, Car, Flame, Sofa, Scroll, FileCheck, Snowflake, GripVertical, MoreVertical
 } from 'lucide-react';
 
 // ─── Dikey Portföy Kart Bileşeni (Üstte Görsel Carousel, Altta Bilgiler) ─────
@@ -82,8 +83,8 @@ function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onToggleP
           </>
         ) : (
           /* Görsel Yoksa Varsayılan Şık Placeholder */
-          <div className="w-full h-full bg-gradient-to-br from-cream via-cream/80 to-amber-50 flex flex-col items-center justify-center text-zinc-400 gap-1 relative overflow-hidden">
-            <div className="absolute -bottom-4 -right-4 text-charcoal/5 pointer-events-none">
+          <div className="w-full h-full bg-gradient-to-br from-cream via-cream/80 to-amber-50 dark:from-slate-950 dark:via-slate-950/80 dark:to-zinc-800 flex flex-col items-center justify-center text-zinc-400 gap-1 relative overflow-hidden">
+            <div className="absolute -bottom-4 -right-4 text-charcoal/5 dark:text-zinc-500/10 pointer-events-none">
               {portfolio.tip === 'ARSA' ? <MapPin size={90} /> : <Home size={90} />}
             </div>
             {portfolio.tip === 'ARSA' ? (
@@ -96,26 +97,35 @@ function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onToggleP
         )}
 
         {/* Üst Rozetler (Satılık/Kiralık & Durum) */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-center z-10 pointer-events-none">
-          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border border-charcoal/80 uppercase tracking-wider shadow-sm ${portfolio.tur === 'SATILIK' ? 'bg-[#FBCFE8] text-charcoal' : 'bg-[#BAE6FD] text-charcoal'
-            }`}>
-            {portfolio.tur}
-          </span>
-          {requireAuthAgreement && !portfolio.yetkilendirmeSozlesmesiYapildi && (
-            <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full border border-red-500/80 bg-red-100 text-red-700 uppercase tracking-wider shadow-sm ml-1 truncate" title="Yetkilendirme Sözleşmesi Eksik">Yetki Sözleşmesi Yok</span>
-          )}
-          <div className="flex items-center gap-2 pointer-events-auto">
-            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border border-charcoal/80 uppercase tracking-wider shadow-sm ${portfolio.durum === 'BOSTA' ? 'bg-[#BBF7D0] text-emerald-950' : 'bg-[#FEF08A] text-amber-950'
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-start z-10 pointer-events-none gap-2">
+
+          <div className="flex flex-col gap-1.5 items-start">
+            <span className={`text-[10px] font-extrabold px-3 py-1 rounded-md shadow-md uppercase tracking-wider border-none text-[#FFFFFF] ${portfolio.tur === 'SATILIK' ? 'bg-slate-900' : 'bg-indigo-600'
               }`}>
-              {(portfolio.durum || 'BOSTA').replace('_', ' ')}
+              {portfolio.tur}
             </span>
+            {requireAuthAgreement && !portfolio.yetkilendirmeSozlesmesiYapildi && (
+              <div className="flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-red-200 text-red-700 px-2 py-1 rounded-md shadow-sm" title="Yetkilendirme Sözleşmesi Eksik">
+                <X size={12} strokeWidth={3} className="text-red-500" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider truncate">Yetki Sözleşmesi Yok</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col items-end gap-1.5 pointer-events-auto">
+            {portfolio.durum && portfolio.durum !== 'BOSTA' && (
+              <span className={`text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shadow-sm ${portfolio.durum === 'BOSTA' ? 'bg-pastelGreen text-emerald-950 dark:text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                {portfolio.durum.replace('_', ' ')}
+              </span>
+            )}
             <button
               type="button"
               onClick={handleTogglePublishClick}
               disabled={publishLoading || !isOwner}
               className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider shadow-sm transition-all ${isPublished
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-zinc-200 bg-white text-zinc-600'} ${publishLoading ? 'opacity-60' : ''}`}
+                : 'border-zinc-200 bg-white text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-600'} ${publishLoading ? 'opacity-60' : ''}`}
               title={isPublished ? 'Yayından kaldır' : 'Yayınla'}
             >
               <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${isPublished ? 'bg-emerald-500' : 'bg-zinc-300'}`}>
@@ -131,9 +141,9 @@ function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onToggleP
       <div className="p-4 flex flex-col justify-between flex-1 gap-3 bg-white min-w-0">
         <div className="flex flex-col gap-2 min-w-0">
           {/* Mülk Tipi ve Fiyat */}
-          <div className="flex justify-between items-center gap-2 min-w-0">
-            <h3 className="text-base font-extrabold text-charcoal whitespace-nowrap">{portfolio.tip}</h3>
-            <span className="text-base font-black text-indigo-700 whitespace-nowrap shrink-0">
+          <div className="flex justify-between items-center gap-2 min-w-0 flex-wrap">
+            <h3 className="text-base font-extrabold text-charcoal whitespace-nowrap truncate" title={portfolio.baslik || portfolio.tip}>{portfolio.baslik || portfolio.tip}</h3>
+            <span className="text-base font-black text-indigo-700 dark:text-indigo-400 whitespace-nowrap shrink-0">
               {(portfolio.fiyat || 0).toLocaleString('tr-TR')} TL
             </span>
           </div>
@@ -259,13 +269,13 @@ const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToas
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-zinc-400" size={32} /></div>;
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="flex flex-col gap-6 w-full pb-4 sm:pb-8">
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600">
           <FileText size={20} />
         </div>
         <div>
-          <h2 className="text-xl font-extrabold text-charcoal">Firma Evrakları</h2>
+          <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Firma Evrakları</h2>
           <p className="text-xs text-zinc-500 font-medium mt-1">Firma genelinde kullanılacak şablon evraklarınızı bu alandan yükleyebilirsiniz.</p>
         </div>
       </div>
@@ -276,7 +286,7 @@ const FirmDocumentsTab = ({ token, showToast }: { token: string | null, showToas
             <h3 className="text-sm font-bold text-charcoal">{type.label}</h3>
 
             {docs[type.id] ? (
-              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 flex-wrap gap-3">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                     <CheckCircle2 size={16} />
@@ -420,13 +430,13 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
   }, [token]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="flex flex-col gap-6 w-full pb-4 sm:pb-8">
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600">
           <Layers size={20} />
         </div>
         <div>
-          <h2 className="text-xl font-extrabold text-charcoal">Evrak İşlemleri</h2>
+          <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Evrak İşlemleri</h2>
           <p className="text-xs text-zinc-500 font-medium mt-1">Yetkilendirme sözleşmesi bekleyen portföyleriniz ve evrak işlemleri.</p>
         </div>
       </div>
@@ -459,7 +469,7 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
                           <p className="text-xs text-zinc-500 mt-1">{p.mahalle} Mah. {p.tur} {p.tip}</p>
                         </div>
                         <div className="md:text-center">
-                          <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Eksik Evrak</span>
+                          <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider whitespace-nowrap">Eksik Evrak</span>
                         </div>
                         <div className="md:text-right">
                           <p className="font-semibold text-charcoal">{p.fiyat.toLocaleString('tr-TR')} ₺</p>
@@ -484,7 +494,7 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
                         <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Yetkilendirme Sözleşmesi</h5>
                         <div className="flex flex-wrap gap-2">
                           {firmDocs['YetkilendirmeSozlesmesiSablonu'] ? (
-                            <a href={firmDocs['YetkilendirmeSozlesmesiSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-lg hover:border-emerald-300 hover:shadow-sm transition-all text-xs font-semibold text-charcoal">
+                            <a href={firmDocs['YetkilendirmeSozlesmesiSablonu']} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-lg hover:border-emerald-300 dark:border-emerald-800 hover:shadow-sm transition-all text-xs font-semibold text-charcoal">
                               <Download size={14} className="text-emerald-600" />
                               Sözleşmeyi İndir
                             </a>
@@ -512,9 +522,9 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
 
           {/* Satış Kısmı */}
           <div>
-            <h4 className="font-semibold text-emerald-800 bg-emerald-50 py-2 px-4 rounded-xl mb-4 border border-emerald-100 flex items-center justify-between">
+            <h4 className="font-semibold text-emerald-800 bg-emerald-50 py-2 px-4 rounded-xl mb-4 border border-emerald-100 flex items-center justify-between flex-wrap gap-3">
               Satış İşlemleri
-              <span className="text-xs bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">{saleProcesses.length}</span>
+              <span className="text-xs bg-emerald-200 dark:bg-emerald-800/80 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded-full whitespace-nowrap">{saleProcesses.length}</span>
             </h4>
             {saleProcesses.length === 0 ? (
               <p className="text-sm text-zinc-400 italic">Satış aşamasında evrak bekleyen işlem yok.</p>
@@ -538,9 +548,9 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
                             </div>
                             <div className="md:text-right">
                               {!p.evraklarTamamlandi ? (
-                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Evrak Bekliyor</span>
+                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider whitespace-nowrap">Evrak Bekliyor</span>
                               ) : (
-                                <span className="text-[10px] font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg uppercase tracking-wider">Onaylandı</span>
+                                <span className="text-[10px] font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg uppercase tracking-wider whitespace-nowrap">Onaylandı</span>
                               )}
                             </div>
                           </div>
@@ -604,9 +614,9 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
 
           {/* Kiralama Kısmı */}
           <div>
-            <h4 className="font-semibold text-blue-800 bg-blue-50 py-2 px-4 rounded-xl mb-4 border border-blue-100 flex items-center justify-between">
+            <h4 className="font-semibold text-blue-800 bg-blue-50 py-2 px-4 rounded-xl mb-4 border border-blue-100 flex items-center justify-between flex-wrap gap-3">
               Kiralama İşlemleri
-              <span className="text-xs bg-blue-200 text-blue-900 px-2 py-0.5 rounded-full">{rentProcesses.length}</span>
+              <span className="text-xs bg-blue-200 text-blue-900 px-2 py-0.5 rounded-full whitespace-nowrap">{rentProcesses.length}</span>
             </h4>
             {rentProcesses.length === 0 ? (
               <p className="text-sm text-zinc-400 italic">Kiralama aşamasında evrak bekleyen işlem yok.</p>
@@ -630,9 +640,9 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
                             </div>
                             <div className="md:text-right">
                               {!p.evraklarTamamlandi ? (
-                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider">Evrak Bekliyor</span>
+                                <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg uppercase tracking-wider whitespace-nowrap">Evrak Bekliyor</span>
                               ) : (
-                                <span className="text-[10px] font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-lg uppercase tracking-wider">Onaylandı</span>
+                                <span className="text-[10px] font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-lg uppercase tracking-wider whitespace-nowrap">Onaylandı</span>
                               )}
                             </div>
                           </div>
@@ -781,6 +791,55 @@ export default function App() {
   // Navigation & Layout States
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'completedPortfolios' | 'appointments' | 'processManagement' | 'clients' | 'calculator' | 'analytics' | 'team' | 'subscription' | 'settings' | 'firmDocuments' | 'documentOperations'>('dashboard');
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
+
+  // Süreç Yönetimi Modal State
+  const [openProcessMenuId, setOpenProcessMenuId] = useState<string | null>(null);
+  const [openDetailsMenuId, setOpenDetailsMenuId] = useState<string | null>(null);
+
+  // Theme Preference State
+  const [themePreference, setThemePreference] = useState<'light' | 'dark' | 'system'>(() => {
+    const savedUser = localStorage.getItem('homey_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.temaTercihi) return parsed.temaTercihi;
+      } catch (e) { }
+    }
+    return (localStorage.getItem('themePreference') as 'light' | 'dark' | 'system') || 'system';
+  });
+
+  const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
+    setThemePreference(theme);
+    if (user && token) {
+      try {
+        await fetch('/api/auth/theme', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ theme })
+        });
+        const updatedUser = { ...user, temaTercihi: theme };
+        setUser(updatedUser);
+        localStorage.setItem('homey_user', JSON.stringify(updatedUser));
+      } catch (err) {
+        console.error("Theme update failed", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+
+    if (themePreference === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.classList.add(systemTheme);
+    } else {
+      root.classList.add(themePreference);
+    }
+
+    localStorage.setItem('themePreference', themePreference);
+  }, [themePreference]);
 
   // Completed Portfolios States
   const [completedPortfolios, setCompletedPortfolios] = useState<any[]>([]);
@@ -829,6 +888,41 @@ export default function App() {
   });
   const [settingsActiveTab, setSettingsActiveTab] = useState<'standartlar' | 'disOfis' | 'iciOfis'>('standartlar');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Password Change State
+  const [passwordForm, setPasswordForm] = useState({ eskiSifre: '', yeniSifre: '', yeniSifreTekrar: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.yeniSifre !== passwordForm.yeniSifreTekrar) {
+      showToast('Yeni şifreler eşleşmiyor.', 'error');
+      return;
+    }
+    if (passwordForm.yeniSifre.length < 6) {
+      showToast('Yeni şifre en az 6 karakter olmalıdır.', 'error');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ eskiSifre: passwordForm.eskiSifre, yeniSifre: passwordForm.yeniSifre })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Şifreniz başarıyla güncellendi.', 'success');
+        setPasswordForm({ eskiSifre: '', yeniSifre: '', yeniSifreTekrar: '' });
+      } else {
+        showToast(data.message || 'Şifre güncellenirken hata oluştu.', 'error');
+      }
+    } catch (err) {
+      showToast('Sunucu bağlantı hatası.', 'error');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
   const [personalCiro, setPersonalCiro] = useState(0);
 
   // Fetch settings when user logs in
@@ -934,12 +1028,12 @@ export default function App() {
         body: JSON.stringify(firmaSettings)
       });
       if (res.ok) {
-        alert('Ayarlar başarıyla kaydedildi.');
+        showToast('Ayarlar başarıyla kaydedildi.', 'success');
       } else {
-        alert('Ayarlar kaydedilirken hata oluştu.');
+        showToast('Ayarlar kaydedilirken hata oluştu.', 'error');
       }
     } catch (e) {
-      alert('Sunucu hatası.');
+      showToast('Sunucu hatası.', 'error');
     } finally {
       setIsSavingSettings(false);
     }
@@ -947,6 +1041,11 @@ export default function App() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+
+  // Sekme değiştiğinde sağ paneli (ajandayı) otomatik kapat
+  useEffect(() => {
+    setRightPanelCollapsed(true);
+  }, [activeTab]);
 
   // Filter tags in top bar
   const [filterTag, setFilterTag] = useState<string>('Tümü');
@@ -1005,7 +1104,7 @@ export default function App() {
     if (!file || !selectedPortfolio) return;
 
     if (portfolioImages.length >= 12) {
-      alert("Bir portföye en fazla 12 adet fotoğraf yükleyebilirsiniz.");
+      showToast("Bir portföye en fazla 12 adet fotoğraf yükleyebilirsiniz.", 'error');
       return;
     }
 
@@ -1026,10 +1125,10 @@ export default function App() {
         fetchPortfolioImages(selectedPortfolio.id);
         if (token) fetchPortfolios(token);
       } else {
-        alert(data.message || "Fotoğraf yüklenirken hata oluştu.");
+        showToast(data.message || "Fotoğraf yüklenirken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu bağlantı hatası.");
+      showToast("Sunucu bağlantı hatası.", 'error');
     } finally {
       setUploadLoading(false);
       e.target.value = '';
@@ -1053,10 +1152,10 @@ export default function App() {
         fetchPortfolioImages(selectedPortfolio.id);
         if (token) fetchPortfolios(token);
       } else {
-        alert("Fotoğraf silinirken hata oluştu.");
+        showToast("Fotoğraf silinirken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu hatası.");
+      showToast("Sunucu hatası.", 'error');
     }
   };
 
@@ -1076,10 +1175,10 @@ export default function App() {
         fetchPortfolioImages(selectedPortfolio.id);
         if (token) fetchPortfolios(token);
       } else {
-        alert("Kapak fotoğrafı ayarlanırken hata oluştu.");
+        showToast("Kapak fotoğrafı ayarlanırken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu hatası.");
+      showToast("Sunucu hatası.", 'error');
     }
   };
 
@@ -1103,10 +1202,10 @@ export default function App() {
         localStorage.setItem('homey_user', JSON.stringify(updatedUser));
         showToast("Profil fotoğrafı güncellendi!", "success");
       } else {
-        alert(data.message || "Fotoğraf yüklenemedi.");
+        showToast(data.message || "Fotoğraf yüklenemedi.", 'error');
       }
     } catch (err) {
-      alert("Sunucu hatası.");
+      showToast("Sunucu hatası.", 'error');
     }
     e.target.value = '';
   };
@@ -1126,10 +1225,10 @@ export default function App() {
         localStorage.setItem('homey_user', JSON.stringify(updatedUser));
         showToast("Profil fotoğrafı silindi.", "info");
       } else {
-        alert("Fotoğraf silinemedi.");
+        showToast("Fotoğraf silinemedi.", 'error');
       }
     } catch (err) {
-      alert("Sunucu hatası.");
+      showToast("Sunucu hatası.", 'error');
     }
   };
 
@@ -1178,6 +1277,7 @@ export default function App() {
   const [newAppPortfolioId, setNewAppPortfolioId] = useState('');
   const [newAppMusteriId, setNewAppMusteriId] = useState('');
   const [newAppDate, setNewAppDate] = useState('');
+  const [newPortBaslik, setNewPortBaslik] = useState('');
   const [newPortTip, setNewPortTip] = useState('DAIRE');
   const [newPortTur, setNewPortTur] = useState('SATILIK');
   const [newPortFiyat, setNewPortFiyat] = useState('');
@@ -1210,6 +1310,7 @@ export default function App() {
 
   // Edit Portfolio Modal Form States
   const [isEditingPortfolio, setIsEditingPortfolio] = useState(false);
+  const [editPortBaslik, setEditPortBaslik] = useState('');
   const [editPortTip, setEditPortTip] = useState('DAIRE');
   const [editPortTur, setEditPortTur] = useState('SATILIK');
   const [editPortFiyat, setEditPortFiyat] = useState('');
@@ -1333,10 +1434,10 @@ export default function App() {
         setClients(prev => prev.map(c => c.id === clientId ? { ...c, isActive: !currentStatus } : c));
       } else {
         const err = await res.json();
-        alert(err.message || 'Müşteri durumu değiştirilemedi.');
+        showToast(err.message || 'Müşteri durumu değiştirilemedi.', 'error');
       }
     } catch (e: any) {
-      alert('Müşteri durumu değiştirilirken hata oluştu: ' + e.message);
+      showToast('Müşteri durumu değiştirilirken hata oluştu: ' + e.message, 'error');
     }
   };
 
@@ -1352,8 +1453,12 @@ export default function App() {
     }
   };
 
-  const [ciroTimeframe, setCiroTimeframe] = useState<'6A_1' | '6A_2' | '1Y'>('6A_1');
-  const [hoveredCiroIndex, setHoveredCiroIndex] = useState<number | null>(null);
+  const [ciroTimeframe, setCiroTimeframe] = useState<'6A_1' | '6A_2' | '1Y'>(
+    new Date().getMonth() < 6 ? '6A_1' : '6A_2'
+  );
+  const [hoveredCiroIndex, setHoveredCiroIndex] = useState<number | null>(
+    new Date().getMonth() % 6
+  );
   const ciroBarContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollCiroChart = (direction: 'left' | 'right') => {
@@ -1380,7 +1485,7 @@ export default function App() {
     const haftalikRaw = weeklyDays.map(({ label, dayIndex }) => {
       const dayPorts = totalActivePortfolios.filter(p => {
         const d = p.createdAt ? new Date(p.createdAt) : null;
-        return d ? d.getDay() === dayIndex : true;
+        return d ? d.getDay() === dayIndex : false;
       });
       const satilik = dayPorts.filter(p => (p.tur || '').toUpperCase() === 'SATILIK').length;
       const kiralik = dayPorts.filter(p => (p.tur || '').toUpperCase() === 'KIRALIK').length;
@@ -1766,13 +1871,13 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message);
+        showToast(data.message, 'error');
         fetchSubscriptionDetails(token);
       } else {
-        alert(data.message || 'Paket değişimi planlanırken hata oluştu.');
+        showToast(data.message || 'Paket değişimi planlanırken hata oluştu.', 'error');
       }
     } catch (err) {
-      alert('Sunucuyla bağlantı kurulamadı.');
+      showToast('Sunucuyla bağlantı kurulamadı.', 'error');
     }
   };
 
@@ -1788,13 +1893,13 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message);
+        showToast(data.message, 'error');
         fetchSubscriptionDetails(token);
       } else {
-        alert(data.message || 'Planlama iptal edilirken hata oluştu.');
+        showToast(data.message || 'Planlama iptal edilirken hata oluştu.', 'error');
       }
     } catch (err) {
-      alert('Sunucu bağlantı hatası.');
+      showToast('Sunucu bağlantı hatası.', 'error');
     }
   };
 
@@ -1818,13 +1923,13 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Şifre başarıyla sıfırlandı!\nYeni Geçici Şifre: Homey123!\nDanışman ilk girişte bu şifre ile giriş yapıp yeni şifresini belirlemelidir.");
+        showToast("Şifre başarıyla sıfırlandı!\nYeni Geçici Şifre: Homey123!\nDanışman ilk girişte bu şifre ile giriş yapıp yeni şifresini belirlemelidir.", 'success');
         fetchEmployees(token!);
       } else {
-        alert(data.message || "Şifre sıfırlanırken hata oluştu.");
+        showToast(data.message || "Şifre sıfırlanırken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu bağlantı hatası.");
+      showToast("Sunucu bağlantı hatası.", 'error');
     }
   };
 
@@ -2006,6 +2111,9 @@ export default function App() {
         setToken(data.token);
         setUser(data.user);
         setPackageType(data.user.paketTipi);
+        if (data.user.temaTercihi) {
+          setThemePreference(data.user.temaTercihi);
+        }
         // Reset inputs
         setLoginEmail('');
         setLoginPassword('');
@@ -2084,7 +2192,7 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapınız.');
+        showToast('Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapınız.', 'success');
         handleLogout();
       } else {
         setChangePassError(data.message || 'Şifre değiştirme başarısız.');
@@ -2155,7 +2263,7 @@ export default function App() {
 
         const data = await res.json();
         if (res.ok) {
-          alert(`Gayrimenkul uzmanı başarıyla eklendi!\nGeçici şifresi: Homey123!`);
+          showToast(`Gayrimenkul uzmanı başarıyla eklendi!\nGeçici şifresi: Homey123!`, 'success');
           setNewEmpName('');
           setNewEmpEmail('');
           fetchEmployees(token!);
@@ -2172,7 +2280,7 @@ export default function App() {
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClientName || !newClientPhone || !newClientMusteriTipi) {
-      alert("Lütfen zorunlu alanları doldurunuz.");
+      showToast("Lütfen zorunlu alanları doldurunuz.", 'error');
       return;
     }
 
@@ -2198,7 +2306,7 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Müşteri başarıyla veritabanına kaydedildi!");
+        showToast("Müşteri başarıyla veritabanına kaydedildi!", 'success');
         setNewClientName('');
         setNewClientPhone('');
         setNewClientBudget('');
@@ -2207,10 +2315,10 @@ export default function App() {
         setShowAddClientModal(false);
         fetchClients(token!);
       } else {
-        alert(data.message || "Müşteri eklenirken hata oluştu.");
+        showToast(data.message || "Müşteri eklenirken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu bağlantı hatası.");
+      showToast("Sunucu bağlantı hatası.", 'error');
     }
   };
 
@@ -2218,7 +2326,7 @@ export default function App() {
   const handleAddPortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPortFiyat || !newPortIlce || !newPortLandlordName || !newPortLandlordPhone || !newPortMetrekare) {
-      alert("Lütfen tüm alanları doldurunuz.");
+      showToast("Lütfen tüm alanları doldurunuz.", 'error');
       return;
     }
 
@@ -2231,6 +2339,7 @@ export default function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          baslik: newPortBaslik,
           tip: newPortTip,
           tur: newPortTur,
           fiyat: Number(newPortFiyat),
@@ -2286,9 +2395,10 @@ export default function App() {
           }
         }
 
-        alert("Yeni portföy ve fotoğrafları başarıyla veritabanına kaydedildi!");
+        showToast("Yeni portföy ve fotoğrafları başarıyla veritabanına kaydedildi!", 'success');
         setShowAddPortfolioModal(false);
         // Reset fields
+        setNewPortBaslik('');
         setNewPortTip('DAIRE');
         setNewPortTur('SATILIK');
         setNewPortFiyat('');
@@ -2319,10 +2429,10 @@ export default function App() {
         fetchPortfolios(token!);
         setActiveTab('documentOperations');
       } else {
-        alert(data.message || "Portföy eklenirken hata oluştu.");
+        showToast(data.message || "Portföy eklenirken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu bağlantı hatası.");
+      showToast("Sunucu bağlantı hatası.", 'error');
     } finally {
       setNewPortSubmitting(false);
     }
@@ -2330,6 +2440,8 @@ export default function App() {
 
   // Start Edit Portfolio Handler
   const startEditPortfolio = (p: any) => {
+    setIsEditingPortfolio(true);
+    setEditPortBaslik(p.baslik || '');
     setEditPortTip(p.tip);
     setEditPortTur(p.tur);
     setEditPortFiyat(String(p.fiyat));
@@ -2365,7 +2477,7 @@ export default function App() {
     e.preventDefault();
     if (!selectedPortfolio) return;
     if (!editPortFiyat || !editPortIlce || !editPortLandlordName || !editPortLandlordPhone || !editPortMetrekare) {
-      alert("Lütfen tüm alanları doldurunuz.");
+      showToast("Lütfen tüm alanları doldurunuz.", 'error');
       return;
     }
 
@@ -2377,6 +2489,7 @@ export default function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          baslik: editPortBaslik,
           tip: editPortTip,
           tur: editPortTur,
           fiyat: Number(editPortFiyat),
@@ -2409,7 +2522,7 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Portföy başarıyla veritabanında güncellendi!");
+        showToast("Portföy başarıyla veritabanında güncellendi!", 'success');
         setIsEditingPortfolio(false);
 
         const updated = {
@@ -2445,10 +2558,10 @@ export default function App() {
         setSelectedPortfolio(updated);
         fetchPortfolios(token!);
       } else {
-        alert(data.message || "Portföy güncellenirken hata oluştu.");
+        showToast(data.message || "Portföy güncellenirken hata oluştu.", 'error');
       }
     } catch (err) {
-      alert("Sunucu bağlantı hatası.");
+      showToast("Sunucu bağlantı hatası.", 'error');
     }
   };
 
@@ -2484,7 +2597,7 @@ export default function App() {
   const handleCloseTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!closePortPortfolio || !closeIslemBedeli || !closeHizmetBedeliCiro) {
-      alert("Lütfen tüm zorunlu alanları doldurunuz.");
+      showToast("Lütfen tüm zorunlu alanları doldurunuz.", 'error');
       return;
     }
 
@@ -2521,10 +2634,10 @@ export default function App() {
           fetchClients(token);
           fetchAppointments(token, currentCalendarDate);
         } else {
-          alert(data.message || 'İşlem kapatılırken hata oluştu.');
+          showToast(data.message || 'İşlem kapatılırken hata oluştu.', 'error');
         }
       } catch (err) {
-        alert('Sunucu bağlantı hatası.');
+        showToast('Sunucu bağlantı hatası.', 'error');
       } finally {
         setCloseLoading(false);
       }
@@ -2554,17 +2667,17 @@ export default function App() {
   // Appointment Create / Request Handler
   const handleCreateOrRequestAppointment = async (portfolio: any, isOwner: boolean) => {
     if (!selectedMusteriId || !selectedDate) {
-      alert("Lütfen katılacak müşteri ve randevu tarihi/saati seçiniz.");
+      showToast("Lütfen katılacak müşteri ve randevu tarihi/saati seçiniz.", 'error');
       return;
     }
 
     if (portfolio.durum === 'KAPORA_ASAMASINDA' || portfolio.durum === 'KIRALANDI_SATILDI') {
-      alert("Bu portföy kapora aşamasında veya satıldığı için randevu oluşturulamaz.");
+      showToast("Bu portföy kapora aşamasında veya satıldığı için randevu oluşturulamaz.", 'error');
       return;
     }
 
     if (firmaSettings.YetkilendirmeSarti && !portfolio.yetkilendirmeSozlesmesiYapildi) {
-      alert("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için randevu oluşturulamaz.");
+      showToast("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için randevu oluşturulamaz.", 'error');
       return;
     }
 
@@ -2597,10 +2710,10 @@ export default function App() {
           setSelectedPortfolio(null);
           fetchAppointments(token, currentCalendarDate);
         } else {
-          alert(data.message || 'Randevu oluşturulurken hata oluştu.');
+          showToast(data.message || 'Randevu oluşturulurken hata oluştu.', 'error');
         }
       } catch (err) {
-        alert('Sunucu bağlantı hatası.');
+        showToast('Sunucu bağlantı hatası.', 'error');
       }
     } else {
       const clientObj = clients.find(c => c.id === selectedMusteriId);
@@ -2623,7 +2736,7 @@ export default function App() {
       setSelectedMusteriId('');
       setSelectedDate('');
       setSelectedPortfolio(null);
-      alert(isOwner ? 'Randevunuz oluşturuldu.' : 'Randevu talebiniz iletildi.');
+      showToast(isOwner ? 'Randevunuz oluşturuldu.' : 'Randevu talebiniz iletildi.', 'success');
     }
   };
 
@@ -2631,23 +2744,23 @@ export default function App() {
   const handleCreateAppointmentFromModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAppPortfolioId || !newAppMusteriId || !newAppDate) {
-      alert("Lütfen portföy, müşteri ve randevu tarihi/saati seçiniz.");
+      showToast("Lütfen portföy, müşteri ve randevu tarihi/saati seçiniz.", 'error');
       return;
     }
 
     const targetPortfolio = portfolios.find(p => compareIds(p.id, newAppPortfolioId));
     if (!targetPortfolio) {
-      alert("Seçilen portföy bulunamadı.");
+      showToast("Seçilen portföy bulunamadı.", 'error');
       return;
     }
 
     if (targetPortfolio.durum === 'KAPORA_ASAMASINDA' || targetPortfolio.durum === 'KIRALANDI_SATILDI') {
-      alert("Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.");
+      showToast("Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.", 'error');
       return;
     }
 
     if (firmaSettings.YetkilendirmeSarti && !targetPortfolio.yetkilendirmeSozlesmesiYapildi) {
-      alert("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için yeni randevu oluşturulamaz.");
+      showToast("Bu portföyün yetkilendirme sözleşmesi eksik olduğu için yeni randevu oluşturulamaz.", 'error');
       return;
     }
 
@@ -2682,10 +2795,10 @@ export default function App() {
           setShowAddAppointmentModal(false);
           fetchAppointments(token, currentCalendarDate);
         } else {
-          alert(data.message || 'Randevu oluşturulurken hata oluştu.');
+          showToast(data.message || 'Randevu oluşturulurken hata oluştu.', 'error');
         }
       } catch (err) {
-        alert('Sunucu bağlantı hatası.');
+        showToast('Sunucu bağlantı hatası.', 'error');
       }
     } else {
       const clientObj = clients.find(c => c.id === newAppMusteriId);
@@ -2709,7 +2822,7 @@ export default function App() {
       setNewAppMusteriId('');
       setNewAppDate('');
       setShowAddAppointmentModal(false);
-      alert(isOwner ? 'Randevunuz doğrudan oluşturuldu.' : 'Randevu talebiniz iletildi.');
+      showToast(isOwner ? 'Randevunuz doğrudan oluşturuldu.' : 'Randevu talebiniz iletildi.', 'success');
     }
   };
 
@@ -2743,10 +2856,10 @@ export default function App() {
         );
         fetchAppointments(token, currentCalendarDate);
       } else {
-        alert(data.message || 'Randevu durumu güncellenirken yetki hatası oluştu.');
+        showToast(data.message || 'Randevu durumu güncellenirken yetki hatası oluştu.', 'error');
       }
     } catch (err) {
-      alert('Sunucu bağlantı hatası.');
+      showToast('Sunucu bağlantı hatası.', 'error');
     }
   };
 
@@ -2797,6 +2910,13 @@ export default function App() {
             asamaAdi: targetAsamaAdi
           })
         }).catch(err => console.log('Update stage note:', err));
+
+        // UI'ın anında tepki vermesi için optimistik state güncellemesi:
+        setClientProcesses(prev => prev.map(p =>
+          String(p.randevuId) === String(selectedAppointmentToAction.id)
+            ? { ...p, asamaId: targetStageId, asamaAdi: targetAsamaAdi }
+            : p
+        ));
       }
 
       // 2. Eğer Ara Aşama (1-5) seçildiyse; portföy kapatma çağırma, sadece aşama güncellemesini bildir
@@ -2804,6 +2924,7 @@ export default function App() {
         showToast(`Müşteri süreç aşaması '${targetAsamaAdi}' olarak atandı.`, 'success');
         setShowAppointmentActionModal(false);
         setSelectedAppointmentToAction(null);
+        setAppActionLoading(false);
         return;
       }
 
@@ -2836,14 +2957,15 @@ export default function App() {
           fetchCompletedPortfolios(token);
           fetchClients(token);
           fetchAppointments(token, currentCalendarDate);
+          fetchClientProcesses(token);
         }
         setShowAppointmentActionModal(false);
         setSelectedAppointmentToAction(null);
       } else {
-        alert(`${data.message || 'Hata:'} ${data.error || ''}`);
+        showToast(`${data.message || 'Hata:'} ${data.error || ''}`, 'error');
       }
     } catch (err: any) {
-      alert(`Sunucu hatası: ${err?.message || err}`);
+      showToast(`Sunucu hatası: ${err?.message || err}`, 'error');
     } finally {
       setAppActionLoading(false);
     }
@@ -2974,14 +3096,14 @@ export default function App() {
               <div className="flex gap-2 mb-6">
                 <button
                   onClick={() => { setAuthMode('login'); setLoginError(null); }}
-                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'login' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'login' ? 'bg-pastelYellow text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
                     }`}
                 >
                   Giriş Yap
                 </button>
                 <button
                   onClick={() => { setAuthMode('register'); setRegError(null); }}
-                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'register' ? 'bg-[#FEF08A] text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
+                  className={`flex-1 py-2 text-xs font-extrabold rounded-full transition-all border-none ${authMode === 'register' ? 'bg-pastelYellow text-charcoal' : 'bg-zinc-50 text-zinc-400 hover:bg-zinc-100'
                     }`}
                 >
                   Firma Kaydı
@@ -2997,7 +3119,7 @@ export default function App() {
               {/* Login Form */}
               {authMode === 'login' ? (
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                  <h3 className="text-2xl font-extrabold text-charcoal">Hesabınıza Giriş Yapın</h3>
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-charcoal">Hesabınıza Giriş Yapın</h3>
 
                   {loginError && (
                     <div className="p-4 rounded-2xl bg-red-100 text-red-950 text-xs font-semibold border-none flex items-center gap-2">
@@ -3037,7 +3159,7 @@ export default function App() {
               ) : (
                 /* Registration Form */
                 <form onSubmit={handleRegisterBroker} className="flex flex-col gap-3 overflow-y-auto max-h-[420px] pr-2">
-                  <h3 className="text-xl font-extrabold text-charcoal">Yeni Firma ve Broker Kaydı</h3>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Yeni Firma ve Broker Kaydı</h3>
 
                   {regError && (
                     <div className="p-3 rounded-2xl bg-red-100 text-red-950 text-xs font-semibold border-none flex items-center gap-2">
@@ -3119,7 +3241,7 @@ export default function App() {
                     <div className="grid grid-cols-3 gap-1.5">
                       <div
                         onClick={() => setRegPaketTipi('DENEME')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'DENEME' ? 'border-charcoal bg-[#FEF08A]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'DENEME' ? 'border-charcoal bg-pastelYellow' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
                           }`}
                       >
                         <span className="text-[10px] font-extrabold block">Deneme</span>
@@ -3129,7 +3251,7 @@ export default function App() {
 
                       <div
                         onClick={() => setRegPaketTipi('BASIC')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'BASIC' ? 'border-charcoal bg-pastelBlue' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
                           }`}
                       >
                         <span className="text-[10px] font-extrabold block">Basic</span>
@@ -3139,7 +3261,7 @@ export default function App() {
 
                       <div
                         onClick={() => setRegPaketTipi('PREMIUM')}
-                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                        className={`p-2 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${regPaketTipi === 'PREMIUM' ? 'border-charcoal bg-pastelGreen' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
                           }`}
                       >
                         <span className="text-[10px] font-extrabold block">Premium</span>
@@ -3167,7 +3289,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-6 font-sans">
         <div className="w-full max-w-md bg-white rounded-3xl p-8 border-none shadow-none">
-          <h2 className="text-2xl font-extrabold text-charcoal mb-2 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mb-2 flex items-center gap-2">
             <Lock className="text-pastelPink" /> Şifrenizi Değiştirin
           </h2>
           <p className="text-zinc-500 text-xs mb-6 leading-relaxed">
@@ -3221,7 +3343,7 @@ export default function App() {
 
   // RENDER 3: FULL COMPLETED DASHBOARD AND APPLICATION
   return (
-    <div className="min-h-screen bg-cream text-charcoal flex font-sans overflow-x-hidden">
+    <div className="relative min-h-screen bg-cream text-charcoal flex font-sans overflow-x-hidden">
 
       {/* Toast Notification */}
       {toast && (
@@ -3236,19 +3358,19 @@ export default function App() {
       )}
 
       {/* LEFT SIDEBAR */}
-      <aside className={`bg-charcoal text-white flex flex-col justify-start transition-all duration-300 ease-in-out z-40 border-r-4 border-charcoal shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
+      <aside className={`bg-sidebar text-slate-100 flex flex-col justify-start transition-all duration-300 ease-in-out z-40 border-r-4 border-sidebar shrink-0 ${sidebarCollapsed ? 'w-20 px-3 py-6 items-center' : 'w-64 p-6'
         }`}>
         <div className="flex flex-col gap-8 w-full">
           {/* Logo / Header */}
           <div className={`flex items-center transition-all duration-300 ${sidebarCollapsed ? 'justify-center w-full' : 'justify-between'}`}>
             {!sidebarCollapsed ? (
-              <div className="flex items-center justify-between w-full relative animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between w-full relative flex-wrap gap-3">
                 {/* Left spacer matching right button width to guarantee exact 100% centering */}
                 <div className="w-10 h-10 shrink-0" />
 
                 {/* Centered HOMEY Logo Text & Firm Badge */}
                 <div className="flex flex-col items-center justify-center text-center leading-tight transition-all duration-300 flex-1 min-w-0">
-                  <span className="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent leading-none">
+                  <span className="text-xl sm:text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent leading-none">
                     HOMEY
                   </span>
                   {user?.firmaAdi && (
@@ -3303,11 +3425,11 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('portfolios')}
-                title="Portföyler"
+                title="Portföy Yönetimi"
                 className={`sidebar-link ${activeTab === 'portfolios' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Building size={20} className="shrink-0" />
-                {!sidebarCollapsed && <span>Portföyler</span>}
+                {!sidebarCollapsed && <span>Portföy Yönetimi</span>}
               </button>
               <button
                 onClick={() => {
@@ -3339,11 +3461,11 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('clients')}
-                title="Müşteriler"
+                title="Müşterilerim"
                 className={`sidebar-link ${activeTab === 'clients' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <User size={20} className="shrink-0" />
-                {!sidebarCollapsed && <span>Müşteriler</span>}
+                {!sidebarCollapsed && <span>Müşterilerim</span>}
               </button>
               <button
                 onClick={() => setActiveTab('documentOperations')}
@@ -3355,7 +3477,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('calculator')}
-                title="Hesap Makinesi"
+                title="Komisyon Payı Hesap Makinesi"
                 className={`sidebar-link ${activeTab === 'calculator' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
               >
                 <Calculator size={20} className="shrink-0" />
@@ -3373,27 +3495,27 @@ export default function App() {
                 )}
                 <button
                   onClick={() => setActiveTab('analytics')}
-                  title="Ciro Raporları"
+                  title="Ciro & Performans"
                   className={`sidebar-link ${activeTab === 'analytics' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <TrendingUp size={20} className="shrink-0" />
-                  {!sidebarCollapsed && <span>Ciro Raporları</span>}
+                  {!sidebarCollapsed && <span>Ciro & Performans</span>}
                 </button>
                 <button
                   onClick={() => setActiveTab('team')}
-                  title="Danışman Yönetimi"
+                  title="Ekip Yönetimi"
                   className={`sidebar-link ${activeTab === 'team' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <Users size={20} className="shrink-0" />
-                  {!sidebarCollapsed && <span>Danışman Yönetimi</span>}
+                  {!sidebarCollapsed && <span>Ekip Yönetimi</span>}
                 </button>
                 <button
                   onClick={() => setActiveTab('subscription')}
-                  title="Abonelik Yönetimi"
+                  title="Lisans & Abonelik"
                   className={`sidebar-link ${activeTab === 'subscription' ? 'active' : ''} ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 >
                   <Shield size={20} className="shrink-0" />
-                  {!sidebarCollapsed && <span>Abonelik Yönetimi</span>}
+                  {!sidebarCollapsed && <span>Lisans & Abonelik</span>}
                 </button>
                 <button
                   onClick={() => setActiveTab('settings')}
@@ -3434,7 +3556,16 @@ export default function App() {
 
               {showProfileMenu && (
                 <div className="absolute bottom-20 left-0 w-48 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95">
-                  <label className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg cursor-pointer transition-colors">
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setShowAccountSettingsModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg cursor-pointer transition-colors text-left border-none bg-transparent"
+                  >
+                    <Settings size={14} /> Hesap Ayarları
+                  </button>
+                  <label className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-lg cursor-pointer transition-colors mt-1 border-t border-zinc-700 pt-2">
                     <UploadCloud size={14} /> Fotoğraf Değiştir
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                       setShowProfileMenu(false);
@@ -3473,20 +3604,81 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Account Settings Modal */}
+      {showAccountSettingsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 md:p-6 max-w-sm w-full relative border-none shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-1">
+              <div>
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Kullanıcı İşlemleri</span>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-0.5">Hesap Ayarları</h2>
+              </div>
+              <button
+                onClick={() => setShowAccountSettingsModal(false)}
+                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
+              <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Lock size={14} /> Şifre Değiştir</h4>
+              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4">
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Mevcut Şifre</label>
+                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.eskiSifre} onChange={e => setPasswordForm({ ...passwordForm, eskiSifre: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre</label>
+                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.yeniSifre} onChange={e => setPasswordForm({ ...passwordForm, yeniSifre: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre (Tekrar)</label>
+                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white mb-1" placeholder="••••••••" value={passwordForm.yeniSifreTekrar} onChange={e => setPasswordForm({ ...passwordForm, yeniSifreTekrar: e.target.value })} />
+                </div>
+                <button type="submit" disabled={isChangingPassword} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 mt-1">
+                  {isChangingPassword ? 'Kaydediliyor...' : 'Şifreyi Güncelle'}
+                </button>
+              </form>
+            </div>
+
+            <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
+              <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Monitor size={14} /> Görüntüleme Tercihi</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleThemeChange('light')}
+                  className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                >
+                  <Sun size={18} />
+                  <span className="text-[10px] font-bold">Açık Tema</span>
+                </button>
+                <button
+                  onClick={() => handleThemeChange('dark')}
+                  className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'dark' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                >
+                  <Moon size={18} />
+                  <span className="text-[10px] font-bold">Koyu Tema</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden flex flex-col gap-6 min-w-0">
 
         {/* Global Top Header Bar with Autocomplete */}
-        <header className="flex flex-wrap justify-between items-center w-full gap-3 sm:gap-4 mb-1">
+        <header className="flex flex-wrap justify-between items-center w-full gap-3 sm:gap-4 mb-8 sm:mb-10">
           {activeTab === 'dashboard' && (
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-charcoal leading-tight flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-2">
-                      İyi günler, {user?.ad || ''} 👋
+                    <span className="flex items-center gap-3 flex-wrap">
+                      <span className="whitespace-nowrap">İyi günler, {user?.ad || ''} 👋</span>
                       {/* Notification Bell Inline next to Welcome text */}
-                      <div className="relative inline-flex items-center ml-1">
+                      <div className="relative inline-flex items-center">
                         {(() => {
                           const now = new Date();
                           const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -3527,7 +3719,7 @@ export default function App() {
                               {/* Dropdown Panel */}
                               {showNotificationsDropdown && (
                                 <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto w-72 sm:w-80 bg-white border-2 border-charcoal rounded-3xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in-95 font-normal text-left">
-                                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3">
+                                  <div className="flex justify-between items-center border-b border-zinc-100 pb-2 mb-3 flex-wrap gap-3">
                                     <h4 className="font-extrabold text-sm text-charcoal flex items-center gap-1.5">
                                       <Bell size={16} /> Bildirimler & Yaklaşan Randevular
                                     </h4>
@@ -3569,7 +3761,7 @@ export default function App() {
                                       >
                                         <div className="flex justify-between items-start font-bold text-charcoal mb-0.5">
                                           <span>📩 {app.portfoyTip} ({app.ilce || 'Lokasyon'})</span>
-                                          <span className="text-[10px] text-amber-900 bg-amber-200 px-1.5 py-0.2 rounded-full">Onay Bekliyor</span>
+                                          <span className="text-[10px] text-amber-900 dark:text-amber-100 bg-amber-200 dark:bg-amber-800/80 px-1.5 py-0.2 rounded-full">Onay Bekliyor</span>
                                         </div>
                                         <p className="text-[11px] text-zinc-600">
                                           Müşteri: {app.musteri} · Tarih: {app.tarih} ({app.zaman})
@@ -3618,22 +3810,12 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'completedPortfolios' && (
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-charcoal leading-tight">
-                Tamamlanan İşlemler & Ciro Analizi 🏆
-              </h1>
-              <p className="text-zinc-500 text-xs sm:text-sm mt-0.5">
-                Kapanan satılık ve kiralık tüm mülklerin finansal dökümü ve komisyon hakedişleri.
-              </p>
-            </div>
-          )}
+
 
           {/* Global Smart Search with Autocomplete (Narrowed Width) */}
           <div
             ref={searchContainerRef}
-            className={`relative transition-all duration-300 ${activeTab === 'dashboard' ? 'w-full sm:w-56 md:w-64' : 'w-full'
-              } min-w-0`}
+            className={`relative w-full min-w-0 ${activeTab === 'dashboard' ? 'sm:w-56 md:w-72' : ''}`}
           >
             {/* Search Input */}
             <input
@@ -3706,7 +3888,7 @@ export default function App() {
                                 onClick={() => handleSelectSearchResult('portfolio', p)}
                                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
                               >
-                                <div className="w-8 h-8 rounded-xl bg-[#FEF08A] flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-pastelYellow flex items-center justify-center shrink-0">
                                   <Home size={14} className="text-charcoal" />
                                 </div>
                                 <div className="min-w-0">
@@ -3732,7 +3914,7 @@ export default function App() {
                                 onClick={() => handleSelectSearchResult('client', c)}
                                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
                               >
-                                <div className="w-8 h-8 rounded-xl bg-[#BAE6FD] flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-pastelBlue flex items-center justify-center shrink-0">
                                   <User size={14} className="text-charcoal" />
                                 </div>
                                 <div className="min-w-0">
@@ -3758,7 +3940,7 @@ export default function App() {
                                 onClick={() => handleSelectSearchResult('employee', e)}
                                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
                               >
-                                <div className="w-8 h-8 rounded-xl bg-[#BBF7D0] flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-pastelGreen flex items-center justify-center shrink-0">
                                   <Users size={14} className="text-charcoal" />
                                 </div>
                                 <div className="min-w-0">
@@ -3784,7 +3966,7 @@ export default function App() {
                                 onClick={() => handleSelectSearchResult('appointment', a)}
                                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-zinc-50 transition-colors group"
                               >
-                                <div className="w-8 h-8 rounded-xl bg-[#E9D5FF] flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-pastelPurple flex items-center justify-center shrink-0">
                                   <Calendar size={14} className="text-charcoal" />
                                 </div>
                                 <div className="min-w-0">
@@ -3844,7 +4026,7 @@ export default function App() {
 
         {/* Subscription Expiration / Scheduled Package Warning Alert Banner */}
         {subInfo && (subInfo.kalanGun <= 7 || subInfo.gelecekPaket) && (
-          <div className="bg-[#FEF08A] border-2 border-charcoal text-charcoal px-6 py-4 rounded-3xl flex justify-between items-center shadow-none">
+          <div className="bg-pastelYellow border-2 border-charcoal text-charcoal px-6 py-4 rounded-3xl flex justify-between items-center shadow-none flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <AlertTriangle className="text-amber-800 shrink-0" size={22} />
               <div className="text-xs font-medium leading-relaxed">
@@ -3857,7 +4039,7 @@ export default function App() {
                   </span>
                 ) : (
                   <span>
-                    <strong className="font-extrabold text-sm block mb-0.5 text-charcoal">Gelecek Paket Değişimi Planlandı!</strong>
+                    <strong className="font-extrabold text-sm block mb-0.5 text-slate-900">Gelecek Paket Değişimi Planlandı!</strong>
                     Mevcut paketiniz sona erdiğinde ({new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR')}), hesabınız otomatik olarak <strong>{subInfo.gelecekPaket?.paketAdi} ({subInfo.gelecekPaket?.periyot === 'Yillik' ? 'Yıllık' : 'Aylık'})</strong> paketine yükseltilecektir.
                   </span>
                 )}
@@ -3866,7 +4048,7 @@ export default function App() {
             {user?.rol === 'YETKILI' && (
               <button
                 onClick={() => setActiveTab('subscription')}
-                className="px-4 py-2 bg-charcoal text-white rounded-full text-xs font-extrabold hover:bg-black transition-colors shrink-0 border-none ml-4 cursor-pointer"
+                className="px-4 py-2 bg-slate-900 text-white rounded-full text-xs font-extrabold hover:bg-black transition-colors shrink-0 border-none ml-4 cursor-pointer"
               >
                 Aboneliği Yönet
               </button>
@@ -3882,46 +4064,46 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
               {/* Card 1: Active Listings (Pastel Yellow - Interactive Bar Chart) */}
-              <div className="bento-card bg-[#FEF08A] flex flex-col justify-between relative overflow-visible">
+              <div className="bento-card bg-pastelYellow flex flex-col justify-between relative overflow-visible">
                 <div>
                   <div className="flex justify-between items-center mb-3 gap-1.5 flex-wrap">
                     <div>
-                      <h4 className="text-sm font-extrabold text-charcoal">Aktif Portföyler</h4>
+                      <h4 className="text-sm font-extrabold text-slate-900">Aktif Portföyler</h4>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="flex bg-charcoal/10 p-0.5 rounded-lg text-[10px] font-bold">
+                      <div className="flex bg-slate-900/10 p-0.5 rounded-lg text-[10px] font-bold">
                         <button
                           onClick={() => { setPortfoyTimeframe('HAFTALIK'); setHoveredPortfoyIndex(null); }}
-                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'HAFTALIK' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'HAFTALIK' ? 'bg-slate-900 text-[#FFFFFF] shadow-xs' : 'text-slate-900/70 hover:text-slate-900'}`}
                           title="Haftalık Görünüm"
                         >
                           H
                         </button>
                         <button
                           onClick={() => { setPortfoyTimeframe('AYLIK'); setHoveredPortfoyIndex(null); }}
-                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'AYLIK' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer font-bold ${portfoyTimeframe === 'AYLIK' ? 'bg-slate-900 text-[#FFFFFF] shadow-xs' : 'text-slate-900/70 hover:text-slate-900'}`}
                           title="Aylık Görünüm"
                         >
                           A
                         </button>
                       </div>
-                      <Building size={18} className="text-charcoal shrink-0" />
+                      <Building size={18} className="text-slate-900 shrink-0" />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between h-9 mb-2 gap-1.5">
+                  <div className="flex items-center justify-between h-9 mb-2 gap-1.5 flex-wrap">
                     <div className="flex items-baseline gap-1.5 shrink-0">
-                      <span className="text-2xl sm:text-3xl font-extrabold text-charcoal leading-none">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
                         {hoveredPortfoyIndex !== null
                           ? portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].val
                           : portfolios.length}
                       </span>
                       {hoveredPortfoyIndex !== null ? (
-                        <span className="text-[11px] font-bold text-emerald-950 bg-emerald-300/90 px-2 py-0.5 rounded-full border border-emerald-400 font-mono">
+                        <span className="text-[11px] font-bold text-emerald-950 bg-emerald-300/90 px-2 py-0.5 rounded-full border border-emerald-400 font-mono whitespace-nowrap">
                           {portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].label}
                         </span>
                       ) : (
-                        <span className="text-[11px] font-bold text-charcoal/60">
+                        <span className="text-[11px] font-bold text-slate-900/60">
                           Toplam
                         </span>
                       )}
@@ -3929,13 +4111,13 @@ export default function App() {
 
                     <div className="h-7 flex items-center shrink-0">
                       {hoveredPortfoyIndex !== null ? (
-                        <div className="text-[10px] sm:text-[11px] font-mono font-bold text-charcoal/90 bg-charcoal/10 px-2 py-0.5 rounded-lg border border-charcoal/15 flex items-center gap-1">
+                        <div className="text-[10px] sm:text-[11px] font-mono font-bold text-slate-900/90 bg-slate-900/10 px-2 py-0.5 rounded-lg border border-slate-900/15 flex items-center gap-1">
                           <span>Sat: <strong className="text-emerald-900 font-extrabold">{portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].satilik}</strong></span>
-                          <span className="text-charcoal/30">|</span>
+                          <span className="text-slate-900/30">|</span>
                           <span>Kir: <strong className="text-indigo-900 font-extrabold">{portfoyChartData[portfoyTimeframe][hoveredPortfoyIndex].kiralik}</strong></span>
                         </div>
                       ) : (
-                        <span className="text-[9px] sm:text-[10px] font-mono font-semibold text-charcoal/50 bg-charcoal/5 px-1.5 py-0.5 rounded-lg">
+                        <span className="text-[9px] sm:text-[10px] font-mono font-semibold text-slate-900/50 bg-slate-900/5 px-1.5 py-0.5 rounded-lg">
                           Detay için üzerine gelin
                         </span>
                       )}
@@ -3947,7 +4129,7 @@ export default function App() {
                 <div className="pt-2 relative flex items-center gap-1">
                   <button
                     onClick={() => scrollPortfoyChart('left')}
-                    className="p-1 rounded-full bg-charcoal/15 hover:bg-charcoal text-charcoal hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
+                    className="p-1 rounded-full bg-slate-900/15 hover:bg-slate-900 text-slate-900 hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
                     title="Sola Kaydır"
                   >
                     <ChevronLeft size={14} />
@@ -3964,17 +4146,16 @@ export default function App() {
                           <div
                             key={`port-bar-${idx}`}
                             className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer px-0.5"
-                            onMouseEnter={() => setHoveredPortfoyIndex(idx)}
-                            onMouseLeave={() => setHoveredPortfoyIndex(null)}
+                            onClick={() => setHoveredPortfoyIndex(prev => prev === idx ? null : idx)}
                           >
                             {/* Interactive Bar */}
                             <div
-                              className={`w-full ${portfoyTimeframe === 'HAFTALIK' ? 'max-w-[56px] md:max-w-[64px]' : 'max-w-[44px]'} rounded-t-xl transition-all duration-200 ${isHovered ? 'bg-black scale-y-105 shadow-lg' : 'bg-charcoal/90 hover:bg-black'
+                              className={`w-full ${portfoyTimeframe === 'HAFTALIK' ? 'max-w-[56px] md:max-w-[64px]' : 'max-w-[44px]'} rounded-t-xl transition-all duration-200 ${isHovered ? 'bg-black scale-y-105 shadow-lg' : 'bg-slate-900/90 hover:bg-black'
                                 }`}
                               style={{ height: `${Math.max(item.pct, 15)}%` }}
                             />
 
-                            <span className={`text-[10px] font-mono font-bold mt-1.5 transition-colors ${isHovered ? 'text-black font-extrabold scale-110' : 'text-charcoal/70'}`}>
+                            <span className={`text-[10px] font-mono font-bold mt-1.5 transition-colors ${isHovered ? 'text-black font-extrabold scale-110' : 'text-slate-900/70'}`}>
                               {item.label}
                             </span>
                           </div>
@@ -3985,7 +4166,7 @@ export default function App() {
 
                   <button
                     onClick={() => scrollPortfoyChart('right')}
-                    className="p-1 rounded-full bg-charcoal/15 hover:bg-charcoal text-charcoal hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
+                    className="p-1 rounded-full bg-slate-900/15 hover:bg-slate-900 text-slate-900 hover:text-white transition-colors border-none cursor-pointer z-10 shrink-0 shadow-xs"
                     title="Sağa Kaydır"
                   >
                     <ChevronRight size={14} />
@@ -3994,37 +4175,37 @@ export default function App() {
               </div>
 
               {/* Card 2: Sales & Revenue summary (Pastel Pink - Interactive Line Chart) */}
-              <div className="bento-card bg-[#FBCFE8] flex flex-col justify-between relative overflow-visible">
+              <div className="bento-card bg-pastelPink flex flex-col justify-between relative overflow-visible">
                 <div>
                   <div className="flex justify-between items-center mb-3 gap-1.5 flex-wrap">
                     <div>
-                      <h4 className="text-sm font-extrabold text-charcoal">Aylık Ciro</h4>
+                      <h4 className="text-sm font-extrabold text-slate-900">Aylık Ciro</h4>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <div className="flex bg-charcoal/10 p-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold">
+                      <div className="flex bg-slate-900/10 p-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold">
                         <button
                           onClick={() => { setCiroTimeframe('6A_1'); setHoveredCiroIndex(null); }}
-                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_1' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_1' ? 'bg-slate-900 text-[#FFFFFF] shadow-xs' : 'text-slate-900/70 hover:text-slate-900'}`}
                           title="1. Altı Ay (Oca - Haz)"
                         >
                           1. Yarı
                         </button>
                         <button
                           onClick={() => { setCiroTimeframe('6A_2'); setHoveredCiroIndex(null); }}
-                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_2' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '6A_2' ? 'bg-slate-900 text-[#FFFFFF] shadow-xs' : 'text-slate-900/70 hover:text-slate-900'}`}
                           title="2. Altı Ay (Tem - Ara)"
                         >
                           2. Yarı
                         </button>
                         <button
                           onClick={() => { setCiroTimeframe('1Y'); setHoveredCiroIndex(null); }}
-                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '1Y' ? 'bg-charcoal text-white shadow-xs' : 'text-charcoal/70 hover:text-charcoal'}`}
+                          className={`px-1.5 py-0.5 rounded-md transition-all border-none cursor-pointer ${ciroTimeframe === '1Y' ? 'bg-slate-900 text-[#FFFFFF] shadow-xs' : 'text-slate-900/70 hover:text-slate-900'}`}
                           title="Tüm Yıl (Oca - Ara)"
                         >
                           1 Yıl
                         </button>
                       </div>
-                      <DollarSign size={18} className="text-charcoal shrink-0" />
+                      <DollarSign size={18} className="text-slate-900 shrink-0" />
                     </div>
                   </div>
 
@@ -4040,18 +4221,18 @@ export default function App() {
                     return (
                       <>
                         <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
-                          <span className="text-2xl sm:text-3xl font-extrabold text-charcoal tracking-tight">
+                          <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                             {displayCiro.toLocaleString('tr-TR')} TL
                           </span>
                           {hoveredCiroIndex !== null && activePoint && (
-                            <span className="text-[10px] font-mono font-extrabold bg-charcoal text-white px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-mono font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
                               {activePoint.label}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-charcoal/80 mb-2 flex justify-between items-center flex-wrap gap-x-2 gap-y-0.5">
+                        <div className="text-xs text-slate-900/80 mb-2 flex justify-between items-center flex-wrap gap-x-2 gap-y-0.5">
                           <span>Net Hakediş: <strong className="text-emerald-950 font-extrabold">{userEarned.toLocaleString('tr-TR')} TL</strong></span>
-                          <span className="text-[11px] text-charcoal/70">Ofis Payı: {officeShare.toLocaleString('tr-TR')} TL</span>
+                          <span className="text-[11px] text-slate-900/70">Ofis Payı: {officeShare.toLocaleString('tr-TR')} TL</span>
                         </div>
                       </>
                     );
@@ -4078,7 +4259,7 @@ export default function App() {
                     }
                     const areaPath = `${linePath} L 100,30 L 0,30 Z`;
 
-                    const handleChartMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+                    const handleChartClick = (e: React.MouseEvent<SVGSVGElement>) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       if (rect.width <= 0) return;
                       const mouseX = e.clientX - rect.left;
@@ -4094,8 +4275,7 @@ export default function App() {
                         className="w-full h-12 overflow-visible cursor-pointer"
                         viewBox="0 0 100 30"
                         preserveAspectRatio="none"
-                        onMouseMove={handleChartMouseMove}
-                        onMouseLeave={() => setHoveredCiroIndex(null)}
+                        onClick={handleChartClick}
                       >
                         <defs>
                           <linearGradient id="ciroGrad" x1="0" y1="0" x2="0" y2="1">
@@ -4115,8 +4295,7 @@ export default function App() {
                               key={`ciro-pt-${i}`}
                               transform={`translate(${cx}, ${d.y})`}
                               className="cursor-pointer"
-                              onMouseEnter={() => setHoveredCiroIndex(i)}
-                              onMouseLeave={() => setHoveredCiroIndex(null)}
+                              onClick={() => setHoveredCiroIndex(prev => prev === i ? null : i)}
                             >
                               {/* Invisible extended touch/hover area */}
                               <rect x="-6" y="-6" width="12" height="12" fill="transparent" />
@@ -4139,7 +4318,7 @@ export default function App() {
                   })()}
 
                   {/* Axis Month Labels */}
-                  <div className="flex justify-between items-center text-[8px] sm:text-[9px] font-bold text-charcoal/60 mt-1 overflow-hidden">
+                  <div className="flex justify-between items-center text-[8px] sm:text-[9px] font-bold text-slate-900/60 mt-1 overflow-hidden flex-wrap gap-3">
                     {ciroChartData[ciroTimeframe].map((item, idx) => {
                       // Shorten label to 3 letters (e.g., 'Ocak' -> 'Oca') or 1 letter for 1Y if tight
                       const shortLabel = item.label.length > 3 ? item.label.substring(0, 3) : item.label;
@@ -4147,8 +4326,7 @@ export default function App() {
                         <span
                           key={`lbl-${idx}`}
                           className={`cursor-pointer transition-colors whitespace-nowrap text-center ${hoveredCiroIndex === idx ? 'text-black font-extrabold underline' : ''}`}
-                          onMouseEnter={() => setHoveredCiroIndex(idx)}
-                          onMouseLeave={() => setHoveredCiroIndex(null)}
+                          onClick={() => setHoveredCiroIndex(prev => prev === idx ? null : idx)}
                         >
                           {shortLabel}
                         </span>
@@ -4160,13 +4338,13 @@ export default function App() {
 
               {/* Card 3: Upcoming Showings (Pastel Purple) */}
               <div
-                className="bento-card bg-[#E9D5FF] cursor-pointer hover:bg-[#E9D5FF]/90 transition-colors flex flex-col justify-between"
+                className="bento-card bg-pastelPurple cursor-pointer hover:bg-pastelPurple/90 transition-colors flex flex-col justify-between"
                 onClick={() => setActiveTab('appointments')}
               >
                 <div>
                   <div className="flex justify-between items-start mb-3">
-                    <h4 className="text-sm font-extrabold text-charcoal">Randevularım & Talepler</h4>
-                    <Calendar size={20} className="text-charcoal" />
+                    <h4 className="text-sm font-extrabold text-slate-900">Randevularım & Talepler</h4>
+                    <Calendar size={20} className="text-slate-900" />
                   </div>
                   {(() => {
                     const userApps = appointments.filter(a => compareIds(a.portfoySahibiId, user?.id) || compareIds(a.talepEdenId, user?.id));
@@ -4175,21 +4353,21 @@ export default function App() {
                     return (
                       <>
                         <div className="flex items-baseline gap-2 mb-3">
-                          <span className="text-3xl font-extrabold text-charcoal">
+                          <span className="text-3xl font-extrabold text-slate-900">
                             {approvedApps.length}
                           </span>
                           <span
-                            className="w-7 h-7 inline-flex items-center justify-center text-xs font-extrabold text-amber-950 bg-[#FEF08A] rounded-full border border-amber-300 cursor-default"
+                            className="w-7 h-7 inline-flex items-center justify-center text-xs font-extrabold text-amber-950 bg-pastelYellow rounded-full border border-amber-300 dark:border-amber-800 cursor-default"
                             title={`${pendingApps.length} Bekleyen Randevu`}
                           >
                             {pendingApps.length}
                           </span>
                         </div>
-                        <div className="text-xs text-charcoal/80 flex flex-col gap-2">
+                        <div className="text-xs text-slate-900/80 flex flex-col gap-2">
                           {userApps.slice(0, 3).map(app => {
                             const isIncoming = compareIds(app.portfoySahibiId, user?.id);
                             return (
-                              <div key={`dash-app-${app.id}`} className="flex items-center justify-between gap-1">
+                              <div key={`dash-app-${app.id}`} className="flex items-center justify-between gap-1 flex-wrap">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <span className={`w-2 h-2 rounded-full shrink-0 ${app.durum === 'APPROVED' ? 'bg-emerald-600' : app.durum === 'PENDING' ? 'bg-amber-600' : 'bg-red-500'
                                     }`}></span>
@@ -4220,7 +4398,7 @@ export default function App() {
             {/* Middle Section: Top Real Estate Agents (YETKILI only) */}
             {user?.rol === 'YETKILI' && (
               <div className="bento-card bg-white">
-                <h3 className="text-xl font-extrabold text-charcoal mb-4 flex items-center gap-2">
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mb-4 flex items-center gap-2">
                   <Users stroke="var(--primary)" /> Danışman Durumları & Ciro Performansı
                 </h3>
 
@@ -4248,7 +4426,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-charcoal/10 flex justify-between items-center text-xs flex-wrap gap-1">
+                        <div className="mt-4 pt-3 border-t border-slate-900/10 flex justify-between items-center text-xs flex-wrap gap-1">
                           <span className="text-zinc-500 whitespace-nowrap">Kazanılan Ciro:</span>
                           <strong className="text-charcoal font-bold whitespace-nowrap">{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
                         </div>
@@ -4266,7 +4444,7 @@ export default function App() {
             {/* Bottom Data Table: Recent listings */}
             <div className="bento-card bg-white">
               <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-                <h3 className="text-xl font-extrabold text-charcoal">Son Eklenen Portföyler</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Son Eklenen Portföyler</h3>
                 <button
                   onClick={() => setActiveTab('portfolios')}
                   className="text-xs font-bold text-charcoal underline hover:text-black"
@@ -4275,11 +4453,12 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="table-responsive">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase">
-                      <th className="pb-3 pr-4 whitespace-nowrap">Tip / Tür</th>
+                      <th className="pb-3 pr-4 whitespace-nowrap">Tip</th>
+                      <th className="pb-3 px-4 whitespace-nowrap">Tür</th>
                       <th className="pb-3 px-4 whitespace-nowrap">Lokasyon</th>
                       <th className="pb-3 px-4 whitespace-nowrap">Fiyat</th>
                       <th className="pb-3 pl-4 whitespace-nowrap">Görevli</th>
@@ -4294,11 +4473,8 @@ export default function App() {
                       >
                         <td className="py-3.5 pr-4 whitespace-nowrap">
                           <strong className="font-extrabold">{p.tip}</strong>
-                          <span className={`ml-2 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full border border-charcoal ${p.tur === 'SATILIK' ? 'bg-[#FBCFE8]' : 'bg-[#BAE6FD]'
-                            }`}>
-                            {p.tur}
-                          </span>
                         </td>
+                        <td className="py-3.5 px-4 font-medium text-zinc-700 whitespace-nowrap">{p.tur}</td>
                         <td className="py-3.5 px-4 text-zinc-500 whitespace-nowrap">{p.il || ''} / {p.ilce || ''}</td>
                         <td className="py-3.5 px-4 font-extrabold whitespace-nowrap">{(p.fiyat || 0).toLocaleString('tr-TR')} TL</td>
                         <td className="py-3.5 pl-4 font-medium whitespace-nowrap">{p.gorevliUzman || ''}</td>
@@ -4316,14 +4492,14 @@ export default function App() {
               <div className="bento-card bg-charcoal text-white flex flex-col justify-between min-h-[160px]">
                 <div>
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/50 mb-1">Ofis Durumum</p>
-                  <h3 className="text-2xl font-extrabold leading-tight">
+                  <h3 className="text-xl sm:text-2xl font-extrabold leading-tight">
                     {isOfisteMi ? 'Ofisteyim 🏢' : 'Ofiste Değilim 🏠'}
                   </h3>
                   <p className="text-xs text-white/50 mt-1">
                     {isOfisteMi ? 'Ekip arkadaşların seni ofiste görüyor.' : 'Konumunuz diğerlerine görünmüyor.'}
                   </p>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
+                <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
                   <span className="text-xs font-semibold text-white/60">
                     {isOfisteMi ? '✓ Aktif' : '○ Pasif'}
                   </span>
@@ -4345,7 +4521,7 @@ export default function App() {
 
               {/* Bugün Ofistekiler Paneli */}
               <div className="bento-card bg-white">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                   <h3 className="text-base font-extrabold text-charcoal flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -4353,7 +4529,7 @@ export default function App() {
                     </span>
                     Bugün Ofistekiler
                   </h3>
-                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full whitespace-nowrap">
                     {officeUsers.length} Kişi
                   </span>
                 </div>
@@ -4368,7 +4544,7 @@ export default function App() {
                       <div key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 transition-colors">
                         {/* Avatar with pulsing online dot */}
                         <div className="relative shrink-0">
-                          <div className="w-9 h-9 rounded-full bg-[#BBF7D0] flex items-center justify-center text-xs font-extrabold text-charcoal">
+                          <div className="w-9 h-9 rounded-full bg-pastelGreen flex items-center justify-center text-xs font-extrabold text-slate-900">
                             {(u.ad || 'U')[0]}{(u.soyad || '')[0] || ''}
                           </div>
                           <span className="absolute bottom-0 right-0 flex h-2.5 w-2.5">
@@ -4380,7 +4556,7 @@ export default function App() {
                           <p className="text-sm font-bold text-charcoal truncate">{u.ad} {u.soyad}</p>
                           <p className="text-xs text-zinc-500">{u.rol === 'YETKILI' ? 'Ofis Yetkilisi' : 'Gayrimenkul Uzmanı'}</p>
                         </div>
-                        <span className="ml-auto text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">Ofiste</span>
+                        <span className="ml-auto text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0 whitespace-nowrap">Ofiste</span>
                       </div>
                     ))}
                   </div>
@@ -4396,9 +4572,17 @@ export default function App() {
         {activeTab === 'portfolios' && (
           <div className="w-full">
             {/* Portfolios list (Full Width) */}
-            <div className="bento-card bg-white">
-              <div className="flex flex-wrap justify-between items-start mb-6 gap-3">
-                <h2 className="text-xl md:text-2xl font-extrabold min-w-0 break-words">Portföy Yönetimi</h2>
+            <div className="">
+              <div className="flex flex-wrap justify-between items-center md:items-start mb-6 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Portföy Yönetimi</h2>
+                    <p className="text-xs text-zinc-500 font-medium mt-1">Tüm portföylerinizi görüntüleyin, filtreleyin ve yönetin.</p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
@@ -4522,14 +4706,14 @@ export default function App() {
                       title={portfolioVisibilityMode === 'published' ? 'Yayınlanmayan Portföyleri Göster' : 'Yayınlanan Portföyleri Göster'}
                     >
                       {/* Slider Background - moves between left and right */}
-                      <span className={`absolute top-1 bottom-1 w-1/2 rounded-full bg-[#FEF08A] transition-all duration-300 ${portfolioVisibilityMode === 'published' ? 'left-1' : 'right-1'}`} />
+                      <span className={`absolute top-1 bottom-1 w-1/2 rounded-full bg-pastelYellow transition-all duration-300 ${portfolioVisibilityMode === 'published' ? 'left-1' : 'right-1'}`} />
 
                       {/* Labels Container */}
-                      <div className="relative w-full h-full flex items-center justify-between px-4">
-                        <span className={`text-xs font-extrabold transition-all ${portfolioVisibilityMode === 'published' ? 'text-charcoal' : 'text-zinc-400'}`}>
+                      <div className="relative w-full h-full flex items-center justify-between px-4 flex-wrap gap-3">
+                        <span className={`text-xs font-extrabold transition-all z-10 ${portfolioVisibilityMode === 'published' ? 'text-slate-900' : 'text-zinc-400'}`}>
                           Yayınlanan
                         </span>
-                        <span className={`text-xs font-extrabold transition-all ${portfolioVisibilityMode === 'unpublished' ? 'text-charcoal' : 'text-zinc-400'}`}>
+                        <span className={`text-xs font-extrabold transition-all z-10 ${portfolioVisibilityMode === 'unpublished' ? 'text-slate-900' : 'text-zinc-400'}`}>
                           Yayınlanmayan
                         </span>
                       </div>
@@ -4586,7 +4770,7 @@ export default function App() {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
-                        <h2 className="text-2xl font-extrabold text-charcoal mt-1">Portföy Düzenle</h2>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Portföy Düzenle</h2>
                       </div>
                       <button
                         type="button"
@@ -4613,6 +4797,17 @@ export default function App() {
                       >
                         Kiralık
                       </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Başlık</label>
+                      <input
+                        type="text"
+                        placeholder="Örn: Deniz Manzaralı Lüks Daire"
+                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-xl bg-white focus:outline-none mb-3"
+                        value={editPortBaslik}
+                        onChange={e => setEditPortBaslik(e.target.value)}
+                      />
                     </div>
 
                     <div>
@@ -4710,7 +4905,7 @@ export default function App() {
                       }
                       return (
                         <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-charcoal/10">
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center flex-wrap gap-3">
                             <div>
                               <span className="text-xs font-bold text-zinc-600 block">Öngörülen Hizmet Bedeli (KDV Dahil)</span>
                               <span className="text-[10px] text-zinc-400">Senaryo A (Kendi Müşterisi)</span>
@@ -4890,8 +5085,7 @@ export default function App() {
                         >
                           <option value="">Seçiniz</option>
                           <option value="Eşyalı">Eşyalı</option>
-                          <option value="Boş">Boş</option>
-                          <option value="Kiracılı (Yatırımlık)">Kiracılı (Yatırımlık)</option>
+                          <option value="Eşyasız">Eşyasız</option>
                         </select>
                       </div>
 
@@ -4986,7 +5180,7 @@ export default function App() {
                     <div className="flex gap-2 mt-2">
                       <button
                         type="submit"
-                        className="flex-1 py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none"
+                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none"
                       >
                         Değişiklikleri Kaydet
                       </button>
@@ -5005,7 +5199,7 @@ export default function App() {
                     <div className="flex justify-between items-start gap-3">
                       <div className="min-w-0">
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy Detayı</span>
-                        <h2 className="text-xl md:text-2xl font-extrabold text-charcoal mt-1 break-words">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
+                        <h2 className="text-xl md:text-xl sm:text-2xl font-extrabold text-charcoal mt-1 break-words">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
                       </div>
                       <button className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" onClick={() => setSelectedPortfolio(null)}>
                         <X size={16} />
@@ -5014,7 +5208,7 @@ export default function App() {
 
                     {/* Fotoğraf Galerisi & Kaydırılabilir Yapı (Max 12) */}
                     <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center flex-wrap gap-3">
                         <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
                           <ImageIcon size={14} /> Fotoğraf Galerisi ({portfolioImages.length}/12)
                         </span>
@@ -5048,7 +5242,7 @@ export default function App() {
 
                           {/* Kapak Rozeti */}
                           {portfolioImages[activeImageIndex]?.IsKapak && (
-                            <span className="absolute top-3 left-3 bg-[#FEF08A] text-charcoal text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-charcoal shadow-sm flex items-center gap-1">
+                            <span className="absolute top-3 left-3 bg-pastelYellow text-charcoal text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-charcoal shadow-sm flex items-center gap-1">
                               <CheckCircle2 size={12} /> KAPAK FOTOĞRAFI
                             </span>
                           )}
@@ -5076,7 +5270,7 @@ export default function App() {
                           )}
 
                           {/* Fotoğraf Sayacı */}
-                          <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                          <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm whitespace-nowrap">
                             {activeImageIndex + 1} / {portfolioImages.length}
                           </span>
                         </div>
@@ -5102,7 +5296,7 @@ export default function App() {
                             >
                               <img src={img.FotografUrl} alt="" className="w-full h-full object-cover" />
                               {img.IsKapak && (
-                                <span className="absolute bottom-0.5 left-0.5 bg-[#FEF08A] text-charcoal text-[8px] font-black px-1 rounded">
+                                <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
                                   Kapak
                                 </span>
                               )}
@@ -5113,7 +5307,7 @@ export default function App() {
 
                       {/* Seçili Fotoğraf İşlem Alanı (Kapak Yap / Sil) */}
                       {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length > 0 && (
-                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-cream/70 border border-zinc-200 text-xs">
+                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-cream/70 border border-zinc-200 text-xs flex-wrap">
                           <span className="font-semibold text-zinc-600 truncate">Seçili Fotoğraf: #{activeImageIndex + 1}</span>
                           <div className="flex items-center gap-2 shrink-0">
                             {!portfolioImages[activeImageIndex]?.IsKapak && (
@@ -5138,107 +5332,153 @@ export default function App() {
                     </div>
 
                     {/* Kare Kartlı Yan Yana Kompakt Bilgi Alanı */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                      {/* 1. Kare Kart: Fiyat */}
-                      <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
-                          <DollarSign size={12} /> Fiyat
-                        </span>
-                        <strong className="text-sm font-black text-indigo-900 truncate">
-                          {selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL
-                        </strong>
+                    {/* 2 Kolonlu Kompakt Bilgi ve Özellikler Alanı */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Sol Taraf: Temel Bilgiler (Alt Alta) */}
+                      <div className="flex flex-col gap-2">
+                        <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1.5"><DollarSign size={13} /> Fiyat</span>
+                          <strong className="text-sm font-black text-indigo-900">{selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL</strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><MapPin size={13} /> Konum</span>
+                          <strong className="text-xs font-extrabold text-charcoal truncate ml-2" title={`${selectedPortfolio.il} / ${selectedPortfolio.ilce} - ${selectedPortfolio.mahalle}`}>
+                            {selectedPortfolio.ilce} / {selectedPortfolio.mahalle}
+                          </strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><Ruler size={13} /> Metrekare</span>
+                          <strong className="text-xs font-extrabold text-charcoal">{selectedPortfolio.metrekare ? `${selectedPortfolio.metrekare} m²` : 'Belirtilmedi'}</strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                            {selectedPortfolio.tip === 'ARSA' ? <MapPin size={13} /> : <Bed size={13} />} {selectedPortfolio.tip === 'ARSA' ? 'İlan Tipi' : 'Oda Sayısı'}
+                          </span>
+                          <strong className="text-xs font-extrabold text-charcoal">
+                            {selectedPortfolio.tip === 'ARSA' ? selectedPortfolio.tur : (selectedPortfolio.odaSayisi || 'Belirtilmedi')}
+                          </strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Banknote size={13} /> Kapora / Depozito</span>
+                          <strong className="text-xs font-extrabold text-amber-950 truncate ml-2">
+                            {(selectedPortfolio.kapora || 0).toLocaleString('tr-TR')} / {(selectedPortfolio.depozito || 0).toLocaleString('tr-TR')} TL
+                          </strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5"><User size={13} /> Sorumlu Uzman</span>
+                          <strong className="text-xs font-extrabold text-emerald-950 truncate ml-2">{selectedPortfolio.gorevliUzman || 'Belirtilmedi'}</strong>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-cream border border-charcoal/10 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5"><Building size={13} /> Ev Sahibi İletişim Bilgileri</span>
+                          {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-end">
+                              <strong className="text-xs font-extrabold text-charcoal truncate">{selectedPortfolio.evSahibiAdi}</strong>
+                              {selectedPortfolio.evSahibiTelefon && (
+                                <strong className="text-xs font-extrabold text-charcoal shrink-0">
+                                  {selectedPortfolio.evSahibiTelefon}
+                                </strong>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-red-600 text-[11px] font-bold">
+                              <Lock size={12} />
+                              <span>Gizli Veri</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* 2. Kare Kart: Konum */}
-                      <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                          <MapPin size={12} /> Konum
+                      {/* Sağ Taraf: Özellikler */}
+                      <div className="p-5 rounded-2xl bg-zinc-50/50 border border-zinc-200 flex flex-col gap-4 h-full">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                          <Sparkles size={14} className="text-indigo-500" /> ÖZELLİKLER
                         </span>
-                        <strong className="text-xs font-extrabold text-charcoal truncate" title={`${selectedPortfolio.il} / ${selectedPortfolio.ilce} - ${selectedPortfolio.mahalle}`}>
-                          {selectedPortfolio.ilce} / {selectedPortfolio.mahalle}
-                        </strong>
-                      </div>
 
-                      {/* 3. Kare Kart: Metrekare */}
-                      <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                          <Ruler size={12} /> Metrekare
-                        </span>
-                        <strong className="text-xs font-extrabold text-charcoal truncate">
-                          {selectedPortfolio.metrekare ? `${selectedPortfolio.metrekare} m²` : 'Belirtilmedi'}
-                        </strong>
-                      </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {selectedPortfolio.isAcilSatilik && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-red-700">
+                              <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0"><AlertTriangle size={13} className="text-red-600" /></div> <span>Acil Satılık</span>
+                            </div>
+                          )}
+                          {selectedPortfolio.isFiyatiDustu && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-green-700">
+                              <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0"><TrendingUp size={13} className="text-green-600" /></div> <span>Fiyatı Düştü</span>
+                            </div>
+                          )}
+                          {selectedPortfolio.isKrediyeUygun && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-blue-700">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0"><Banknote size={13} className="text-blue-600" /></div> <span>Krediye Uygun</span>
+                            </div>
+                          )}
+                          {selectedPortfolio.isTakasaUygun && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-purple-700">
+                              <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0"><RotateCcw size={13} className="text-purple-600" /></div> <span>Takasa Uygun</span>
+                            </div>
+                          )}
 
-                      {/* 4. Kare Kart: Oda Sayısı / Tipi */}
-                      <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                          {selectedPortfolio.tip === 'ARSA' ? <MapPin size={12} /> : <Bed size={12} />} {selectedPortfolio.tip === 'ARSA' ? 'İlan Tipi' : 'Oda Sayısı'}
-                        </span>
-                        <strong className="text-xs font-extrabold text-charcoal truncate">
-                          {selectedPortfolio.tip === 'ARSA' ? selectedPortfolio.tur : (selectedPortfolio.odaSayisi || 'Belirtilmedi')}
-                        </strong>
-                      </div>
+                          {selectedPortfolio.hasAsansor && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><ArrowUpDown size={13} className="text-zinc-500" /></div> <span>Asansör</span>
+                            </div>
+                          )}
 
-                      {/* 5. Kare Kart: Kapora / Depozito */}
-                      <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
-                          <Banknote size={12} /> Kapora / Depozito
-                        </span>
-                        <strong className="text-xs font-extrabold text-amber-950 truncate">
-                          {(selectedPortfolio.kapora || 0).toLocaleString('tr-TR')} / {(selectedPortfolio.depozito || 0).toLocaleString('tr-TR')} TL
-                        </strong>
-                      </div>
+                          {selectedPortfolio.otoparkTipi && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Car size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">{selectedPortfolio.otoparkTipi}</span>
+                            </div>
+                          )}
 
-                      {/* 6. Kare Kart: Sorumlu Uzman */}
-                      <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
-                          <User size={12} /> Sorumlu Uzman
-                        </span>
-                        <strong className="text-xs font-extrabold text-emerald-950 truncate">
-                          {selectedPortfolio.gorevliUzman || 'Belirtilmedi'}
-                        </strong>
-                      </div>
+                          {selectedPortfolio.isinmaTipi && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Flame size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">{selectedPortfolio.isinmaTipi}</span>
+                            </div>
+                          )}
 
-                      {/* 7. ve 8. Kare Kart (2 Kolon Kaplar): Ev Sahibi İletişim Bilgileri */}
-                      <div className="col-span-2 p-3 rounded-2xl bg-cream border border-charcoal/10 flex flex-col justify-between gap-1">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                          <Building size={12} /> Ev Sahibi İletişim Bilgileri
-                        </span>
-                        {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
-                          <div className="flex items-center justify-between gap-2 min-w-0">
-                            <strong className="text-xs font-extrabold text-charcoal truncate">{selectedPortfolio.evSahibiAdi}</strong>
-                            <span className="text-xs text-indigo-700 font-bold shrink-0">{selectedPortfolio.evSahibiTelefon}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-red-600 text-[11px] font-bold">
-                            <Lock size={12} />
-                            <span>Gizli Veri (Sadece Yetkili & Uzman)</span>
-                          </div>
+                          {selectedPortfolio.balkonDurumu && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Layers size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">{selectedPortfolio.balkonDurumu}</span>
+                            </div>
+                          )}
+
+                          {selectedPortfolio.esyaDurumu && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Sofa size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">
+                                {selectedPortfolio.esyaDurumu === 'Boş' ? 'Eşyasız' : selectedPortfolio.esyaDurumu}
+                              </span>
+                            </div>
+                          )}
+
+                          {selectedPortfolio.kullanimDurumu && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Key size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">{selectedPortfolio.kullanimDurumu}</span>
+                            </div>
+                          )}
+
+                          {selectedPortfolio.tapuDurumu && (
+                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><FileCheck size={13} className="text-zinc-500" /></div>
+                              <span className="leading-tight">{selectedPortfolio.tapuDurumu}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Eğer hiçbir özellik yoksa */}
+                        {!(selectedPortfolio.hasAsansor || selectedPortfolio.isKrediyeUygun || selectedPortfolio.isTakasaUygun || selectedPortfolio.isAcilSatilik || selectedPortfolio.isFiyatiDustu || selectedPortfolio.otoparkTipi || selectedPortfolio.isinmaTipi || selectedPortfolio.balkonDurumu || selectedPortfolio.esyaDurumu || selectedPortfolio.kullanimDurumu || selectedPortfolio.tapuDurumu) && (
+                          <div className="text-xs text-zinc-500 italic py-4 text-center">Belirtilmiş ekstra özellik bulunmuyor.</div>
                         )}
                       </div>
                     </div>
-
-                    {/* Özellikler Alanı */}
-                    {(selectedPortfolio.hasAsansor || selectedPortfolio.isKrediyeUygun || selectedPortfolio.isTakasaUygun || selectedPortfolio.isAcilSatilik || selectedPortfolio.isFiyatiDustu || selectedPortfolio.otoparkTipi || selectedPortfolio.isinmaTipi || selectedPortfolio.balkonDurumu || selectedPortfolio.esyaDurumu || selectedPortfolio.kullanimDurumu || selectedPortfolio.tapuDurumu) && (
-                      <div className="p-4 rounded-2xl bg-zinc-50/50 border border-zinc-200 flex flex-col gap-3">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Sparkles size={12} /> ÖZELLİKLER
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedPortfolio.isAcilSatilik && <span className="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-extrabold rounded-full border border-red-200">Acil Satılık</span>}
-                          {selectedPortfolio.isFiyatiDustu && <span className="px-2.5 py-1 bg-green-100 text-green-700 text-[10px] font-extrabold rounded-full border border-green-200">Fiyatı Düştü</span>}
-                          {selectedPortfolio.isKrediyeUygun && <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-extrabold rounded-full border border-blue-200">Krediye Uygun</span>}
-                          {selectedPortfolio.isTakasaUygun && <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold rounded-full border border-purple-200">Takasa Uygun</span>}
-                          {selectedPortfolio.hasAsansor && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Asansör: Var</span>}
-                          {selectedPortfolio.otoparkTipi && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Otopark: {selectedPortfolio.otoparkTipi}</span>}
-                          {selectedPortfolio.isinmaTipi && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Isınma: {selectedPortfolio.isinmaTipi}</span>}
-                          {selectedPortfolio.balkonDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Balkon: {selectedPortfolio.balkonDurumu}</span>}
-                          {selectedPortfolio.esyaDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Eşya: {selectedPortfolio.esyaDurumu}</span>}
-                          {selectedPortfolio.kullanimDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Kullanım: {selectedPortfolio.kullanimDurumu}</span>}
-                          {selectedPortfolio.tapuDurumu && <span className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-[10px] font-extrabold rounded-full border border-zinc-200">Tapu: {selectedPortfolio.tapuDurumu}</span>}
-                        </div>
-                      </div>
-                    )}
 
 
                     {/* Edit & Close actions for owners/admins */}
@@ -5246,7 +5486,7 @@ export default function App() {
                       <div className="flex flex-col gap-2">
                         <button
                           onClick={() => startEditPortfolio(selectedPortfolio)}
-                          className="w-full py-2.5 bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
+                          className="w-full py-2.5 bg-pastelYellow hover:bg-pastelYellow/80 text-amber-950 dark:text-amber-950 text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
                         >
                           Portföyü Düzenle
                         </button>
@@ -5269,13 +5509,13 @@ export default function App() {
                         const isOwner = compareIds(selectedPortfolio.gorevliUzmanId, user?.id);
 
                         return (
-                          <div className={`p-4 rounded-2xl border-2 flex flex-col justify-between gap-3 ${isOwner ? 'bg-[#BBF7D0]/20 border-emerald-300' : 'bg-[#E9D5FF]/20 border-indigo-300'}`}>
+                          <div className={`p-4 rounded-2xl border-2 flex flex-col justify-between gap-3 ${isOwner ? 'bg-pastelGreen/20 border-emerald-300' : 'bg-pastelPurple/20 border-indigo-300'}`}>
                             <div>
-                              <div className="flex justify-between items-center gap-2 mb-2">
+                              <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
                                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
                                   {isOwner ? 'DOĞRUDAN RANDEVU' : 'RANDEVU TALEBİ'}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${isOwner ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'}`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${isOwner ? 'bg-pastelGreen text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'}`}>
                                   {isOwner ? 'İlan Sahibisiniz' : `Uzman: ${selectedPortfolio.gorevliUzman || 'Uzman'}`}
                                 </span>
                               </div>
@@ -5340,12 +5580,12 @@ export default function App() {
                       })()}
 
                       {/* SAĞ KOLON: Skeuomorphic & Modern Masa Takvimi (Desk Calendar Card) */}
-                      <div className="relative bg-[#FFFBEB] p-4 rounded-3xl border-2 border-amber-900/10 shadow-xl flex flex-col justify-between gap-3 overflow-hidden">
+                      <div className="relative bg-[#FFFBEB] dark:bg-zinc-100 p-4 rounded-3xl border-2 border-amber-900/10 dark:border-zinc-200 shadow-xl flex flex-col justify-between gap-3 overflow-hidden">
 
                         {/* 1. Spiral Halkalar (Ring Binding Details) */}
                         <div className="absolute -top-3 left-0 right-0 flex justify-around px-6 pointer-events-none z-20">
                           {[...Array(6)].map((_, i) => (
-                            <div key={`modal-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
+                            <div key={`modal-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 dark:from-zinc-400 dark:via-zinc-300 dark:to-zinc-500 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
                               <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
                               <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
                             </div>
@@ -5353,22 +5593,22 @@ export default function App() {
                         </div>
 
                         {/* Takvim Yaprak Banner */}
-                        <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 pb-2">
+                        <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 dark:border-zinc-200/50 pb-2">
                           <h4 className="font-black text-xs text-charcoal flex items-center justify-center gap-1.5 w-full">
-                            <Calendar size={14} className="text-amber-800" />
+                            <Calendar size={14} className="text-amber-800 dark:text-zinc-500" />
                             <span>RANDEVU TAKVİMİ</span>
                           </h4>
                         </div>
 
                         {/* Fiziksel Takvim Yaprağı (Dev Gün Rakamı & Ay) */}
-                        <div className="bg-white p-3 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between gap-3">
+                        <div className="bg-white p-3 rounded-2xl border border-amber-200/80 dark:border-zinc-200/50 shadow-sm flex items-center justify-between gap-3 flex-wrap">
                           <div className="flex items-center gap-3">
                             {/* Dev Rakam Yaprağı */}
-                            <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
+                            <div className="w-14 h-14 rounded-xl bg-amber-50 dark:bg-zinc-200 border border-amber-200 dark:border-zinc-300 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
                               <span className="text-2xl font-black text-charcoal leading-none">
                                 {popSelectedDay}
                               </span>
-                              <span className="text-[8px] font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">
+                              <span className="text-[8px] font-extrabold text-amber-800 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
                                 {popMonthName.slice(0, 3)}
                               </span>
                             </div>
@@ -5385,21 +5625,21 @@ export default function App() {
                             <button
                               type="button"
                               onClick={handlePopToday}
-                              className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 cursor-pointer"
+                              className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 dark:border-zinc-400 rounded bg-amber-50 dark:bg-zinc-200 hover:bg-amber-100 dark:hover:bg-zinc-300 text-amber-900 dark:text-zinc-600 cursor-pointer transition-colors"
                             >
                               Bugün
                             </button>
                             <button
                               type="button"
                               onClick={handlePopPrevMonth}
-                              className="p-1 border border-zinc-200 rounded hover:bg-zinc-100 cursor-pointer text-zinc-700"
+                              className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
                             >
                               <ChevronLeft size={10} />
                             </button>
                             <button
                               type="button"
                               onClick={handlePopNextMonth}
-                              className="p-1 border border-zinc-200 rounded hover:bg-zinc-100 cursor-pointer text-zinc-700"
+                              className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
                             >
                               <ChevronLeft className="rotate-180" size={10} />
                             </button>
@@ -5407,7 +5647,7 @@ export default function App() {
                         </div>
 
                         {/* Izgara Gün Seçici */}
-                        <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80">
+                        <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-200/50">
                           <div className="grid grid-cols-7 gap-0.5 text-[8px] text-center font-black">
                             {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((d, di) => (
                               <span key={di} className="text-zinc-400">{d}</span>
@@ -5457,15 +5697,15 @@ export default function App() {
 
                                   return (
                                     <div key={app.id} className="p-2 rounded-xl bg-white border-l-4 border-l-amber-600 border border-zinc-200 flex flex-col gap-1 text-xs shadow-2xs">
-                                      <div className="flex justify-between items-center gap-1">
+                                      <div className="flex justify-between items-center gap-1 flex-wrap">
                                         <div className="flex items-center gap-1">
                                           <Clock size={11} className="text-amber-800 shrink-0" />
                                           <strong className="font-extrabold text-charcoal">{app.saat || app.zaman || '12:00'}</strong>
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                          app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                                          app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300' :
                                             app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                              'bg-[#FBCFE8] text-red-950 border-red-300'
+                                              'bg-pastelPink text-red-950 border-red-300'
                                           }`}>
                                           {app.durum === 'APPROVED' ? 'Onaylı ✅' :
                                             app.durum === 'PENDING' ? 'Bekliyor ⏳' :
@@ -5486,14 +5726,14 @@ export default function App() {
                                               <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
-                                                className="px-2 py-0.5 bg-[#BBF7D0] border border-emerald-400 rounded text-[9px] font-extrabold text-emerald-950 hover:bg-emerald-300 cursor-pointer"
+                                                className="px-2 py-0.5 bg-pastelGreen border border-emerald-400 rounded text-[9px] font-extrabold text-emerald-950 hover:bg-emerald-300 cursor-pointer"
                                               >
                                                 Onayla
                                               </button>
                                               <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
-                                                className="px-2 py-0.5 bg-[#FBCFE8] border border-red-300 rounded text-[9px] font-extrabold text-red-950 hover:bg-pink-200 cursor-pointer"
+                                                className="px-2 py-0.5 bg-pastelPink border border-red-300 rounded text-[9px] font-extrabold text-red-950 hover:bg-pink-200 cursor-pointer"
                                               >
                                                 Reddet
                                               </button>
@@ -5539,7 +5779,7 @@ export default function App() {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
-                      <h2 className="text-2xl font-extrabold text-charcoal mt-1">Yeni Portföy Ekle</h2>
+                      <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Yeni Portföy Ekle</h2>
                     </div>
                     <button
                       type="button"
@@ -5565,6 +5805,17 @@ export default function App() {
                     >
                       Kiralık
                     </button>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-zinc-600 font-semibold block mb-1">Başlık</label>
+                    <input
+                      type="text"
+                      placeholder="Örn: Deniz Manzaralı Lüks Daire"
+                      className="w-full text-xs p-2.5 border-2 border-charcoal rounded-xl bg-white focus:outline-none mb-3"
+                      value={newPortBaslik}
+                      onChange={e => setNewPortBaslik(e.target.value)}
+                    />
                   </div>
 
                   <div>
@@ -5661,7 +5912,7 @@ export default function App() {
                     }
                     return (
                       <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-charcoal/10">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center flex-wrap gap-3">
                           <div>
                             <span className="text-xs font-bold text-zinc-600 block">Öngörülen Hizmet Bedeli (KDV Dahil)</span>
                             <span className="text-[10px] text-zinc-400">Senaryo A (Kendi Müşterisi)</span>
@@ -5772,12 +6023,12 @@ export default function App() {
 
                   {/* Fotoğraf Yükleme Alanı (Max 12) */}
                   <div className="p-4 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center flex-wrap gap-3">
                       <span className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
                         <ImageIcon size={14} /> Portföy Fotoğrafları ({newPortFiles.length}/12)
                       </span>
                       {newPortFiles.length < 12 && (
-                        <label className="cursor-pointer px-3 py-1 bg-charcoal hover:bg-black text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
+                        <label className="cursor-pointer px-3 py-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
                           <Plus size={12} />
                           <span>Fotoğraf Seç</span>
                           <input
@@ -5807,7 +6058,7 @@ export default function App() {
                               className="w-full h-full object-cover"
                             />
                             {idx === 0 && (
-                              <span className="absolute bottom-0.5 left-0.5 bg-[#FEF08A] text-charcoal text-[8px] font-black px-1 rounded">
+                              <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
                                 Kapak
                               </span>
                             )}
@@ -5900,8 +6151,7 @@ export default function App() {
                       >
                         <option value="">Seçiniz</option>
                         <option value="Eşyalı">Eşyalı</option>
-                        <option value="Boş">Boş</option>
-                        <option value="Kiracılı (Yatırımlık)">Kiracılı (Yatırımlık)</option>
+                        <option value="Eşyasız">Eşyasız</option>
                       </select>
                     </div>
 
@@ -5997,7 +6247,7 @@ export default function App() {
                     <button
                       type="submit"
                       disabled={newPortSubmitting}
-                      className="flex-1 py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors border-none flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none flex items-center justify-center gap-2"
                     >
                       {newPortSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
                       <span>{newPortSubmitting ? 'Portföy & Fotoğraflar Kaydediliyor...' : 'Portföy Oluştur ve Yetkilendirme Sözleşmesine Git'}</span>
@@ -6022,33 +6272,30 @@ export default function App() {
         {activeTab === 'completedPortfolios' && (
           <div className="w-full flex flex-col gap-6">
 
-            {/* Header Banner */}
-            <div className="bento-card bg-gradient-to-r from-charcoal via-zinc-900 to-indigo-950 text-white flex flex-wrap justify-between items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="px-3 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                    <BadgeCheck size={14} /> Kapanan İşlemler & Hakediş
-                  </span>
-                  {user?.firmaAdi && (
-                    <span className="px-3 py-0.5 bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 rounded-full text-xs font-extrabold">
-                      🏢 {user.firmaAdi}
-                    </span>
-                  )}
+            {/* Header and Search Container */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                  <BadgeCheck size={20} />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-white">Tamamlanan Portföyler & Ciro Analizi</h2>
-                <p className="text-xs md:text-sm text-zinc-300 mt-1 max-w-2xl">
-                  {user?.firmaAdi ? `${user.firmaAdi} firmasına` : 'Giriş yapılı firmaya'} ve uzmana ait satışı ve kiralaması tamamlanmış portföyler. Düzenleme yapılamaz, elde edilen ciro ve Danışman/Ofis pay dağılımları salt okunur takip edilir.
-                </p>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Tamamlanan İşlemler</h2>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                    {user?.firmaAdi ? `${user.firmaAdi} firmasına` : 'Giriş yapılı firmaya'} ait satışı ve kiralaması tamamlanmış portföyler.
+                  </p>
+                </div>
               </div>
 
-              <button
-                onClick={() => fetchCompletedPortfolios(token!)}
-                disabled={completedLoading}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-extrabold transition-all border border-white/20 flex items-center gap-2 shrink-0 cursor-pointer"
-              >
-                {completedLoading ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
-                Verileri Yenile
-              </button>
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <button
+                  onClick={() => fetchCompletedPortfolios(token!)}
+                  disabled={completedLoading}
+                  className="px-4 py-2 bg-white border border-zinc-200 text-charcoal rounded-full text-xs font-bold hover:bg-zinc-50 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+                >
+                  {completedLoading ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                  Yenile
+                </button>
+              </div>
             </div>
 
             {/* Calculate stats based on all completed portfolios */}
@@ -6103,7 +6350,7 @@ export default function App() {
                     {/* Card 1: Total Transaction Volume */}
                     <div className="bento-card bg-[#E0F2FE] border border-sky-300 flex flex-col justify-between">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-900/70">Toplam İşlem Hacmi</span>
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-900">Toplam İşlem Hacmi</span>
                         <div className="w-8 h-8 rounded-full bg-sky-200 flex items-center justify-center">
                           <Banknote size={18} className="text-sky-900" />
                         </div>
@@ -6157,7 +6404,7 @@ export default function App() {
                     {/* Card 4: Total Completed Count */}
                     <div className="bento-card bg-[#F3E8FF] border border-purple-300 flex flex-col justify-between">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-900/70">Kapanan İşlem Adedi</span>
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-900">Kapanan İşlem Adedi</span>
                         <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center">
                           <BadgeCheck size={18} className="text-purple-900" />
                         </div>
@@ -6186,11 +6433,11 @@ export default function App() {
                     {/* Progress Bar Visualizer */}
                     <div className="w-full bg-zinc-100 rounded-2xl p-3 border border-zinc-200">
                       <div className="flex justify-between text-xs font-extrabold mb-1.5">
-                        <span className="text-emerald-700 flex items-center gap-1">
+                        <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
                           Danışman Hakedişi (%{danismanPayOran}): {totalDanismanHakedis.toLocaleString('tr-TR')} ₺
                         </span>
-                        <span className="text-indigo-700 flex items-center gap-1">
+                        <span className="text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
                           Ofis Payı (%{100 - danismanPayOran}): {totalOfisPayi.toLocaleString('tr-TR')} ₺
                           <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
                         </span>
@@ -6210,8 +6457,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Filter Toolbar (Scope, Type, Search) */}
-                  <div className="bento-card bg-white border border-zinc-200 flex flex-col md:flex-row flex-wrap justify-between items-center gap-4">
+                  {/* Filter Toolbar (Scope, Type) */}
+                  <div className="flex flex-col md:flex-row flex-wrap justify-between items-center gap-4">
 
                     {/* Scope Tabs: Tüm Ofis / Kendi Portföylerim / Başkasının Portföyü */}
                     <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-2xl border border-zinc-200 shrink-0 w-full sm:w-auto">
@@ -6238,38 +6485,17 @@ export default function App() {
                       </button>
                     </div>
 
-                    {/* Secondary Filters: Type & Search */}
-                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1 justify-end">
-                      {/* Type Filter */}
+                    {/* Type Filter */}
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
                       <select
                         value={completedTypeFilter}
                         onChange={(e: any) => setCompletedTypeFilter(e.target.value)}
-                        className="bg-zinc-50 border-2 border-zinc-200 rounded-2xl px-3 py-2 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal cursor-pointer"
+                        className="bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal cursor-pointer shadow-sm"
                       >
                         <option value="all">Tüm İşlem Türleri</option>
                         <option value="SATILDI">Satılanlar (SATILDI)</option>
                         <option value="KIRALANDI">Kiralananlar (KIRALANDI)</option>
                       </select>
-
-                      {/* Search Bar */}
-                      <div className="relative flex-1 md:w-64">
-                        <input
-                          type="text"
-                          placeholder="Mülk tipi, il, ilce, uzman ara..."
-                          value={completedSearchQuery}
-                          onChange={(e) => setCompletedSearchQuery(e.target.value)}
-                          className="w-full bg-zinc-50 border-2 border-zinc-200 rounded-full px-4 py-2 pl-9 text-xs font-semibold text-charcoal focus:outline-none focus:border-charcoal transition-all"
-                        />
-                        <Search size={14} className="absolute left-3 top-2.5 text-zinc-400" />
-                        {completedSearchQuery && (
-                          <button
-                            onClick={() => setCompletedSearchQuery('')}
-                            className="absolute right-3 top-2 text-zinc-400 hover:text-zinc-600"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
                     </div>
 
                   </div>
@@ -6299,7 +6525,8 @@ export default function App() {
                         <table className="w-full text-left border-collapse">
                           <thead>
                             <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase tracking-wider">
-                              <th className="pb-3 pr-4 whitespace-nowrap">Tür / Tip</th>
+                              <th className="pb-3 pr-4 whitespace-nowrap">Tip</th>
+                              <th className="pb-3 px-4 whitespace-nowrap">Tür</th>
                               <th className="pb-3 px-4 whitespace-nowrap">Lokasyon</th>
                               <th className="pb-3 px-4 whitespace-nowrap">Görevli Uzman</th>
                               <th className="pb-3 px-4 text-right whitespace-nowrap">İşlem Bedeli</th>
@@ -6321,16 +6548,14 @@ export default function App() {
                                 <tr
                                   key={cardKey}
                                   onClick={() => setSelectedCompletedPortfolio(p)}
-                                  className="group hover:bg-[#FDF8F2] cursor-pointer transition-colors"
+                                  className="group hover:bg-zinc-100 cursor-pointer transition-colors"
                                 >
-                                  {/* Tür / Tip */}
+                                  {/* Tip ve Tür */}
                                   <td className="py-3.5 pr-4 whitespace-nowrap">
-                                    <div className="flex items-center gap-2">
-                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${isSatildim ? 'bg-pink-100 text-pink-900 border-pink-300' : 'bg-sky-100 text-sky-900 border-sky-300'}`}>
-                                        {isSatildim ? 'SATILDI' : 'KİRALANDI'}
-                                      </span>
-                                      <strong className="font-extrabold text-charcoal">{p.tip}</strong>
-                                    </div>
+                                    <strong className="font-extrabold text-charcoal">{p.tip}</strong>
+                                  </td>
+                                  <td className="py-3.5 px-4 font-medium text-zinc-700 whitespace-nowrap">
+                                    {p.tur}
                                   </td>
 
                                   {/* Lokasyon */}
@@ -6501,127 +6726,145 @@ export default function App() {
         {activeTab === 'appointments' && (
           <div className="flex flex-col gap-6 w-full">
 
-            {/* Top Card: Kendi Oluşturulan Randevular (My Appointments Card) */}
-            <div className="bento-card bg-white">
-              <div className="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3">
-                <div>
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">MÜŞTERİ GÖSTERİMLERİM</span>
-                  <h3 className="text-xl font-extrabold text-charcoal">Oluşturulan Randevular</h3>
-                </div>
-                <span className="text-xs font-extrabold text-charcoal">
-                  {appointments.filter(a => compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId))).length} Oluşturulan
-                </span>
+            {/* Page Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                <Calendar size={20} />
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase">
-                      <th className="pb-3 min-w-[140px]">Portföy Tipi</th>
-                      <th className="pb-3 min-w-[160px]">Lokasyon</th>
-                      <th className="pb-3 min-w-[160px]">Portföy Sahibi</th>
-                      <th className="pb-3 min-w-[160px]">Randevuyu Alan Uzman</th>
-                      <th className="pb-3 min-w-[150px]">Katılan Müşteri</th>
-                      <th className="pb-3 min-w-[140px]">Randevu Zamanı</th>
-                      <th className="pb-3 text-center min-w-[110px]">Durum</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const now = new Date();
-                      const myApps = appointments.filter(a => {
-                        const isUserApp = compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId));
-                        if (!isUserApp) return false;
-                        // Günü/tarihi geçmiş randevuları aktif listede gösterme
-                        const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
-                        if (appDate && !isNaN(appDate.getTime()) && appDate < now) return false;
-                        return true;
-                      });
-                      if (myApps.length === 0) {
-                        return (
-                          <tr>
-                            <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs font-semibold">
-                              Kendi tarafınızdan oluşturulan aktif ve tarihi geçmemiş randevu bulunmuyor. Portföyler sayfasından yeni randevu teklifi oluşturabilirsiniz.
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      return myApps.map(app => (
-                        <tr
-                          key={`my-app-${app.id}`}
-                          className="border-b border-zinc-100 text-sm hover:bg-zinc-50/50 transition-colors cursor-pointer"
-                          onClick={() => {
-                            setSelectedAppointmentToAction(app);
-                            setAppActionType(app.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
-                            const fiyatNum = Number(app.portfoyFiyat || 0);
-                            setAppActionBedel(fiyatNum.toString());
-                            setAppActionCiro(app.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
-                            setShowAppointmentActionModal(true);
-                          }}
-                        >
-                          <td className="py-4">
-                            <strong className="font-extrabold text-charcoal">{app.portfoyTip}</strong>
-                            <span className="text-xs text-zinc-500 block">{app.portfoyTur}</span>
-                          </td>
-                          <td className="py-4 text-xs font-medium text-zinc-600">
-                            {app.ilce} / {app.il}
-                            {app.mahalle && <span className="block text-zinc-400 text-[11px]">{app.mahalle} Mah.</span>}
-                          </td>
-                          <td className="py-4 text-xs font-bold text-charcoal">
-                            {app.portfoySahibi || 'Belirtilmemiş'}
-                          </td>
-                          <td className="py-4 text-xs font-bold text-emerald-700">
-                            {app.talepEden || 'Belirtilmemiş'}
-                          </td>
-                          <td className="py-4 text-xs">
-                            <div className="font-bold text-charcoal">{app.musteri}</div>
-                            <div className="text-zinc-500">{app.musteriTelefon}</div>
-                          </td>
-                          <td className="py-4 text-xs font-semibold text-zinc-600">
-                            <div>{app.tarih}</div>
-                            <div className="font-extrabold text-charcoal">{app.zaman}</div>
-                          </td>
-                          <td className="py-4 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
-                                  app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                    'bg-[#FBCFE8] text-red-950 border-red-300'
-                                }`}>
-                                {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
-                                  app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
-                                    app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
-                              </span>
-                              {app.durum === 'PENDING' && compareIds(app.talepEdenId, user?.id) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
-                                  className="text-[10px] text-red-600 font-extrabold underline hover:text-red-800 transition-colors mt-0.5 cursor-pointer"
-                                >
-                                  Talebi İptal Et 🚫
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                </table>
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Randevular</h2>
+                <p className="text-xs text-zinc-500 font-medium mt-1">
+                  Tüm müşteri gösterimlerini ve randevu taleplerini yönetin.
+                </p>
               </div>
             </div>
 
+            {/* Top Card: Kendi Oluşturulan Randevular (My Appointments Card) */}
+            {(() => {
+              const now = new Date();
+              const myApps = appointments.filter(a => {
+                const isUserApp = compareIds(a.talepEdenId, user?.id) || (user?.rol === 'YETKILI' && compareIds(a.talepEdenId, a.portfoySahibiId));
+                if (!isUserApp) return false;
+                // Günü/tarihi geçmiş randevuları aktif listede gösterme
+                const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
+                if (appDate && !isNaN(appDate.getTime()) && appDate < now) return false;
+                return true;
+              });
+
+              return (
+                <div className="bento-card bg-white">
+                  <div className="flex justify-between items-center mb-4 border-b border-zinc-100 pb-3 flex-wrap gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">MÜŞTERİ GÖSTERİMLERİM</span>
+                      <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Oluşturulan Randevular</h3>
+                    </div>
+                    <span className="text-xs font-extrabold text-charcoal">
+                      {myApps.length} Aktif Randevu
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-zinc-200 text-xs font-extrabold text-zinc-500 uppercase">
+                          <th className="pb-3 min-w-[140px]">Portföy Tipi</th>
+                          <th className="pb-3 min-w-[160px]">Lokasyon</th>
+                          <th className="pb-3 min-w-[160px]">Portföy Sahibi</th>
+                          <th className="pb-3 min-w-[160px]">Randevuyu Alan Uzman</th>
+                          <th className="pb-3 min-w-[150px]">Katılan Müşteri</th>
+                          <th className="pb-3 min-w-[140px]">Randevu Zamanı</th>
+                          <th className="pb-3 text-center min-w-[110px]">Durum</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          if (myApps.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs font-semibold">
+                                  Kendi tarafınızdan oluşturulan aktif ve tarihi geçmemiş randevu bulunmuyor. Portföyler sayfasından yeni randevu teklifi oluşturabilirsiniz.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return myApps.map(app => (
+                            <tr
+                              key={`my-app-${app.id}`}
+                              className="border-b border-zinc-100 text-sm hover:bg-zinc-50/50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedAppointmentToAction(app);
+                                setAppActionType(app.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                                const fiyatNum = Number(app.portfoyFiyat || 0);
+                                setAppActionBedel(fiyatNum.toString());
+                                setAppActionCiro(app.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
+                                setShowAppointmentActionModal(true);
+                              }}
+                            >
+                              <td className="py-4">
+                                <strong className="font-extrabold text-charcoal">{app.portfoyTip}</strong>
+                                <span className="text-xs text-zinc-500 block">{app.portfoyTur}</span>
+                              </td>
+                              <td className="py-4 text-xs font-medium text-zinc-600">
+                                {app.ilce} / {app.il}
+                                {app.mahalle && <span className="block text-zinc-400 text-[11px]">{app.mahalle} Mah.</span>}
+                              </td>
+                              <td className="py-4 text-xs font-bold text-charcoal">
+                                {app.portfoySahibi || 'Belirtilmemiş'}
+                              </td>
+                              <td className="py-4 text-xs font-bold text-emerald-700">
+                                {app.talepEden || 'Belirtilmemiş'}
+                              </td>
+                              <td className="py-4 text-xs">
+                                <div className="font-bold text-charcoal">{app.musteri}</div>
+                                <div className="text-zinc-500">{app.musteriTelefon}</div>
+                              </td>
+                              <td className="py-4 text-xs font-semibold text-zinc-600">
+                                <div>{app.tarih}</div>
+                                <div className="font-extrabold text-charcoal">{app.zaman}</div>
+                              </td>
+                              <td className="py-4 text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                                    app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300' :
+                                      app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                        'bg-pastelPink text-red-950 border-red-300'
+                                    }`}>
+                                    {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
+                                      app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
+                                        app.durum === 'CANCELLED' ? 'İptal Edildi 🚫' : 'Reddedildi ❌'}
+                                  </span>
+                                  {app.durum === 'PENDING' && compareIds(app.talepEdenId, user?.id) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
+                                      className="text-[10px] text-red-600 font-extrabold underline hover:text-red-800 transition-colors mt-0.5 cursor-pointer"
+                                    >
+                                      Talebi İptal Et 🚫
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Middle Card: Sonuçlandırılması Bekleyen Randevular (Past / Expired Appointments needing resolution) */}
-            <div className="bento-card bg-amber-50/60 border border-amber-200">
-              <div className="flex justify-between items-center mb-4 border-b border-amber-200/80 pb-3 flex-wrap gap-2">
+            <div className="bento-card bg-amber-50/60 dark:bg-zinc-100 border border-amber-200 dark:border-zinc-200">
+              <div className="flex justify-between items-center mb-4 border-b border-amber-200/80 dark:border-zinc-200 pb-3 flex-wrap gap-2">
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse"></span>
-                    <span className="text-xs font-bold text-amber-800 uppercase tracking-widest block">GÜNÜ/SAATİ GEÇMİŞ RANDEVULAR</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-600 dark:bg-amber-500 animate-pulse"></span>
+                    <span className="text-xs font-bold text-amber-800 dark:text-amber-500/80 uppercase tracking-widest block">GÜNÜ/SAATİ GEÇMİŞ RANDEVULAR</span>
                   </div>
-                  <h3 className="text-xl font-extrabold text-charcoal">Sonuçlandırılması Bekleyen Randevular</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Tarihi ve saati geçmiş, henüz sonuç kaydı (Satıldı/Kiralandı/Vazgeçildi) girilmemiş randevularınız.</p>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-charcoal dark:text-zinc-950">Süreç Değişimi Gereken Randevular</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Tarihi ve saati geçmiş, henüz sonuç kaydı (Satıldı/Kiralandı/Vazgeçildi) girilmemiş randevularınız.</p>
                 </div>
                 {(() => {
                   const now = new Date();
@@ -6629,12 +6872,17 @@ export default function App() {
                     const isUserApp = compareIds(a.talepEdenId, user?.id) || compareIds(a.portfoySahibiId, user?.id) || (user?.rol === 'YETKILI');
                     if (!isUserApp) return false;
                     if (a.durum === 'CANCELLED' || a.durum === 'REJECTED') return false;
+
+                    // Süreci "Portföy & Randevu Süreci" (1) dışına çıkmışsa gösterme
+                    const process = clientProcesses.find(p => String(p.randevuId) === String(a.id));
+                    if (process && Number(process.asamaId) > 1) return false;
+
                     const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
                     return appDate && !isNaN(appDate.getTime()) && appDate < now;
                   }).length;
 
                   return (
-                    <span className="text-xs font-extrabold text-amber-950 bg-[#FEF08A] px-3 py-1 rounded-full border border-amber-300 shadow-xs">
+                    <span className="text-xs font-extrabold text-amber-950 bg-pastelYellow px-3 py-1 rounded-full border border-amber-300 shadow-xs">
                       {expiredAppsCount} Sonuç Bekleyen
                     </span>
                   );
@@ -6644,7 +6892,7 @@ export default function App() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b-2 border-amber-200 text-xs font-extrabold text-amber-900 uppercase">
+                    <tr className="border-b-2 border-amber-200 dark:border-zinc-200 text-xs font-extrabold text-amber-900 dark:text-zinc-400 uppercase">
                       <th className="pb-3 min-w-[140px]">Portföy Tipi</th>
                       <th className="pb-3 min-w-[160px]">Lokasyon</th>
                       <th className="pb-3 min-w-[160px]">Portföy Sahibi</th>
@@ -6661,6 +6909,11 @@ export default function App() {
                         const isUserApp = compareIds(a.talepEdenId, user?.id) || compareIds(a.portfoySahibiId, user?.id) || (user?.rol === 'YETKILI');
                         if (!isUserApp) return false;
                         if (a.durum === 'CANCELLED' || a.durum === 'REJECTED') return false;
+
+                        // Süreci "Portföy & Randevu Süreci" (1) dışına çıkmışsa gösterme
+                        const process = clientProcesses.find(p => String(p.randevuId) === String(a.id));
+                        if (process && Number(process.asamaId) > 1) return false;
+
                         const appDate = a.randevuZamani ? new Date(a.randevuZamani) : null;
                         return appDate && !isNaN(appDate.getTime()) && appDate < now;
                       });
@@ -6669,7 +6922,7 @@ export default function App() {
                         return (
                           <tr>
                             <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs font-semibold">
-                              🎉 Harika! Sonuçlandırılması bekleyen günü geçmiş randevunuz bulunmuyor.
+                              🎉 Harika! Süreç değişimi bekleyen günü geçmiş randevunuz bulunmuyor.
                             </td>
                           </tr>
                         );
@@ -6678,7 +6931,7 @@ export default function App() {
                       return expiredApps.map(app => (
                         <tr
                           key={`expired-app-${app.id}`}
-                          className="border-b border-amber-100 text-sm hover:bg-amber-100/60 transition-colors cursor-pointer"
+                          className="border-b border-amber-100 dark:border-zinc-200/50 text-sm hover:bg-amber-100/60 dark:hover:bg-zinc-200 transition-colors cursor-pointer"
                           onClick={() => {
                             setSelectedAppointmentToAction(app);
                             setAppActionType(app.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
@@ -6706,16 +6959,16 @@ export default function App() {
                             <div className="font-bold text-charcoal">{app.musteri}</div>
                             <div className="text-zinc-500">{app.musteriTelefon}</div>
                           </td>
-                          <td className="py-4 text-xs font-semibold text-amber-900">
+                          <td className="py-4 text-xs font-semibold text-amber-900 dark:text-amber-200/80">
                             <div>{app.tarih}</div>
-                            <div className="font-extrabold text-amber-950">{app.zaman}</div>
+                            <div className="font-extrabold text-amber-950 dark:text-amber-100">{app.zaman}</div>
                           </td>
                           <td className="py-4 text-center">
                             <button
                               type="button"
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-[11px] font-extrabold transition-all shadow-xs border-none cursor-pointer flex items-center gap-1 mx-auto"
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-amber-950 rounded-full text-[11px] font-extrabold transition-all shadow-xs border-none cursor-pointer flex items-center gap-1 mx-auto"
                             >
-                              ⚡ Sonuçlandır
+                              ⚡ Süreci Güncelle
                             </button>
                           </td>
                         </tr>
@@ -6731,7 +6984,7 @@ export default function App() {
               <div className="flex flex-wrap justify-between items-center mb-2 border-b border-zinc-100 pb-4">
                 <div>
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">RANDEVU TAKVİMİ & TALEP YÖNETİMİ</span>
-                  <h2 className="text-2xl font-extrabold text-charcoal">Randevu Talepleri Akışı</h2>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Randevu Talepleri Akışı</h3>
                 </div>
                 <div className="flex items-center gap-3">
                   {(() => {
@@ -6745,7 +6998,7 @@ export default function App() {
                         <Bell size={18} className="text-charcoal" />
                         <span>Bildirimler</span>
                         {pendingCount > 0 && (
-                          <span className="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                          <span className="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full animate-pulse whitespace-nowrap">
                             {pendingCount} Yeni
                           </span>
                         )}
@@ -6760,7 +7013,7 @@ export default function App() {
 
                 {/* Left Section: Giden Talepler 📤 */}
                 <div className="flex flex-col">
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-3 flex-wrap gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
                         <h3 className="font-extrabold text-base text-charcoal">📤Giden Talepler</h3>
@@ -6796,10 +7049,10 @@ export default function App() {
                               <strong className="text-sm font-extrabold text-charcoal block">{app.portfoyTip} ({app.portfoyTur})</strong>
                               <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                             </div>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                              app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                              app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300 animate-pulse' :
                                 app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                  'bg-[#FBCFE8] text-red-950 border-red-300'
+                                  'bg-pastelPink text-red-950 border-red-300'
                               }`}>
                               {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                 app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -6841,7 +7094,7 @@ export default function App() {
 
                 {/* Right Section: Gelen Talepler 📥 */}
                 <div className="flex flex-col">
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-3 flex-wrap gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
                         <h3 className="font-extrabold text-base text-charcoal">📥Gelen Talepler</h3>
@@ -6881,10 +7134,10 @@ export default function App() {
                                 <strong className="text-sm font-extrabold text-charcoal block">{app.portfoyTip} ({app.portfoyTur})</strong>
                                 <span className="text-xs text-zinc-500">{app.ilce} / {app.il}</span>
                               </div>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300 animate-pulse' :
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                                app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300 animate-pulse' :
                                   app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                    'bg-[#FBCFE8] text-red-950 border-red-300'
+                                    'bg-pastelPink text-red-950 border-red-300'
                                 }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                   app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -6908,7 +7161,7 @@ export default function App() {
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
-                                    className="px-4 py-1.5 bg-[#BBF7D0] border border-emerald-400 rounded-md text-[10px] font-extrabold hover:bg-emerald-300 transition-all cursor-pointer text-emerald-950"
+                                    className="px-4 py-1.5 bg-pastelGreen border border-emerald-400 rounded-md text-[10px] font-extrabold hover:bg-emerald-300 transition-all cursor-pointer text-emerald-950"
                                   >
                                     Onayla
                                   </button>
@@ -6942,29 +7195,16 @@ export default function App() {
         {activeTab === 'processManagement' && (
           <div className="flex flex-col gap-6 w-full">
 
-            {/* Header Card */}
-            <div className="bento-card bg-gradient-to-r from-charcoal via-zinc-900 to-indigo-950 text-white flex flex-wrap justify-between items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="px-3 py-0.5 bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1">
-                    <GitPullRequest size={14} /> Satış & Gösterim Fırsatları
-                  </span>
-                  {user?.firmaAdi && (
-                    <span className="px-3 py-0.5 bg-white/10 text-white border border-white/20 rounded-full text-xs font-extrabold">
-                      🏢 {user.firmaAdi}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-white">Süreç Yönetimi (Pipeline)</h2>
-                <p className="text-xs md:text-sm text-zinc-300 mt-1 max-w-2xl">
-                  Randevuların ve satış/kiralama fırsatlarının aşama aşama takibini yapabileceğiniz 6 kanban adımlı süreç board'u.
-                </p>
+            {/* Page Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                <GitPullRequest size={20} />
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-full">
-                  ⚡ Canlı Aşama Takibi
-                </span>
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Süreç Yönetimi</h2>
+                <p className="text-xs text-zinc-500 font-medium mt-1">
+                  Randevuların ve satış/kiralama fırsatlarının aşama aşama takibini yapabileceğiniz kanban süreç panosu.
+                </p>
               </div>
             </div>
 
@@ -6975,71 +7215,201 @@ export default function App() {
                 <span className="text-sm font-semibold">Süreç kayıtları yükleniyor...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                {(() => {
+                  const handleProcessUpdate = async (procIdStr: string, targetStageId: number, targetStageLabel: string) => {
+                    const droppedProc = clientProcesses.find(p => p.id === procIdStr);
+                    if (!droppedProc) return;
 
-                {/* Her kolon için yardımcı kart render fonksiyonu */}
-                {[
-                  { stageId: 1, label: 'Portföy & Randevu Süreci', color: 'sky' },
-                  { stageId: 3, label: 'Anlaşma süreci', color: 'amber' },
-                  { stageId: 4, label: 'Satıldı/Kiralandı', color: 'emerald' },
-                  { stageId: 5, label: 'Vazgeçildi', color: 'rose' },
-                ].map(({ stageId, label, color }) => {
-                  const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
-                  const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; badgeText: string; empty: string; itemBorder: string }> = {
-                    sky: { card: 'bg-sky-50/80 border-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', title: 'text-sky-950', badge: 'bg-sky-200 text-sky-900', badgeText: 'text-sky-900', empty: 'text-sky-400', itemBorder: 'border-sky-100' },
-                    purple: { card: 'bg-purple-50/80 border-purple-200', border: 'border-purple-200', dot: 'bg-purple-500', title: 'text-purple-950', badge: 'bg-purple-200 text-purple-900', badgeText: 'text-purple-900', empty: 'text-purple-300', itemBorder: 'border-purple-100' },
-                    amber: { card: 'bg-amber-50/80 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', badgeText: 'text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
-                    emerald: { card: 'bg-emerald-50/80 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', badgeText: 'text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
-                    rose: { card: 'bg-rose-50/80 border-rose-200', border: 'border-rose-200', dot: 'bg-rose-500', title: 'text-rose-950', badge: 'bg-rose-200 text-rose-900', badgeText: 'text-rose-900', empty: 'text-rose-300', itemBorder: 'border-rose-100' },
+                    if (Number(droppedProc.asamaId) === targetStageId) return;
+
+                    if (targetStageId === 4 || targetStageId === 5) {
+                      const relatedApp = appointments.find(a => a.id === droppedProc.randevuId);
+                      if (relatedApp) {
+                        setSelectedAppointmentToAction(relatedApp);
+                        if (targetStageId === 4) {
+                          setAppActionType(relatedApp.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                          const fiyatNum = Number(relatedApp.portfoyFiyat || 0);
+                          setAppActionBedel(fiyatNum.toString());
+                          setAppActionCiro(relatedApp.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
+                        } else {
+                          setAppActionType('VAZGECILDI');
+                          setAppActionBedel('');
+                          setAppActionCiro('');
+                        }
+                        setShowAppointmentActionModal(true);
+                      } else {
+                        alert("Bu işlem için ilişkili randevu kaydı bulunamadı. Lütfen eski kayıtlarınızı kontrol edin.");
+                      }
+                      return;
+                    }
+
+                    try {
+                      await fetch('/api/appointments/update-stage', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                          appointmentId: droppedProc.randevuId,
+                          stageId: targetStageId,
+                          asamaAdi: targetStageLabel
+                        })
+                      });
+                      if (token) await fetchClientProcesses(token);
+                    } catch (err) {
+                      console.error(err);
+                      alert("Aşama güncellenirken bir hata oluştu.");
+                    }
                   };
-                  const c = colorMap[color];
-                  return (
-                    <div key={stageId} className={`bento-card ${c.card} border p-4 flex flex-col gap-3 min-h-[500px]`}>
-                      <div className={`flex justify-between items-center pb-2 border-b ${c.border}`}>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></span>
-                          <h3 className={`text-xs font-black uppercase tracking-wider ${c.title}`}>{label}</h3>
+
+                  return [
+                    { stageId: 1, label: 'Portföy & Randevu Süreci', color: 'sky' },
+                    { stageId: 3, label: 'Anlaşma süreci', color: 'amber' },
+                    { stageId: 4, label: 'Satıldı/Kiralandı', color: 'emerald' },
+                    { stageId: 5, label: 'Vazgeçildi', color: 'rose' },
+                  ].map(({ stageId, label, color }) => {
+                    const stageItems = clientProcesses.filter(p => Number(p.asamaId) === stageId);
+                    const colorMap: Record<string, { card: string; border: string; dot: string; title: string; badge: string; empty: string; itemBorder: string }> = {
+                      sky: { card: 'bg-sky-50 border-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', title: 'text-sky-950', badge: 'bg-sky-200 text-sky-900', empty: 'text-sky-400', itemBorder: 'border-sky-100' },
+                      amber: { card: 'bg-amber-50 border-amber-200', border: 'border-amber-200', dot: 'bg-amber-500', title: 'text-amber-950', badge: 'bg-amber-200 text-amber-900', empty: 'text-amber-300', itemBorder: 'border-amber-100' },
+                      emerald: { card: 'bg-emerald-50 border-emerald-200', border: 'border-emerald-200', dot: 'bg-emerald-500', title: 'text-emerald-950', badge: 'bg-emerald-200 text-emerald-900', empty: 'text-emerald-300', itemBorder: 'border-emerald-100' },
+                      rose: { card: 'bg-rose-50 border-rose-200', border: 'border-rose-200', dot: 'bg-rose-500', title: 'text-rose-950', badge: 'bg-rose-200 text-rose-900', empty: 'text-rose-300', itemBorder: 'border-rose-100' },
+                    };
+                    const c = colorMap[color] || colorMap.sky;
+
+                    return (
+                      <div
+                        key={stageId}
+                        className={`bento-card ${c.card} border p-4 flex flex-col gap-3 min-h-[500px] shadow-sm`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.opacity = '0.7';
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                        }}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.opacity = '1';
+                          const procIdStr = e.dataTransfer.getData('text/plain');
+                          if (!procIdStr) return;
+                          await handleProcessUpdate(procIdStr, stageId, label);
+                        }}
+                      >
+                        <div className={`flex justify-between items-center pb-2 border-b ${c.border}`}>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`}></span>
+                            <h3 className={`text-xs font-black uppercase tracking-wider ${c.title}`}>{label}</h3>
+                          </div>
+                          <span className={`text-[10px] font-extrabold ${c.badge} px-2 py-0.5 rounded-full`}>
+                            {stageItems.length}
+                          </span>
                         </div>
-                        <span className={`text-[10px] font-extrabold ${c.badge} px-2 py-0.5 rounded-full`}>
-                          {stageItems.length}
-                        </span>
-                      </div>
 
-                      <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
-                        {stageItems.map(proc => (
-                          <div
-                            key={proc.id}
-                            className={`p-3 bg-white rounded-2xl border ${c.itemBorder} shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col gap-1.5 group`}
-                          >
-                            <div className="flex justify-between items-start">
-                              <span className="text-xs font-black text-charcoal">
-                                {proc.portfoyTip || '—'} {proc.portfoyTur ? `· ${proc.portfoyTur}` : ''}
-                              </span>
-                              <span className={`text-[9px] font-extrabold px-1.5 rounded-full border ${c.badge} border-transparent`}>
-                                {proc.asamaAdi}
-                              </span>
+                        <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[650px] custom-scrollbar pr-1 mt-1">
+                          {stageItems.map(proc => (
+                            <div
+                              key={proc.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', proc.id.toString());
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onClick={() => {
+                                const relatedApp = appointments.find(a => a.id === proc.randevuId);
+                                if (relatedApp) {
+                                  setSelectedAppointmentToAction(relatedApp);
+                                  setAppActionType(relatedApp.portfoyTur === 'KIRALIK' ? 'KIRALANDI' : 'SATILDI');
+                                  const fiyatNum = Number(relatedApp.portfoyFiyat || 0);
+                                  setAppActionBedel(fiyatNum.toString());
+                                  setAppActionCiro(relatedApp.portfoyTur === 'SATILIK' ? (fiyatNum * 0.02).toString() : fiyatNum.toString());
+                                  setSelectedStageId(Number(proc.asamaId));
+                                  setShowAppointmentActionModal(true);
+                                } else {
+                                  alert("Bu işlem için ilişkili randevu kaydı bulunamadı.");
+                                }
+                              }}
+                              className={`p-3 bg-white rounded-2xl border ${c.itemBorder} shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing flex flex-col gap-1.5 group relative`}
+                            >
+                              <div className="absolute top-2 right-2 text-zinc-400 group-hover:text-charcoal transition-colors">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDetailsMenuId(openDetailsMenuId === proc.id ? null : proc.id);
+                                    setOpenProcessMenuId(null);
+                                  }}
+                                  className="p-1 hover:bg-zinc-100 rounded-lg cursor-pointer border-none bg-transparent flex items-center justify-center"
+                                >
+                                  <ChevronDown size={16} className={`transition-transform duration-200 ${openDetailsMenuId === proc.id ? 'rotate-180' : ''}`} />
+                                </button>
+                              </div>
+
+                              <div className="pr-8">
+                                <span className="text-xs font-black text-charcoal block truncate">
+                                  {proc.portfoyBaslik || proc.portfoyIlce + ' - ' + proc.portfoyTip || 'Portföy Bilinmiyor'}
+                                </span>
+                                <span className="text-[10px] text-zinc-500 font-bold block mt-0.5">
+                                  {proc.portfoyTip} {proc.portfoyTur ? `· ${proc.portfoyTur}` : ''}
+                                </span>
+                              </div>
+
+                              <div className="text-[10px] text-zinc-600 bg-zinc-50 p-2 rounded-xl border border-zinc-100 flex flex-col gap-1 mt-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-zinc-500">Müşteri:</span>
+                                  <span className="font-bold text-charcoal truncate ml-1">{proc.musteri || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-zinc-500">Ev Sahibi:</span>
+                                  <span className="font-bold text-zinc-700 truncate ml-1">{proc.evSahibi || '—'}</span>
+                                </div>
+                              </div>
+
+
+
+                              {openDetailsMenuId === proc.id && (
+                                <div className="mt-2 w-full bg-zinc-50 border border-zinc-200 shadow-inner rounded-xl p-3 z-10 animate-in fade-in slide-in-from-top-2 text-xs flex flex-col gap-2">
+                                  <div className="flex justify-between items-center mb-1 border-b border-zinc-200 pb-2">
+                                    <span className="font-black uppercase text-zinc-500 text-[9px]">Süreç Detayları</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setOpenDetailsMenuId(null); }} className="p-1 hover:bg-zinc-200 rounded-full text-zinc-500 border-none bg-transparent cursor-pointer flex items-center justify-center">
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+
+                                  <div className="flex flex-col gap-1.5">
+                                    <div className="flex justify-between">
+                                      <span className="text-zinc-500 font-semibold text-[10px]">Fiyat:</span>
+                                      <span className="font-bold text-charcoal">{proc.portfoyFiyat ? `${Number(proc.portfoyFiyat).toLocaleString('tr-TR')} ₺` : '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-zinc-500 font-semibold text-[10px]">Danışman:</span>
+                                      <span className="font-bold text-charcoal">{proc.danisman || '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-zinc-500 font-semibold text-[10px]">Müşteri Tel:</span>
+                                      <span className="font-bold text-charcoal">{proc.musteriTelefon || '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between mt-1 pt-2 border-t border-zinc-200/60">
+                                      <span className="text-zinc-400 text-[9px]">Güncelleme:</span>
+                                      <span className="text-zinc-500 text-[9px] font-medium">{proc.guncellemeTarihi ? new Date(proc.guncellemeTarihi).toLocaleDateString('tr-TR') : '—'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-[11px] text-zinc-500 font-medium">
-                              {proc.portfoyIlce || ''}{proc.portfoyIl ? ` / ${proc.portfoyIl}` : ''}
-                              {proc.portfoyFiyat ? ` · ${Number(proc.portfoyFiyat).toLocaleString('tr-TR')} TL` : ''}
-                            </p>
-                            <div className="text-[10px] text-zinc-600 bg-zinc-50 p-1.5 rounded-xl border border-zinc-100 flex justify-between items-center mt-1">
-                              <span>👤 {proc.musteri || '—'}</span>
-                              <span className="font-bold text-zinc-400">{proc.danisman ? `🤝 ${proc.danisman}` : ''}</span>
+                          ))}
+
+                          {stageItems.length === 0 && (
+                            <div className={`py-12 text-center ${c.empty} text-xs font-semibold italic`}>
+                              Bu aşamada aktif kayıt bulunmuyor.
                             </div>
-                          </div>
-                        ))}
-
-                        {stageItems.length === 0 && (
-                          <div className={`py-12 text-center ${c.empty} text-xs font-semibold italic`}>
-                            Bu aşamada aktif kayıt bulunmuyor.
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -7049,17 +7419,26 @@ export default function App() {
         {/* Tab 4: Clients Tab */}
         {activeTab === 'clients' && (
           <div className="flex flex-col gap-6">
-            <div className="bento-card bg-white">
-              <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                <h2 className="text-2xl font-extrabold">Müşterilerim</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowAddClientModal(true)}
-                  className="px-4 py-2.5 bg-charcoal hover:bg-black text-white text-xs font-extrabold rounded-full transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  <Plus size={16} />
-                  <span>Yeni Müşteri Ekle</span>
-                </button>
+            <div className="">
+              <div className="flex flex-wrap justify-between items-center md:items-start mb-6 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Müşterilerim</h2>
+                    <p className="text-xs text-zinc-500 font-medium mt-1">Tüm müşteri ilişkilerinizi ve iletişim kayıtlarınızı yönetin.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddClientModal(true)}
+                    className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none shadow-sm cursor-pointer"
+                  >
+                    <Plus size={14} /> Yeni Müşteri Ekle
+                  </button>
+                </div>
               </div>
 
               {/* Aktif ve Pasif Müşteri Sekme Geçişi */}
@@ -7122,26 +7501,31 @@ export default function App() {
                     </div>
                   ) : (
                     filteredClients.map(c => (
-                      <div key={c.id} className={`p-4 rounded-2xl flex justify-between items-center border transition-all ${c.isActive !== false ? 'bg-cream border-zinc-200' : 'bg-zinc-100/70 border-zinc-200 opacity-80'}`}>
-                        <div>
-                          <div className="flex gap-2 items-center flex-wrap">
-                            <strong className="font-extrabold text-sm">{c.ad} {c.soyad}</strong>
-                            <span className={`text-[9px] font-extrabold px-2 py-0.5 border border-charcoal rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-[#BBF7D0]' :
-                              c.musteriTipi === 'KIRACI' ? 'bg-[#BAE6FD]' :
-                                c.musteriTipi === 'SATICI' ? 'bg-[#FBCFE8]' : 'bg-[#FED7AA]'
-                              }`}>
-                              {c.musteriTipi === 'ALICI' ? 'ALICI' :
-                                c.musteriTipi === 'KIRACI' ? 'KİRACI' :
-                                  c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
-                            </span>
+                      <div key={c.id} className={`p-4 rounded-2xl flex justify-between items-center border transition-all group hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-500/50 ${c.isActive !== false ? 'bg-white dark:bg-zinc-100 border-zinc-200 dark:border-zinc-200 shadow-sm' : 'bg-white dark:bg-zinc-100 border-zinc-200 dark:border-zinc-200 opacity-70'}`}>
+                        <div className="flex items-center sm:items-start gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+                          <div className="w-10 h-10 rounded-full bg-zinc-50 dark:bg-zinc-200 border border-zinc-100 dark:border-zinc-200 flex items-center justify-center text-zinc-400 dark:text-zinc-400 shrink-0 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/20 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:border-emerald-100 dark:group-hover:border-emerald-500/30 transition-colors">
+                            <User size={18} />
                           </div>
-                          <span className="text-xs text-zinc-500 block mt-1">Telefon: {c.telefon}</span>
-                          {c.musteriTipi !== 'SATICI' && c.musteriTipi !== 'KIRAYA_VEREN' && c.butce > 0 && (
-                            <span className="text-xs text-indigo-600 font-semibold block mt-0.5">Bütçe: {c.butce.toLocaleString('tr-TR')} TL</span>
-                          )}
+                          <div>
+                            <div className="flex gap-2 items-center flex-wrap">
+                              <strong className="font-extrabold text-sm text-charcoal dark:text-zinc-950 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{c.ad} {c.soyad}</strong>
+                              <span className={`text-[9px] font-extrabold text-slate-900 px-2 py-0.5 border border-slate-900/50 rounded-full uppercase ${c.musteriTipi === 'ALICI' ? 'bg-pastelGreen' :
+                                c.musteriTipi === 'KIRACI' ? 'bg-pastelBlue' :
+                                  c.musteriTipi === 'SATICI' ? 'bg-pastelPink' : 'bg-[#FED7AA]'
+                                }`}>
+                                {c.musteriTipi === 'ALICI' ? 'ALICI' :
+                                  c.musteriTipi === 'KIRACI' ? 'KİRACI' :
+                                    c.musteriTipi === 'SATICI' ? 'SATICI' : 'KİRAYA VEREN'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-zinc-500 block mt-1">Telefon: {c.telefon}</span>
+                            {c.musteriTipi !== 'SATICI' && c.musteriTipi !== 'KIRAYA_VEREN' && c.butce > 0 && (
+                              <span className="text-xs text-indigo-600 font-semibold block mt-0.5">Bütçe: {c.butce.toLocaleString('tr-TR')} TL</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-2 shrink-0">
-                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-pastelYellow">
+                          <span className="text-xs font-bold text-slate-900 px-3 py-1 rounded-full bg-pastelYellow">
                             {c.tip}
                           </span>
                           <button
@@ -7166,10 +7550,10 @@ export default function App() {
             {showAddClientModal && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full relative border-none shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-center mb-1 flex-wrap gap-3">
                     <div>
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Müşteri İşlemleri</span>
-                      <h2 className="text-2xl font-extrabold text-charcoal mt-0.5">Yeni Müşteri Ekle</h2>
+                      <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-0.5">Yeni Müşteri Ekle</h2>
                     </div>
                     <button
                       type="button"
@@ -7278,8 +7662,8 @@ export default function App() {
             <div className="bento-card bg-zinc-900 text-white border-4 border-zinc-800 p-6 md:p-8 rounded-3xl shadow-xl">
 
               {/* Header Bar */}
-              <div className="flex justify-between items-center mb-6 pb-3 border-b border-zinc-800">
-                <h2 className="text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
+              <div className="flex justify-between items-center mb-6 pb-3 border-b border-zinc-800 flex-wrap gap-3">
+                <h2 className="text-lg sm:text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10B981]" />
                   Komisyon Payı Hesap Makinesi
                 </h2>
@@ -7297,7 +7681,7 @@ export default function App() {
                     <div className="relative">
                       <input
                         type="number"
-                        className="w-full text-base p-3.5 rounded-2xl pl-11 bg-[#0F172A] border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-bold text-emerald-400 shadow-inner"
+                        className="w-full text-base p-3.5 rounded-2xl pl-11 bg-zinc-800 border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-bold text-emerald-400 shadow-inner"
                         value={grossCommission}
                         onChange={e => setGrossCommission(Number(e.target.value))}
                       />
@@ -7310,7 +7694,7 @@ export default function App() {
                       Çalışma Senaryosu
                     </label>
                     <select
-                      className="w-full text-sm p-3.5 rounded-2xl bg-[#0F172A] border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-semibold text-zinc-200 cursor-pointer shadow-inner"
+                      className="w-full text-sm p-3.5 rounded-2xl bg-zinc-800 border border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors font-mono font-semibold text-zinc-200 cursor-pointer shadow-inner"
                       value={calcScenario}
                       onChange={e => setCalcScenario(e.target.value as any)}
                     >
@@ -7322,7 +7706,7 @@ export default function App() {
                 </div>
 
                 {/* Senaryo Detay Metni */}
-                <div className="p-4 rounded-2xl bg-[#0F172A] border border-zinc-800 text-xs font-mono flex flex-col gap-1.5 leading-relaxed text-zinc-300 shadow-inner">
+                <div className="p-4 rounded-2xl bg-zinc-800 border border-zinc-800 text-xs font-mono flex flex-col gap-1.5 leading-relaxed text-zinc-300 shadow-inner">
                   {calcScenario === 'A' && (
                     <p>**Senaryo A:** Portföy de alıcı da size aittir. Brüt komisyondan Yetkili tarafından belirlenen <span className="text-emerald-400 font-bold">%{commSettings.aOfis} Ofis Payı</span> kesildikten sonra kalanın tamamı (<span className="text-emerald-400 font-bold">%{commSettings.aDanisman}</span>) sizin hakedişinizdir.</p>
                   )}
@@ -7340,7 +7724,7 @@ export default function App() {
                     HESAPLANAN PAYLAŞIM SONUÇLARI
                   </h3>
 
-                  <div className="p-5 rounded-2xl bg-[#0F172A] border border-zinc-800 shadow-inner flex flex-col gap-4 font-mono">
+                  <div className="p-5 rounded-2xl bg-zinc-800 border border-zinc-800 shadow-inner flex flex-col gap-4 font-mono">
                     <div className="flex justify-between items-center text-xs pb-3 border-b border-zinc-800 text-zinc-400 flex-wrap gap-1">
                       <span>Toplam Komisyon Bedeli:</span>
                       <strong className="text-white text-base tracking-wider font-bold">{grossCommission.toLocaleString('tr-TR')} TL</strong>
@@ -7413,17 +7797,24 @@ export default function App() {
           <div className="flex flex-col gap-6 w-full">
 
             {/* Dashboard Header */}
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-1">OFİS YÖNETİM PANELİ</span>
-                <h2 className="text-2xl font-extrabold text-slate-800">Finansal & Performans Dashboard</h2>
+            <div className="flex flex-wrap justify-between items-center md:items-start mb-2 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Ciro & Performans</h2>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">Ofis geneli finansal ve performans metriklerini detaylı analiz edin.</p>
+                </div>
               </div>
-              <button
-                onClick={() => token && fetchDashboardData(token)}
-                className="px-4 py-2 bg-white rounded-full text-xs font-bold text-slate-600 hover:bg-zinc-100 transition-colors border border-zinc-200 cursor-pointer"
-              >
-                ↻ Yenile
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => token && fetchDashboardData(token)}
+                  className="px-5 py-2 bg-white border border-zinc-200 text-charcoal rounded-full text-xs font-bold hover:bg-zinc-50 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  ↻ Yenile
+                </button>
+              </div>
             </div>
 
             {dashboardLoading ? (
@@ -7437,7 +7828,7 @@ export default function App() {
 
                   {/* KPI 1: Aylık Ofis Cirosu */}
                   <div className="bg-white rounded-3xl p-6 border-none shadow-none">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
                         <Banknote size={20} className="text-emerald-700" />
                       </div>
@@ -7450,15 +7841,15 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Aylık Ofis Cirosu</p>
-                    <p className="text-2xl font-extrabold text-slate-800">
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Aylık Ofis Cirosu</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-charcoal">
                       {dashboardData.aylikCiro.toLocaleString('tr-TR')} ₺
                     </p>
                   </div>
 
                   {/* KPI 2: Yeni Müşteri */}
                   <div className="bg-white rounded-3xl p-6 border-none shadow-none">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center">
                         <UserPlus size={20} className="text-blue-700" />
                       </div>
@@ -7471,37 +7862,37 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Yeni Müşteri</p>
-                    <p className="text-2xl font-extrabold text-slate-800">
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Yeni Müşteri</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-charcoal">
                       {dashboardData.yeniMusteriSayisi}
                     </p>
                   </div>
 
                   {/* KPI 3: Kapanan İşlem */}
                   <div className="bg-white rounded-3xl p-6 border-none shadow-none">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
                         <BadgeCheck size={20} className="text-amber-700" />
                       </div>
                     </div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kapanan İşlem</p>
-                    <p className="text-2xl font-extrabold text-slate-800">
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Kapanan İşlem</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-charcoal">
                       {dashboardData.kapananIslemSayisi}
                     </p>
                   </div>
 
                   {/* KPI 4: Aktif İlan Stoğu */}
                   <div className="bg-white rounded-3xl p-6 border-none shadow-none">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
                         <Building2 size={20} className="text-purple-700" />
                       </div>
-                      <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                      <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 whitespace-nowrap">
                         {dashboardData.aktifIlanAdet} ilan
                       </span>
                     </div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Aktif İlan Stoğu</p>
-                    <p className="text-2xl font-extrabold text-slate-800">
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Aktif İlan Stoğu</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-charcoal">
                       {dashboardData.aktifIlanBedeli.toLocaleString('tr-TR')} ₺
                     </p>
                   </div>
@@ -7512,8 +7903,8 @@ export default function App() {
 
                   {/* Sol: Aylık Ciro Trend Grafiği (İnteraktif) */}
                   <div className="lg:col-span-3 bg-white rounded-3xl p-6 border-none shadow-none">
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Aylık Ciro Trendi</p>
-                    <p className="text-lg font-extrabold text-slate-800 mb-4">Son 6 Ay</p>
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Aylık Ciro Trendi</p>
+                    <p className="text-lg font-extrabold text-charcoal mb-4">Son 6 Ay</p>
                     {(() => {
                       const trend = dashboardData.aylikCiroTrend || [];
                       if (trend.length === 0) return <p className="text-xs text-zinc-400 italic">Veri yok</p>;
@@ -7637,8 +8028,8 @@ export default function App() {
 
                   {/* Sağ: Portföy Tipi Dağılımı - İnteraktif Donut */}
                   <div className="lg:col-span-2 bg-white rounded-3xl p-6 border-none shadow-none">
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Portföy Dağılımı</p>
-                    <p className="text-lg font-extrabold text-slate-800 mb-4">Emlak Tipi</p>
+                    <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">Portföy Dağılımı</p>
+                    <p className="text-lg font-extrabold text-charcoal mb-4">Emlak Tipi</p>
                     {(() => {
                       const dist = dashboardData.portfoyTipDagilimi || [];
                       if (dist.length === 0) return <p className="text-xs text-zinc-400 italic">Veri yok</p>;
@@ -7709,15 +8100,15 @@ export default function App() {
                                 <animate attributeName="opacity" from="0" to="1" dur={`${0.3 + i * 0.15}s`} fill="freeze" />
                               </path>
                             ))}
-                            <text x={cx} y={cy - 2} textAnchor="middle" className="text-[9px] font-extrabold donut-center-val" fill="#334155" style={{ transition: 'all 0.2s' }}>{total}</text>
-                            <text x={cx} y={cy + 5} textAnchor="middle" className="text-[3.5px] font-bold donut-center-label" fill="#94a3b8" style={{ transition: 'all 0.2s' }}>Toplam</text>
+                            <text x={cx} y={cy - 2} textAnchor="middle" className="text-[9px] font-extrabold donut-center-val text-charcoal" fill="currentColor" style={{ transition: 'all 0.2s' }}>{total}</text>
+                            <text x={cx} y={cy + 5} textAnchor="middle" className="text-[3.5px] font-bold donut-center-label text-charcoal opacity-70" fill="currentColor" style={{ transition: 'all 0.2s' }}>Toplam</text>
                           </svg>
                           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">
                             {slices.map((s: any, i: number) => (
                               <div key={`legend-${i}`} className="flex items-center gap-1.5 cursor-default group">
                                 <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125" style={{ background: s.color }}></span>
-                                <span className="text-[11px] font-semibold text-slate-600 group-hover:text-slate-800 transition-colors">{s.tip}</span>
-                                <span className="text-[10px] text-gray-400 font-bold">({s.pct}%)</span>
+                                <span className="text-[11px] font-semibold text-charcoal/70 dark:text-zinc-300 group-hover:text-charcoal dark:group-hover:text-white transition-colors">{s.tip}</span>
+                                <span className="text-[10px] text-charcoal/50 dark:text-zinc-400 font-bold">({s.pct}%)</span>
                               </div>
                             ))}
                           </div>
@@ -7729,17 +8120,17 @@ export default function App() {
 
                 {/* ═══ BÖLÜM 3: DANIŞMAN LİDERLİK TABLOSU ═══ */}
                 <div className="bg-white rounded-3xl p-6 border-none shadow-none">
-                  <div className="flex justify-between items-center mb-5">
+                  <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
                     <div>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">EKİP PERFORMANSI</p>
-                      <p className="text-lg font-extrabold text-slate-800">Danışman Liderlik Tablosu</p>
+                      <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider mb-1">EKİP PERFORMANSI</p>
+                      <p className="text-lg font-extrabold text-charcoal">Danışman Liderlik Tablosu</p>
                     </div>
                     <Trophy size={22} className="text-amber-500" />
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b-2 border-slate-100 text-[11px] font-extrabold text-gray-400 uppercase">
+                        <tr className="border-b-2 border-slate-100 text-[11px] font-extrabold text-charcoal/50 uppercase">
                           <th className="pb-3 w-8">#</th>
                           <th className="pb-3 min-w-[160px]">Danışman</th>
                           <th className="pb-3 text-center min-w-[100px]">Aktif Portföy</th>
@@ -7759,30 +8150,30 @@ export default function App() {
                           dashboardData.danismanPerformans.map((d: any, idx: number) => (
                             <tr
                               key={`lb-${d.id}`}
-                              className="border-b border-slate-100 hover:bg-[#FDF8F2] transition-colors"
+                              className="border-b border-slate-100 hover:bg-zinc-100 transition-colors cursor-pointer"
                             >
-                              <td className="py-3.5 text-sm font-extrabold text-slate-800">
+                              <td className="py-3.5 text-sm font-extrabold text-charcoal">
                                 {idx === 0 ? (
                                   <span className="w-6 h-6 inline-flex items-center justify-center bg-amber-100 rounded-full">
                                     <Trophy size={13} className="text-amber-600" />
                                   </span>
                                 ) : (
-                                  <span className="text-gray-400">{idx + 1}</span>
+                                  <span className="text-charcoal/50">{idx + 1}</span>
                                 )}
                               </td>
                               <td className="py-3.5">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-extrabold text-slate-600">
+                                  <div className="w-8 h-8 rounded-full bg-charcoal/10 flex items-center justify-center text-xs font-extrabold text-charcoal/70">
                                     {d.ad?.charAt(0)}{d.soyad?.charAt(0)}
                                   </div>
-                                  <span className="text-sm font-bold text-slate-800">{d.ad} {d.soyad}</span>
+                                  <span className="text-sm font-bold text-charcoal">{d.ad} {d.soyad}</span>
                                 </div>
                               </td>
                               <td className="py-3.5 text-center">
-                                <span className="text-sm font-extrabold text-slate-700">{d.aktifPortfoySayisi}</span>
+                                <span className="text-sm font-extrabold text-charcoal/90">{d.aktifPortfoySayisi}</span>
                               </td>
                               <td className="py-3.5 text-center">
-                                <span className="text-sm font-extrabold text-slate-700">{d.buAyKapananIslem}</span>
+                                <span className="text-sm font-extrabold text-charcoal/90">{d.buAyKapananIslem}</span>
                               </td>
                               <td className="py-3.5 text-center">
                                 <span className="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{Math.round(d.performansPuani || 0)}</span>
@@ -7818,224 +8209,241 @@ export default function App() {
 
         {/* Tab 7: Team / Consultant Management (YETKILI only) */}
         {activeTab === 'team' && user?.rol === 'YETKILI' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            <div className="bento-card bg-white">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-extrabold">Ofis Çalışan Yönetimi</h2>
-                <span className={`px-3 py-1 border border-charcoal rounded-full text-xs font-bold ${packageType === 'BASIC' ? 'bg-[#FEF08A]' : 'bg-[#BBF7D0]'
-                  }`}>
-                  Paket: {packageType}
-                </span>
-              </div>
-
-              {empError && (
-                <div className="p-4 rounded-2xl bg-red-100 text-red-900 text-xs font-semibold mb-4 flex items-center gap-2 border-none">
-                  <AlertTriangle size={18} />
-                  <span>{empError}</span>
+          <>
+            {/* Page Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 w-full">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                  <Users size={20} />
                 </div>
-              )}
-
-              {/* Add Employee Form */}
-              <form onSubmit={handleAddEmployee} className="flex flex-col gap-3 mb-6">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    placeholder="Ad Soyad"
-                    className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
-                    value={newEmpName}
-                    onChange={e => setNewEmpName(e.target.value)}
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="E-posta"
-                    className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
-                    value={newEmpEmail}
-                    onChange={e => setNewEmpEmail(e.target.value)}
-                    required
-                  />
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Ekip Yönetimi</h2>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">Ofisinizdeki gayrimenkul danışmanlarını ekleyin ve yönetin.</p>
                 </div>
-                <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-none cursor-pointer">
-                  Yeni Çalışan Ekle
-                </button>
-              </form>
-
-              {/* Active Consultants list */}
-              <h4 className="font-extrabold text-sm mb-3">Aktif Danışmanlar ({employees.length} / 4)</h4>
-              <div className="flex flex-col gap-2">
-                {employees.map(emp => (
-                  <div
-                    key={emp.id}
-                    onClick={() => setSelectedEmployee(emp)}
-                    className={`p-3 rounded-xl cursor-pointer transition-colors flex justify-between items-center text-xs border-none ${selectedEmployee?.id === emp.id ? 'bg-[#FEF08A]' : 'bg-cream hover:bg-zinc-100'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-[10px] shrink-0 overflow-hidden border border-transparent shadow-sm">
-                        {emp.profilFoto ? (
-                          <img src={emp.profilFoto} alt="Profil" className="w-full h-full object-cover" />
-                        ) : (
-                          <>{emp.ad ? emp.ad[0] : 'C'}{emp.soyad ? emp.soyad[0] : 'Y'}</>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
-                          <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-[#BBF7D0] text-emerald-950' :
-                            emp.durum === 'Sahada' ? 'bg-[#FEF08A] text-amber-950' :
-                              'bg-zinc-200 text-zinc-700'
-                            }`}>
-                            {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
-                          </span>
-                        </div>
-                        <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
-                      <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi || 0} Sözleşme</span>
-                    </div>
-                  </div>
-                ))}
               </div>
+              <span className={`px-4 py-1.5 border border-slate-900/50 shadow-sm rounded-full text-xs font-extrabold uppercase tracking-wide text-slate-900 ${packageType === 'BASIC' ? 'bg-pastelYellow' : 'bg-pastelGreen'
+                }`}>
+                {packageType} PAKET
+              </span>
             </div>
 
-            {/* Detail Card or Subscription */}
-            {selectedEmployee ? (
-              <div className="bento-card bg-white flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex gap-4 items-center">
-                      <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shrink-0 overflow-hidden border border-transparent shadow-sm">
-                        {selectedEmployee.profilFoto ? (
-                          <img src={selectedEmployee.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+
+              <div className="bento-card bg-white">
+
+                {empError && (
+                  <div className="p-4 rounded-2xl bg-red-100 text-red-900 text-xs font-semibold mb-4 flex items-center gap-2 border-none">
+                    <AlertTriangle size={18} />
+                    <span>{empError}</span>
+                  </div>
+                )}
+
+                {/* Add Employee Form */}
+                <form onSubmit={handleAddEmployee} className="flex flex-col gap-3 mb-6">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ad Soyad"
+                      className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
+                      value={newEmpName}
+                      onChange={e => setNewEmpName(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="email"
+                      placeholder="E-posta"
+                      className="flex-1 min-w-0 text-xs p-2 border-2 border-charcoal rounded-full bg-cream focus:outline-none"
+                      value={newEmpEmail}
+                      onChange={e => setNewEmpEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-all shadow-none cursor-pointer">
+                    Yeni Çalışan Ekle
+                  </button>
+                </form>
+
+                {/* Active Consultants list */}
+                <h4 className="font-extrabold text-sm mb-3">Aktif Danışmanlar ({employees.length} / 4)</h4>
+                <div className="flex flex-col gap-2">
+                  {employees.map(emp => (
+                    <div
+                      key={emp.id}
+                      onClick={() => setSelectedEmployee(emp)}
+                      className={`p-3 rounded-xl cursor-pointer transition-colors flex justify-between items-center text-xs border-none ${selectedEmployee?.id === emp.id ? 'bg-pastelYellow' : 'bg-cream hover:bg-zinc-100'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-[10px] shrink-0 overflow-hidden border border-transparent shadow-sm">
+                          {emp.profilFoto ? (
+                            <img src={emp.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                          ) : (
+                            <>{emp.ad ? emp.ad[0] : 'C'}{emp.soyad ? emp.soyad[0] : 'Y'}</>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong>{emp.ad || ''} {emp.soyad || ''}</strong>
+                            <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${emp.durum === 'Ofiste' ? 'bg-pastelGreen text-emerald-950' :
+                              emp.durum === 'Sahada' ? 'bg-pastelYellow text-amber-950' :
+                                'bg-zinc-200 text-zinc-700'
+                              }`}>
+                              {emp.durum === 'Ofiste' ? 'Ofiste' : emp.durum === 'Sahada' ? 'Sahada' : 'Pasif'}
+                            </span>
+                          </div>
+                          <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
+                        <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi || 0} Sözleşme</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Detail Card or Subscription */}
+              {selectedEmployee ? (
+                <div className="bento-card bg-white flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex gap-4 items-center">
+                        <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shrink-0 overflow-hidden border border-transparent shadow-sm">
+                          {selectedEmployee.profilFoto ? (
+                            <img src={selectedEmployee.profilFoto} alt="Profil" className="w-full h-full object-cover" />
+                          ) : (
+                            <>{selectedEmployee.ad ? selectedEmployee.ad[0] : 'C'}{selectedEmployee.soyad ? selectedEmployee.soyad[0] : 'Y'}</>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Danışman Detayı</span>
+                          <h3 className="text-lg sm:text-xl font-extrabold text-charcoal mt-1">{selectedEmployee.ad} {selectedEmployee.soyad}</h3>
+                        </div>
+                      </div>
+                      <button className="p-1 border border-charcoal rounded-full hover:bg-zinc-100" onClick={() => setSelectedEmployee(null)}>
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-3 text-xs mb-6">
+                      <div className="flex justify-between py-2 border-b border-zinc-200">
+                        <span className="text-zinc-500">E-posta:</span>
+                        <strong className="font-semibold">{selectedEmployee.eposta}</strong>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-zinc-200">
+                        <span className="text-zinc-500">Rol:</span>
+                        <strong className="font-semibold">{selectedEmployee.rol === 'YETKILI' ? 'Ofis Yetkilisi (Broker)' : 'Gayrimenkul Uzmanı'}</strong>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-zinc-200 flex-wrap gap-3">
+                        <span className="text-zinc-500">Durum:</span>
+                        <span className={`px-3 py-1 text-xs font-bold rounded-full border ${selectedEmployee.durum === 'Ofiste'
+                          ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                          : selectedEmployee.durum === 'Sahada'
+                            ? 'bg-amber-100 text-amber-950 border-amber-300'
+                            : 'bg-zinc-100 text-zinc-700 border-zinc-300'
+                          }`}>
+                          {selectedEmployee.durum === 'Ofiste' ? 'Ofiste 🏢' : selectedEmployee.durum === 'Sahada' ? 'Sahada / Ofiste Değil 🏠' : (selectedEmployee.durum || 'Pasif')}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 p-4 rounded-2xl bg-cream border-none leading-relaxed">
+                        <span className="text-[10px] text-zinc-500 font-bold block mb-1">GİRİŞ ŞİFRESİ BİLGİSİ:</span>
+                        {selectedEmployee.ilkGirisMi ? (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-indigo-700 font-extrabold text-sm">
+                              <Lock size={14} />
+                              <span>Geçici Şifre: Homey123!</span>
+                            </div>
+                            <span className="text-[10px] text-zinc-500">Danışman henüz ilk girişini yapmamıştır, geçici şifre geçerlidir.</span>
+                          </div>
                         ) : (
-                          <>{selectedEmployee.ad ? selectedEmployee.ad[0] : 'C'}{selectedEmployee.soyad ? selectedEmployee.soyad[0] : 'Y'}</>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold text-sm">
+                              <Check size={14} />
+                              <span>Şifre Özel Olarak Güncellendi</span>
+                            </div>
+                            <span className="text-[10px] text-zinc-500">Güvenlik gereği, kullanıcının kendi belirlediği şifre şifrelenmiş olarak tutulur ve görüntülenemez.</span>
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Danışman Detayı</span>
-                        <h3 className="text-xl font-extrabold text-charcoal mt-1">{selectedEmployee.ad} {selectedEmployee.soyad}</h3>
-                      </div>
                     </div>
-                    <button className="p-1 border border-charcoal rounded-full hover:bg-zinc-100" onClick={() => setSelectedEmployee(null)}>
-                      <X size={14} />
-                    </button>
                   </div>
 
-                  <div className="flex flex-col gap-3 text-xs mb-6">
-                    <div className="flex justify-between py-2 border-b border-zinc-200">
-                      <span className="text-zinc-500">E-posta:</span>
-                      <strong className="font-semibold">{selectedEmployee.eposta}</strong>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-zinc-200">
-                      <span className="text-zinc-500">Rol:</span>
-                      <strong className="font-semibold">{selectedEmployee.rol === 'YETKILI' ? 'Ofis Yetkilisi (Broker)' : 'Gayrimenkul Uzmanı'}</strong>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-zinc-200">
-                      <span className="text-zinc-500">Durum:</span>
-                      <span className={`px-3 py-1 text-xs font-bold rounded-full border ${selectedEmployee.durum === 'Ofiste'
-                        ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                        : selectedEmployee.durum === 'Sahada'
-                          ? 'bg-amber-100 text-amber-950 border-amber-300'
-                          : 'bg-zinc-100 text-zinc-700 border-zinc-300'
-                        }`}>
-                        {selectedEmployee.durum === 'Ofiste' ? 'Ofiste 🏢' : selectedEmployee.durum === 'Sahada' ? 'Sahada / Ofiste Değil 🏠' : (selectedEmployee.durum || 'Pasif')}
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => handleResetEmployeePassword(selectedEmployee.id)}
+                      className="w-full py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors"
+                    >
+                      Şifreyi "Homey123!" Olarak Sıfırla
+                    </button>
+                    <button
+                      onClick={() => setSelectedEmployee(null)}
+                      className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors"
+                    >
+                      Kapat
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Default Consultant Info Card when no employee is selected */
+                <div className="bento-card bg-white flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest block">Danışman Yönetimi</span>
+                        <h3 className="text-lg sm:text-xl font-extrabold text-charcoal mt-0.5">Ofis Ekip Özeti</h3>
+                      </div>
+                      <span className="px-3 py-1 bg-pastelYellow border border-slate-900/50 rounded-full text-xs font-extrabold text-slate-900 uppercase">
+                        {employees.length} Aktif Uzman
                       </span>
                     </div>
 
-                    <div className="mt-4 p-4 rounded-2xl bg-cream border-none leading-relaxed">
-                      <span className="text-[10px] text-zinc-500 font-bold block mb-1">GİRİŞ ŞİFRESİ BİLGİSİ:</span>
-                      {selectedEmployee.ilkGirisMi ? (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 text-indigo-700 font-extrabold text-sm">
-                            <Lock size={14} />
-                            <span>Geçici Şifre: Homey123!</span>
-                          </div>
-                          <span className="text-[10px] text-zinc-500">Danışman henüz ilk girişini yapmamıştır, geçici şifre geçerlidir.</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold text-sm">
-                            <Check size={14} />
-                            <span>Şifre Özel Olarak Güncellendi</span>
-                          </div>
-                          <span className="text-[10px] text-zinc-500">Güvenlik gereği, kullanıcının kendi belirlediği şifre şifrelenmiş olarak tutulur ve görüntülenemez.</span>
-                        </div>
-                      )}
+                    <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+                      Sol taraftaki listeden bir danışman seçerek detaylarını inceleyebilir, şifresini sıfırlayabilir veya performansını takip edebilirsiniz.
+                    </p>
+
+                    <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 text-xs border-none mb-4">
+                      <div className="flex justify-between items-center flex-wrap gap-3">
+                        <span>Mevcut Danışman Sayısı:</span>
+                        <strong className="font-extrabold">{employees.length} Kullanıcı</strong>
+                      </div>
+                      <div className="flex justify-between items-center flex-wrap gap-3">
+                        <span>Mevcut Lisans Limiti:</span>
+                        <strong className="font-extrabold text-indigo-700">
+                          {subInfo?.mevcutPaket?.calisanKotasi ? `${subInfo.mevcutPaket.calisanKotasi} Kişi (BASIC)` : 'Sınırsız (PREMIUM)'}
+                        </strong>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2">
                   <button
-                    onClick={() => handleResetEmployeePassword(selectedEmployee.id)}
-                    className="w-full py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors"
+                    onClick={() => setActiveTab('subscription')}
+                    className="w-full py-2.5 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none"
                   >
-                    Şifreyi "Homey123!" Olarak Sıfırla
-                  </button>
-                  <button
-                    onClick={() => setSelectedEmployee(null)}
-                    className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors"
-                  >
-                    Kapat
+                    Abonelik ve Paket Detaylarını Gör →
                   </button>
                 </div>
-              </div>
-            ) : (
-              /* Default Consultant Info Card when no employee is selected */
-              <div className="bento-card bg-white flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest block">Danışman Yönetimi</span>
-                      <h3 className="text-xl font-extrabold text-charcoal mt-0.5">Ofis Ekip Özeti</h3>
-                    </div>
-                    <span className="px-3 py-1 bg-pastelYellow border border-charcoal rounded-full text-xs font-extrabold uppercase">
-                      {employees.length} Aktif Uzman
-                    </span>
-                  </div>
+              )}
 
-                  <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-                    Sol taraftaki listeden bir danışman seçerek detaylarını inceleyebilir, şifresini sıfırlayabilir veya performansını takip edebilirsiniz.
-                  </p>
-
-                  <div className="p-4 rounded-2xl bg-cream flex flex-col gap-3 text-xs border-none mb-4">
-                    <div className="flex justify-between items-center">
-                      <span>Mevcut Danışman Sayısı:</span>
-                      <strong className="font-extrabold">{employees.length} Kullanıcı</strong>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Mevcut Lisans Limiti:</span>
-                      <strong className="font-extrabold text-indigo-700">
-                        {subInfo?.mevcutPaket?.calisanKotasi ? `${subInfo.mevcutPaket.calisanKotasi} Kişi (BASIC)` : 'Sınırsız (PREMIUM)'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setActiveTab('subscription')}
-                  className="w-full py-2.5 bg-charcoal text-white text-xs font-extrabold rounded-full hover:bg-black transition-all border-none"
-                >
-                  Abonelik ve Paket Detaylarını Gör →
-                </button>
-              </div>
-            )}
-
-          </div>
+            </div>
+          </>
         )}
 
         {/* Tab 8: Dedicated Subscription & License Management Page (YETKILI only) */}
         {activeTab === 'subscription' && user?.rol === 'YETKILI' && (
-          <div className="bento-card bg-white">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Lisans ve Paket Yönetimi</span>
-                <h2 className="text-2xl font-extrabold text-charcoal mt-1">Abonelik & Lisans Yönetimi</h2>
+          <div className="flex flex-col gap-6 w-full">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Lisans & Abonelik</h2>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">Firmanızın lisans, paket ve abonelik ayarlarını yönetin.</p>
+                </div>
               </div>
-              <span className="px-4 py-1.5 bg-[#FEF08A] border-2 border-charcoal rounded-full text-xs font-extrabold uppercase tracking-wide">
+              <span className="px-4 py-1.5 bg-pastelYellow border-2 border-slate-900/50 rounded-full text-xs font-extrabold uppercase tracking-wide text-slate-900 shadow-sm">
                 {subInfo?.mevcutPaket?.paketAdi || packageType} PAKET
               </span>
             </div>
@@ -8051,7 +8459,7 @@ export default function App() {
                   </p>
 
                   <div className="flex flex-col gap-4">
-                    <div className="flex justify-between items-center text-sm font-extrabold">
+                    <div className="flex justify-between items-center text-sm font-extrabold flex-wrap gap-3">
                       <span className="text-zinc-600">Abonelik Dönemi Kalan Süre:</span>
                       <span className="text-charcoal text-base">{subInfo?.kalanGun ?? 30} Gün</span>
                     </div>
@@ -8064,17 +8472,17 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex justify-between items-center text-xs text-zinc-500 font-semibold">
+                    <div className="flex justify-between items-center text-xs text-zinc-500 font-semibold flex-wrap gap-3">
                       <span>Başlangıç: {subInfo?.mevcutPaket?.baslangicTarihi ? new Date(subInfo.mevcutPaket.baslangicTarihi).toLocaleDateString('tr-TR') : 'Bugün'}</span>
                       <span>Bitiş: {subInfo?.mevcutPaket?.bitisTarihi ? new Date(subInfo.mevcutPaket.bitisTarihi).toLocaleDateString('tr-TR') : '30 Gün Sonra'}</span>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white border-none flex flex-col gap-2 mt-2">
-                      <div className="flex justify-between items-center text-xs">
+                      <div className="flex justify-between items-center text-xs flex-wrap gap-3">
                         <span className="text-zinc-500">Mevcut Ödeme Periyodu:</span>
                         <strong className="font-extrabold">{subInfo?.mevcutPaket?.periyot === 'Yillik' ? 'Yıllık Abonelik' : subInfo?.mevcutPaket?.periyot === 'Aylik' ? 'Aylık Abonelik' : 'Deneme Süreci'}</strong>
                       </div>
-                      <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2">
+                      <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2 flex-wrap gap-3">
                         <span className="text-zinc-500">Mevcut Danışman Kullanımı:</span>
                         <strong className="font-extrabold">{employees.length} / {subInfo?.mevcutPaket?.calisanKotasi ?? (subInfo?.mevcutPaket?.paketAdi === 'Premium' ? 'Sınırsız' : 4)} Kullanıcı</strong>
                       </div>
@@ -8093,8 +8501,8 @@ export default function App() {
 
                   {/* Scheduled Future Package Notification if scheduled */}
                   {subInfo?.gelecekPaket ? (
-                    <div className="p-5 rounded-2xl bg-[#BBF7D0]/60 border-2 border-emerald-600 flex flex-col gap-3">
-                      <div className="flex justify-between items-center">
+                    <div className="p-5 rounded-2xl bg-pastelGreen/60 border-2 border-emerald-600 flex flex-col gap-3">
+                      <div className="flex justify-between items-center flex-wrap gap-3">
                         <span className="text-xs font-extrabold text-emerald-950 uppercase tracking-wide">✓ Gelecek Paket Planlandı</span>
                         <button
                           onClick={handleCancelScheduledChange}
@@ -8134,20 +8542,20 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-3">
                         <div
                           onClick={() => setSchedPaketTipi('BASIC')}
-                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'BASIC' ? 'border-charcoal bg-[#BAE6FD]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'BASIC' ? 'border-slate-900/50 bg-pastelBlue text-slate-900' : 'border-zinc-200 bg-white text-charcoal hover:bg-zinc-100'
                             }`}
                         >
                           <span className="text-xs font-extrabold block">BASIC Paket</span>
-                          <span className="text-[10px] text-zinc-600 block mt-1">4 Danışman Kotası</span>
+                          <span className={`text-[10px] block mt-1 ${schedPaketTipi === 'BASIC' ? 'text-slate-800' : 'text-zinc-500'}`}>4 Danışman Kotası</span>
                         </div>
 
                         <div
                           onClick={() => setSchedPaketTipi('PREMIUM')}
-                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'PREMIUM' ? 'border-charcoal bg-[#BBF7D0]' : 'border-zinc-200 bg-white hover:bg-zinc-100'
+                          className={`p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col justify-between ${schedPaketTipi === 'PREMIUM' ? 'border-slate-900/50 bg-pastelGreen text-slate-900' : 'border-zinc-200 bg-white text-charcoal hover:bg-zinc-100'
                             }`}
                         >
                           <span className="text-xs font-extrabold block">PREMIUM Paket</span>
-                          <span className="text-[10px] text-zinc-600 block mt-1">Sınırsız Danışman</span>
+                          <span className={`text-[10px] block mt-1 ${schedPaketTipi === 'PREMIUM' ? 'text-slate-800' : 'text-zinc-500'}`}>Sınırsız Danışman</span>
                         </div>
                       </div>
 
@@ -8171,9 +8579,9 @@ export default function App() {
           <div className="bento-card bg-zinc-900 text-white border-4 border-zinc-800 p-6 md:p-8 rounded-3xl shadow-xl">
             <div className="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-zinc-800 gap-4">
               <div>
-                <h2 className="text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-extrabold tracking-wider text-zinc-100 uppercase flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10B981]" />
-                  Komisyon & Finansal Ayarlar
+                  Komisyon Ayarları
                 </h2>
                 <p className="text-xs text-zinc-400 font-mono mt-1">Firmanıza özel satış, kiralama, ofis içi ve dışı komisyon paylaşımlarını yönetin.</p>
               </div>
@@ -8219,12 +8627,12 @@ export default function App() {
                 <div className="flex flex-col gap-6">
                   {/* Sistem & Güvenlik Ayarları */}
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Sistem & Güvenlik Ayarları</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono mb-6">
-                      <div className="flex items-center justify-between p-4 hover:bg-zinc-800/40 transition-colors">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-hidden font-mono mb-6">
+                      <div className="flex items-center justify-between p-4 hover:bg-zinc-800/40 transition-colors flex-wrap gap-3">
                         <div>
                           <h4 className="font-bold text-white mb-1">Portföylerde Yetkilendirme Sözleşmesi Zorunlu Olsun Mu?</h4>
                           <p className="text-xs text-zinc-400">Aktif edildiğinde, sözleşmesi eksik olan portföylerin yayınlanması ve bu portföylere randevu oluşturulması engellenir.</p>
@@ -8244,12 +8652,12 @@ export default function App() {
 
                   {/* Kiralama Parametreleri Tablosu */}
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Kiralama Parametreleri</span>
                       <span className="text-[11px] text-zinc-500 font-normal">Yasal & Genel Standartlar</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-x-auto overflow-y-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
@@ -8271,7 +8679,7 @@ export default function App() {
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KiralamaKomisyonOrani}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKomisyonOrani: Number(e.target.value) })}
                                 />
@@ -8289,7 +8697,7 @@ export default function App() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <select
-                                className="text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
+                                className="text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
                                 value={firmaSettings.KiralamaDepozitoSiniri}
                                 onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaDepozitoSiniri: Number(e.target.value) })}
                               >
@@ -8311,7 +8719,7 @@ export default function App() {
                               <div className="flex items-center justify-end gap-2">
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KiralamaPesinKira}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaPesinKira: Number(e.target.value) })}
                                 />
@@ -8329,7 +8737,7 @@ export default function App() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <select
-                                className="text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
+                                className="text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-200 font-mono focus:outline-none focus:border-emerald-500 shadow-inner cursor-pointer"
                                 value={firmaSettings.KiralamaKaporaTipi}
                                 onChange={e => setFirmaSettings({ ...firmaSettings, KiralamaKaporaTipi: e.target.value })}
                               >
@@ -8345,12 +8753,12 @@ export default function App() {
 
                   {/* Satış Parametreleri Tablosu */}
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Satış Parametreleri</span>
                       <span className="text-[11px] text-zinc-500 font-normal">Yasal & Genel Standartlar</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-x-auto overflow-y-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
@@ -8374,7 +8782,7 @@ export default function App() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.SatisAliciKomisyon}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, SatisAliciKomisyon: Number(e.target.value) })}
                                   />
@@ -8383,7 +8791,7 @@ export default function App() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.SatisSaticiKomisyon}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, SatisSaticiKomisyon: Number(e.target.value) })}
                                   />
@@ -8408,7 +8816,7 @@ export default function App() {
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.TapuHarciAlici}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciAlici: Number(e.target.value) })}
                                 />
@@ -8417,7 +8825,7 @@ export default function App() {
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.TapuHarciSatici}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, TapuHarciSatici: Number(e.target.value) })}
                                 />
@@ -8436,7 +8844,7 @@ export default function App() {
                               <div className="flex items-center justify-end gap-2">
                                 <input
                                   type="number"
-                                  className="w-28 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-28 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.DonerSermayeBedeli}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, DonerSermayeBedeli: Number(e.target.value) })}
                                 />
@@ -8458,7 +8866,7 @@ export default function App() {
                                 <input
                                   type="number"
                                   step="0.1"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.SatisKaporaOrani}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, SatisKaporaOrani: Number(e.target.value) })}
                                 />
@@ -8475,12 +8883,12 @@ export default function App() {
               {settingsActiveTab === 'disOfis' && (
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Ofis Dışı Paylaşım Kuralları</span>
                       <span className="text-[11px] text-zinc-500 font-normal">Harici Emlak Ofisleri İle Paylaşım</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-x-auto overflow-y-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
@@ -8503,7 +8911,7 @@ export default function App() {
                                   <span className="text-zinc-400 font-semibold">Portföy Sahibi Ofis: %</span>
                                   <input
                                     type="number"
-                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.DisOfisPortfoyPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisPortfoyPayi: Number(e.target.value) })}
                                   />
@@ -8512,7 +8920,7 @@ export default function App() {
                                   <span className="text-zinc-400 font-semibold">Müşteri Getiren Ofis: %</span>
                                   <input
                                     type="number"
-                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.DisOfisMusteriPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, DisOfisMusteriPayi: Number(e.target.value) })}
                                   />
@@ -8531,12 +8939,12 @@ export default function App() {
                 <div className="flex flex-col gap-6">
                   {/* Standart Bölüşüm Tablosu */}
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Standart Bölüşüm</span>
                       <span className="text-[11px] text-zinc-500 font-normal">Genel Ofis Kuralları</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-x-auto overflow-y-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
@@ -8558,7 +8966,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Portföy: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.IciPortfoyPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, IciPortfoyPayi: Number(e.target.value) })}
                                 />
@@ -8566,7 +8974,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Müşteri: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.IciMusteriPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, IciMusteriPayi: Number(e.target.value) })}
                                 />
@@ -8586,7 +8994,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Danışman: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.BrokerDanismanPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, BrokerDanismanPayi: Number(e.target.value) })}
                                 />
@@ -8594,7 +9002,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Ofis: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.BrokerOfisPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, BrokerOfisPayi: Number(e.target.value) })}
                                 />
@@ -8608,12 +9016,12 @@ export default function App() {
 
                   {/* Özel Modeller Tablosu */}
                   <div>
-                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider">
+                    <h3 className="text-sm font-mono font-bold mb-3 text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between uppercase tracking-wider flex-wrap gap-3">
                       <span>Özel Modeller</span>
                       <span className="text-[11px] text-zinc-500 font-normal">Opsiyonel Hakediş Modelleri</span>
                     </h3>
 
-                    <div className="border border-zinc-800 rounded-2xl bg-[#0F172A] text-zinc-200 shadow-inner overflow-hidden font-mono">
+                    <div className="border border-zinc-800 rounded-2xl bg-zinc-800 text-zinc-200 shadow-inner overflow-x-auto overflow-y-hidden font-mono">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-zinc-800/80 border-b border-zinc-700 text-zinc-400 font-extrabold uppercase tracking-wider">
@@ -8635,7 +9043,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Danışman: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KademeliDanismanPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KademeliDanismanPayi: Number(e.target.value) })}
                                 />
@@ -8643,7 +9051,7 @@ export default function App() {
                                 <span className="text-zinc-400 font-semibold">Ofis: %</span>
                                 <input
                                   type="number"
-                                  className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                  className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                   value={firmaSettings.KademeliOfisPayi}
                                   onChange={e => setFirmaSettings({ ...firmaSettings, KademeliOfisPayi: Number(e.target.value) })}
                                 />
@@ -8664,7 +9072,7 @@ export default function App() {
                                   <span className="text-zinc-400 font-semibold">Sabit Ücret:</span>
                                   <input
                                     type="number"
-                                    className="w-24 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-24 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.MasaUcretiTutar}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, MasaUcretiTutar: Number(e.target.value) })}
                                   />
@@ -8675,7 +9083,7 @@ export default function App() {
                                   <span className="text-zinc-400 font-semibold">Danışman Prim: %</span>
                                   <input
                                     type="number"
-                                    className="w-20 text-xs p-2 bg-[#0F172A] border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    className="w-20 text-xs p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-center font-bold text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 shadow-inner"
                                     value={firmaSettings.MasaDanismanPayi}
                                     onChange={e => setFirmaSettings({ ...firmaSettings, MasaDanismanPayi: Number(e.target.value) })}
                                   />
@@ -8697,12 +9105,15 @@ export default function App() {
           <FirmDocumentsTab token={token} showToast={showToast} />
         )}
         {activeTab === 'documentOperations' && (
-          <DocumentOperationsTab token={token} portfolios={portfolios} user={user} clientProcesses={clientProcesses} fetchClientProcesses={() => { if(token) fetchClientProcesses(token) }} showToast={showToast} />
+          <DocumentOperationsTab token={token} portfolios={portfolios} user={user} clientProcesses={clientProcesses} fetchClientProcesses={() => { if (token) fetchClientProcesses(token) }} showToast={showToast} />
         )}
       </main>
 
+      {/* Spacer to reserve width for the collapsed right panel */}
+      <div className="w-20 shrink-0 bg-cream z-0 border-l border-zinc-100 hidden sm:block"></div>
+
       {/* RIGHT PANEL (Widgets & Schedule / Ajanda) */}
-      <aside className={`bg-cream border-none flex flex-col transition-all duration-300 z-10 shrink-0 ${rightPanelCollapsed ? 'w-20 p-4 items-center gap-6' : 'w-80 p-6 gap-6'
+      <aside className={`absolute right-0 top-0 bottom-0 bg-cream border-none flex flex-col transition-all duration-300 z-50 shrink-0 ${rightPanelCollapsed ? 'w-20 p-4 items-center gap-6 shadow-[-5px_0_15px_rgba(0,0,0,0.02)] hidden sm:flex' : 'w-80 p-6 gap-6 shadow-[-20px_0_50px_rgba(0,0,0,0.15)] flex'
         } overflow-y-auto`}>
 
         {/* Toggle Button */}
@@ -8721,7 +9132,7 @@ export default function App() {
             {/* Collapsed Calendar Icon representing calendar */}
             <button
               onClick={() => setRightPanelCollapsed(false)}
-              className="p-3 rounded-full bg-white hover:bg-zinc-100 border border-charcoal shadow-none transition-all"
+              className="p-3 rounded-full bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-charcoal dark:border-zinc-600 shadow-none transition-all cursor-pointer text-charcoal dark:text-zinc-200"
             >
               <Calendar size={18} />
             </button>
@@ -8729,7 +9140,7 @@ export default function App() {
             {/* Collapsed Add Portfolio Button */}
             <button
               onClick={() => { setActiveTab('portfolios'); setShowAddPortfolioModal(true); setRightPanelCollapsed(false); }}
-              className="p-3 bg-charcoal text-white rounded-full hover:bg-black shadow-none transition-all border-none cursor-pointer"
+              className="p-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-full shadow-none transition-all border-none cursor-pointer"
               title="Yeni Portföy Ekle"
             >
               <Plus size={18} />
@@ -8737,7 +9148,7 @@ export default function App() {
             {/* Collapsed Add Appointment Button */}
             <button
               onClick={() => { setShowAddAppointmentModal(true); setRightPanelCollapsed(false); }}
-              className="p-3 bg-[#FEF08A] text-charcoal rounded-full hover:bg-[#FEF08A]/80 shadow-none transition-all border border-charcoal/20 cursor-pointer"
+              className="p-3 bg-pastelYellow text-amber-950 dark:text-amber-950 rounded-full hover:bg-amber-200 shadow-sm transition-all border border-amber-300 dark:border-transparent cursor-pointer"
               title="Yeni Randevu Oluştur"
             >
               <Calendar size={18} />
@@ -8746,12 +9157,12 @@ export default function App() {
         ) : (
           <>
             {/* Top: Skeuomorphic & Modern Masa Takvimi (Desk Calendar Card) */}
-            <div className="relative bg-[#FFFBEB] p-4 rounded-3xl border-2 border-amber-900/10 shadow-lg flex flex-col gap-3 overflow-hidden">
+            <div className="relative bg-[#FFFBEB] dark:bg-zinc-100 p-4 rounded-3xl border-2 border-amber-900/10 dark:border-zinc-200 shadow-lg flex flex-col gap-3 overflow-hidden">
 
               {/* 1. Spiral Halkalar (Ring Binding Details) */}
               <div className="absolute -top-3 left-0 right-0 flex justify-around px-6 pointer-events-none z-20">
                 {[...Array(6)].map((_, i) => (
-                  <div key={`side-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
+                  <div key={`side-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 dark:from-zinc-400 dark:via-zinc-300 dark:to-zinc-500 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
                     <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
                     <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
                   </div>
@@ -8759,22 +9170,22 @@ export default function App() {
               </div>
 
               {/* Takvim Yaprak Banner */}
-              <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 pb-2">
+              <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 dark:border-zinc-200/50 pb-2">
                 <h4 className="font-black text-xs text-charcoal flex items-center justify-center gap-1.5 w-full">
-                  <Calendar size={14} className="text-amber-800" />
+                  <Calendar size={14} className="text-amber-800 dark:text-zinc-500" />
                   <span>AJANDA TAKVİMİ</span>
                 </h4>
               </div>
 
               {/* Fiziksel Takvim Yaprağı (Dev Gün Rakamı & Ay) */}
-              <div className="bg-white p-3 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between gap-3">
+              <div className="bg-white p-3 rounded-2xl border border-amber-200/80 dark:border-zinc-200/50 shadow-sm flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                   {/* Dev Rakam Yaprağı */}
-                  <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
+                  <div className="w-14 h-14 rounded-xl bg-amber-50 dark:bg-zinc-200 border border-amber-200 dark:border-zinc-300 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
                     <span className="text-2xl font-black text-charcoal leading-none">
                       {selectedCalendarDay}
                     </span>
-                    <span className="text-[8px] font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">
+                    <span className="text-[8px] font-extrabold text-amber-800 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
                       {calendarMonthName.slice(0, 3)}
                     </span>
                   </div>
@@ -8791,7 +9202,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleToday}
-                    className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 cursor-pointer"
+                    className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 dark:border-zinc-400 rounded bg-amber-50 dark:bg-zinc-200 hover:bg-amber-100 dark:hover:bg-zinc-300 text-amber-900 dark:text-zinc-600 cursor-pointer transition-colors"
                     title="Bugüne Git"
                   >
                     Bugün
@@ -8799,7 +9210,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handlePrevMonth}
-                    className="p-1 border border-zinc-200 rounded hover:bg-zinc-100 cursor-pointer text-zinc-700"
+                    className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
                     title="Önceki Ay"
                   >
                     <ChevronLeft size={10} />
@@ -8807,7 +9218,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleNextMonth}
-                    className="p-1 border border-zinc-200 rounded hover:bg-zinc-100 cursor-pointer text-zinc-700"
+                    className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
                     title="Sonraki Ay"
                   >
                     <ChevronLeft className="rotate-180" size={10} />
@@ -8816,7 +9227,7 @@ export default function App() {
               </div>
 
               {/* Izgara Gün Seçici */}
-              <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80">
+              <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-200/50">
                 <div className="grid grid-cols-7 gap-0.5 text-[8px] text-center font-black">
                   {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((d, di) => (
                     <span key={di} className="text-zinc-400">{d}</span>
@@ -8838,13 +9249,13 @@ export default function App() {
                         type="button"
                         onClick={() => !isPastDate && setSelectedCalendarDay(day)}
                         disabled={isPastDate}
-                        className={`p-1 rounded transition-all relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed' :
-                          selectedCalendarDay === day ? 'bg-charcoal text-white font-black scale-105 shadow-sm cursor-pointer' : 'hover:bg-amber-50 cursor-pointer'
+                        className={`p-1 rounded transition-all relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 dark:text-zinc-400 line-through cursor-not-allowed' :
+                          selectedCalendarDay === day ? 'bg-charcoal text-white font-black scale-105 shadow-sm cursor-pointer' : 'hover:bg-amber-50 dark:hover:bg-zinc-200 cursor-pointer'
                           }`}
                       >
                         <span>{day}</span>
                         {hasAppointments && (
-                          <span className={`w-1 h-1 rounded-full absolute bottom-0.5 ${selectedCalendarDay === day ? 'bg-amber-300' : 'bg-amber-600'}`} />
+                          <span className={`w-1 h-1 rounded-full absolute bottom-0.5 ${selectedCalendarDay === day ? 'bg-amber-300 dark:bg-amber-400' : 'bg-amber-600 dark:bg-amber-500'}`} />
                         )}
                       </button>
                     );
@@ -8857,13 +9268,13 @@ export default function App() {
             <div className="flex flex-col gap-2 w-full">
               <button
                 onClick={() => { setActiveTab('portfolios'); setShowAddPortfolioModal(true); }}
-                className="w-full bg-charcoal hover:bg-black text-white py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border-none cursor-pointer"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border-none cursor-pointer"
               >
                 <Plus size={15} /> Yeni Portföy Ekle
               </button>
               <button
                 onClick={() => setShowAddAppointmentModal(true)}
-                className="w-full bg-[#FEF08A] hover:bg-[#FEF08A]/80 text-charcoal py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-charcoal/20 cursor-pointer"
+                className="w-full bg-pastelYellow hover:bg-amber-200 text-amber-950 dark:text-amber-950 py-3 px-5 rounded-full font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-amber-300 dark:border-transparent cursor-pointer shadow-sm"
               >
                 <Calendar size={15} /> Yeni Randevu Oluştur
               </button>
@@ -8908,9 +9319,9 @@ export default function App() {
 
                       return (
                         <div key={app.id} className="relative">
-                          <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0]' :
-                            app.durum === 'PENDING' ? 'bg-[#FEF08A]' :
-                              app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-[#FBCFE8]'
+                          <span className={`absolute -left-[27px] top-1 w-3 h-3 rounded-full border-none ${app.durum === 'APPROVED' ? 'bg-pastelGreen' :
+                            app.durum === 'PENDING' ? 'bg-pastelYellow' :
+                              app.durum === 'CANCELLED' ? 'bg-zinc-300' : 'bg-pastelPink'
                             }`} />
                           <div className="text-xs flex flex-col gap-0.5">
                             <span className="font-extrabold text-charcoal">
@@ -8919,10 +9330,10 @@ export default function App() {
                             <span className="text-zinc-500">Uzman: {app.talepEden}</span>
                             <span className="text-zinc-500">Müşteri: {app.musteri}</span>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-[#BBF7D0] text-emerald-950 border-emerald-300' :
-                                app.durum === 'PENDING' ? 'bg-[#FEF08A] text-amber-950 border-amber-300' :
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border border-charcoal uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                                app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300' :
                                   app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                    'bg-[#FBCFE8] text-red-950 border-red-300'
+                                    'bg-pastelPink text-red-950 border-red-300'
                                 }`}>
                                 {app.durum === 'APPROVED' ? 'Onaylandı ✅' :
                                   app.durum === 'PENDING' ? 'Onay Bekliyor ⏳' :
@@ -8935,13 +9346,13 @@ export default function App() {
                                     <div className="flex gap-1">
                                       <button
                                         onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
-                                        className="px-2 py-0.5 bg-[#BBF7D0] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer"
+                                        className="px-2 py-0.5 bg-pastelGreen border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-emerald-300 transition-colors cursor-pointer whitespace-nowrap"
                                       >
                                         Onayla
                                       </button>
                                       <button
                                         onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
-                                        className="px-2 py-0.5 bg-[#FBCFE8] border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer"
+                                        className="px-2 py-0.5 bg-pastelPink border border-charcoal rounded-full text-[9px] font-extrabold hover:bg-pink-300 transition-colors cursor-pointer whitespace-nowrap"
                                       >
                                         Reddet
                                       </button>
@@ -8951,7 +9362,7 @@ export default function App() {
                                   {!canManageAppointment && canCancelAppointment && (
                                     <button
                                       onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
-                                      className="px-2 py-0.5 bg-zinc-100 hover:bg-red-100 text-zinc-600 hover:text-red-700 border border-zinc-300 rounded-full text-[9px] font-extrabold transition-colors cursor-pointer"
+                                      className="px-2 py-0.5 bg-zinc-100 hover:bg-red-100 text-zinc-600 hover:text-red-700 border border-zinc-300 rounded-full text-[9px] font-extrabold transition-colors cursor-pointer whitespace-nowrap"
                                     >
                                       İptal Et 🚫
                                     </button>
@@ -8982,7 +9393,7 @@ export default function App() {
             <div className="flex justify-between items-start mb-1">
               <div>
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">RANDEVU YÖNETİMİ</span>
-                <h2 className="text-2xl font-extrabold text-charcoal mt-1 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1 flex items-center gap-2">
                   <Calendar size={22} className="text-amber-500" /> Yeni Randevu Oluştur
                 </h2>
               </div>
@@ -9086,13 +9497,14 @@ export default function App() {
         </div>
       )}
 
+
       {/* Appointment Action (Satıldı/Kiralandı/Vazgeçildi) Modal */}
       {showAppointmentActionModal && selectedAppointmentToAction && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-            <div className="p-6 bg-charcoal text-white flex justify-between items-center">
+            <div className="p-6 bg-charcoal text-white flex justify-between items-center flex-wrap gap-3">
               <div>
-                <h3 className="text-xl font-extrabold mb-1">Randevu İşlemleri</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold mb-1">Randevu İşlemleri</h3>
                 <p className="text-xs text-white/70 font-medium">Bu randevunun sonucunu belirleyin</p>
               </div>
               <button
@@ -9140,7 +9552,7 @@ export default function App() {
                           }`}
                       >
                         <span className="truncate">{stage.sira || idx + 1}. {stage.asamaAdi}</span>
-                        {isSelected && <span className="text-[10px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full">Seçili</span>}
+                        {isSelected && <span className="text-[10px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full whitespace-nowrap">Seçili</span>}
                       </button>
                     );
                   })}
@@ -9200,13 +9612,13 @@ export default function App() {
 
                         <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex flex-col gap-1 mt-2">
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Dinamik Komisyon Hesaplaması</span>
-                          <div className="flex justify-between items-center text-sm">
+                          <div className="flex justify-between items-center text-sm flex-wrap gap-3">
                             <span className="text-zinc-600 font-bold">Hesaplanan Toplam Ciro:</span>
                             <span className="font-extrabold text-charcoal">
                               {(Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)).toLocaleString('tr-TR')} TL
                             </span>
                           </div>
-                          <div className="flex justify-between items-center text-sm border-t border-emerald-200/50 pt-2 mt-1">
+                          <div className="flex justify-between items-center text-sm border-t border-emerald-200/50 pt-2 mt-1 flex-wrap gap-3">
                             <span className="text-emerald-900 font-bold">Net Hakedişiniz (Senaryo A - %{commSettings.aDanisman}):</span>
                             <span className="font-extrabold text-emerald-700">
                               {((Number(appActionBedel) * (appActionType === 'KIRALANDI' ? 1 : 0.02)) * (commSettings.aDanisman / 100)).toLocaleString('tr-TR')} TL
@@ -9250,7 +9662,7 @@ export default function App() {
             <div className="flex justify-between items-start mb-1">
               <div>
                 <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest">İŞLEM KAPATMA</span>
-                <h2 className="text-xl md:text-2xl font-extrabold text-charcoal mt-1 flex items-center gap-2">
+                <h2 className="text-xl md:text-xl sm:text-2xl font-extrabold text-charcoal mt-1 flex items-center gap-2">
                   <Check size={22} className="text-emerald-600" /> İşlemi Kapat / Satıldı-Kiralandı Yap
                 </h2>
               </div>

@@ -9,7 +9,7 @@ export const addPortfolio = async (req: any, res: Response) => {
     kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari,
     isPublished: reqIsPublished,
     aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
-    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik
   } = req.body;
   const { firmaId, userId } = req.user;
 
@@ -54,6 +54,7 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('evSahibiAdi', sql.NVarChar, evSahibiAdi)
       .input('evSahibiTelefon', sql.NVarChar, evSahibiTelefon)
       .input('isPublished', sql.Bit, isPublished)
+      .input('baslik', sql.NVarChar, baslik || '')
       .input('aciklama', sql.NVarChar(sql.MAX), aciklama || '')
       .input('otoparkTipi', sql.NVarChar, otoparkTipi || '')
       .input('isinmaTipi', sql.NVarChar, isinmaTipi || '')
@@ -82,7 +83,7 @@ export const addPortfolio = async (req: any, res: Response) => {
           KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, Semt, Cadde, Sokak,
           EvSahibiAdi, EvSahibiTelefon, Durum, IsPublished, Aciklama, OtoparkTipi,
           IsinmaTipi, BalkonDurumu, EsyaDurumu, KullanimDurumu, TapuDurumu, HasAsansor,
-          IsKrediyeUygun, IsTakasaUygun, IsAcilSatilik, IsFiyatiDustu
+          IsKrediyeUygun, IsTakasaUygun, IsAcilSatilik, IsFiyatiDustu, Baslik
         )
         OUTPUT inserted.Id
         VALUES (
@@ -90,7 +91,7 @@ export const addPortfolio = async (req: any, res: Response) => {
           @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle, @semt, @cadde, @sokak,
           @evSahibiAdi, @evSahibiTelefon, 'BOSTA', @isPublished, @aciklama, @otoparkTipi,
           @isinmaTipi, @balkonDurumu, @esyaDurumu, @kullanimDurumu, @tapuDurumu, @hasAsansor,
-          @isKrediyeUygun, @isTakasaUygun, @isAcilSatilik, @isFiyatiDustu
+          @isKrediyeUygun, @isTakasaUygun, @isAcilSatilik, @isFiyatiDustu, @baslik
         )
       `);
 
@@ -173,6 +174,8 @@ export const listPortfolios = async (req: any, res: Response) => {
         isAcilSatilik: p.IsAcilSatilik === true || p.IsAcilSatilik === 1 || p.IsAcilSatilik === '1' || p.IsAcilSatilik === 'true',
         isFiyatiDustu: p.IsFiyatiDustu === true || p.IsFiyatiDustu === 1 || p.IsFiyatiDustu === '1' || p.IsFiyatiDustu === 'true',
         yetkilendirmeSozlesmesiYapildi: p.YetkilendirmeSozlesmesiYapildi === true || p.YetkilendirmeSozlesmesiYapildi === 1 || p.YetkilendirmeSozlesmesiYapildi === '1' || p.YetkilendirmeSozlesmesiYapildi === 'true',
+        baslik: p.Baslik,
+        createdAt: p.KayitTarihi,
         fotograflar: photos,
         kapakFoto: photos[0] || null
       };
@@ -193,7 +196,7 @@ export const editPortfolio = async (req: any, res: Response) => {
     tip, tur, fiyat, metrekare, odaSayisi,
     il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
     aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
-    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik
   } = req.body;
   const { firmaId, userId, rol } = req.user;
 
@@ -240,6 +243,7 @@ export const editPortfolio = async (req: any, res: Response) => {
       .input('sokak', sql.NVarChar, sokak || '')
       .input('evSahibiAdi', sql.NVarChar, evSahibiAdi)
       .input('evSahibiTelefon', sql.NVarChar, evSahibiTelefon)
+      .input('baslik', sql.NVarChar, baslik || '')
       .input('aciklama', sql.NVarChar(sql.MAX), aciklama || '')
       .input('otoparkTipi', sql.NVarChar, otoparkTipi || '')
       .input('isinmaTipi', sql.NVarChar, isinmaTipi || '')
@@ -292,7 +296,8 @@ export const editPortfolio = async (req: any, res: Response) => {
             IsKrediyeUygun = @isKrediyeUygun,
             IsTakasaUygun = @isTakasaUygun,
             IsAcilSatilik = @isAcilSatilik,
-            IsFiyatiDustu = @isFiyatiDustu
+            IsFiyatiDustu = @isFiyatiDustu,
+            Baslik = @baslik
         WHERE Id = @id
       `);
 
@@ -434,12 +439,17 @@ export const closePortfolioTransaction = async (req: any, res: Response) => {
           `);
       }
 
-      // d. O portföye ait tüm randevuları veritabanından tamamen sil
+      // d. O portföye ait tüm randevuları arşive taşı ve ana tablodan sil
       await transaction.request()
         .input('portfoyId', sql.UniqueIdentifier, portfoyId)
         .query(`
+          INSERT INTO RandevularArsivi (Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, Durum, KayitTarihi)
+          SELECT Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, 'COMPLETED', KayitTarihi
+          FROM Randevular
+          WHERE PortfoyId = @portfoyId;
+
           DELETE FROM Randevular
-          WHERE PortfoyId = @portfoyId
+          WHERE PortfoyId = @portfoyId;
         `);
 
       await transaction.commit();
@@ -478,6 +488,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
         .query(`
           SELECT 
             CAST(s.IslemID AS NVARCHAR(36)) AS Id,
+            p.Baslik,
             ISNULL(p.Tip, 'DAIRE') AS Tip,
             ISNULL(p.Tur, CASE WHEN UPPER(s.IslemTuru) = 'KIRALAMA' THEN 'KIRALIK' ELSE 'SATILIK' END) AS Tur,
             ISNULL(s.IslemBedeli, ISNULL(p.Fiyat, 0)) AS Fiyat,
@@ -517,6 +528,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
 
           SELECT 
             CAST(p.Id AS NVARCHAR(36)) AS Id,
+            p.Baslik,
             p.Tip,
             p.Tur,
             p.Fiyat,
@@ -549,6 +561,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
           LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
           WHERE UPPER(ISNULL(p.Durum, '')) IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI')
             AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
+            AND p.Id NOT IN (SELECT PortfoyID FROM SatisIslemleri)
 
           ORDER BY IslemTarihi DESC
         `);
@@ -560,6 +573,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
         .query(`
           SELECT 
             CAST(p.Id AS NVARCHAR(36)) AS Id,
+            p.Baslik,
             p.Tip, p.Tur, p.Fiyat, p.Metrekare, p.OdaSayisi,
             p.KaporaMiktari, p.DepozitoMiktari, p.Il, p.Ilce, p.Mahalle,
             ISNULL(NULLIF((ISNULL(mms.Ad, '') + ' ' + ISNULL(mms.Soyad, '')), ' '), p.EvSahibiAdi) AS EvSahibiAdi, ISNULL(mms.Telefon, p.EvSahibiTelefon) AS EvSahibiTelefon, p.Durum, p.GorevliUzmanId,
@@ -583,6 +597,7 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
 
       return {
         id: p.Id,
+        baslik: p.Baslik,
         tip: p.Tip || 'DAIRE',
         tur: p.Tur || 'SATILIK',
         fiyat: Number(p.Fiyat || 0),
