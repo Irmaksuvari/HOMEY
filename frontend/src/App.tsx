@@ -1,4 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 import {
   Calculator, Users, Home, Calendar, DollarSign,
   Percent, Shield, Plus, Lock, Check, X, Building,
@@ -753,6 +766,168 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
     </div>
   );
 };
+function CustomScrollWheelZoom() {
+  const map = useMap();
+  useEffect(() => {
+    let mouseScrolling = false;
+    let mouseStopTimer: any = null;
+    let touchpadDelta = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isMouse = Math.abs(e.deltaY) >= 100 || e.deltaMode === 1;
+
+      if (isMouse) {
+        // Mouse: one tick = one zoom level
+        if (mouseStopTimer) clearTimeout(mouseStopTimer);
+        mouseStopTimer = setTimeout(() => { mouseScrolling = false; }, 30);
+        if (mouseScrolling) return;
+        mouseScrolling = true;
+        const currentZoom = map.getZoom();
+        map.setZoom(e.deltaY > 0 ? currentZoom - 1 : currentZoom + 1, { animate: true });
+      } else {
+        // Touchpad: accumulate deltaY, zoom when threshold reached
+        touchpadDelta += e.deltaY;
+        if (Math.abs(touchpadDelta) >= 80) {
+          const currentZoom = map.getZoom();
+          map.setZoom(touchpadDelta > 0 ? currentZoom - 1 : currentZoom + 1, { animate: true });
+          touchpadDelta = 0;
+        }
+      }
+    };
+
+    const container = map.getContainer();
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      if (mouseStopTimer) clearTimeout(mouseStopTimer);
+    };
+  }, [map]);
+  return null;
+}
+
+function LocationPickerMap({ position, setPosition, className }: { position: [number, number] | null; setPosition: (pos: [number, number]) => void; className?: string }) {
+  const defaultPos: [number, number] = [41.0082, 28.9784]; // Istanbul by default
+
+  function LocationMarker() {
+    useMapEvents({
+      click(e) {
+        setPosition([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+
+    return position === null ? null : (
+      <Marker position={position}></Marker>
+    );
+  }
+
+  return (
+    <div className={`w-full rounded-2xl overflow-hidden border-2 border-zinc-200 z-0 relative ${className || 'h-64'}`}>
+      <MapContainer center={position || defaultPos} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
+        <CustomScrollWheelZoom />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <LocationMarker />
+      </MapContainer>
+    </div>
+  );
+}
+
+function StaticMap({ position }: { position: [number, number] | null }) {
+  if (!position) return null;
+  return (
+    <div className="h-48 w-full rounded-2xl overflow-hidden border-2 border-zinc-200 z-0 relative mt-4">
+      <MapContainer center={position} zoom={15} style={{ height: '100%', width: '100%' }} dragging={false} zoomControl={false} scrollWheelZoom={false}>
+        <CustomScrollWheelZoom />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={position}></Marker>
+      </MapContainer>
+    </div>
+  );
+}
+
+function createHouseIcon(isHovered: boolean, tip?: string) {
+  const color = '#ef4444';
+  const size = isHovered ? 46 : 38;
+  const shadow = isHovered ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.35))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))';
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill="${color}" opacity="0.15"/>
+      <circle cx="24" cy="24" r="20" fill="white" stroke="${color}" stroke-width="2.5"/>
+      <g transform="translate(12, 11)">
+        <path d="M12 3L2 11h3v11h5v-7h4v7h5V11h3z" fill="${color}" opacity="0.9"/>
+      </g>
+    </svg>
+  `;
+  return L.divIcon({
+    html: `<div style="filter:${shadow};transition:all 0.2s;">${svg}</div>`,
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  });
+}
+
+function MultiMarkerMap({ portfolios, hoveredPortfolioId, onMarkerClick }: { portfolios: any[], hoveredPortfolioId: string | null, onMarkerClick?: (p: any) => void }) {
+  const defaultCenter: [number, number] = [41.0082, 28.9784];
+
+  // Calculate bounds to fit all markers
+  const mapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (mapRef.current && portfolios.length > 0) {
+      const validPorts = portfolios.filter(p => p.latitude && p.longitude);
+      if (validPorts.length > 0) {
+        const bounds = L.latLngBounds(validPorts.map(p => [p.latitude, p.longitude]));
+        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      }
+    }
+  }, [portfolios]);
+
+  return (
+    <div className="h-full min-h-[500px] w-full rounded-3xl overflow-hidden border-2 border-zinc-200 z-0 relative shadow-sm sticky top-6">
+      <MapContainer
+        center={defaultCenter}
+        zoom={6}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
+        scrollWheelZoom={true}
+      >
+        <CustomScrollWheelZoom />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {portfolios.map(p => {
+          if (!p.latitude || !p.longitude) return null;
+          const isHovered = hoveredPortfolioId === p.id;
+
+          return (
+            <Marker
+              key={p.id}
+              position={[p.latitude, p.longitude]}
+              icon={createHouseIcon(isHovered, p.tip)}
+              zIndexOffset={isHovered ? 1000 : 0}
+              eventHandlers={{
+                click: () => {
+                  if (onMarkerClick) {
+                    onMarkerClick(p);
+                  }
+                },
+              }}
+            >
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
+}
 
 export default function App() {
   // Authentication & Session States
@@ -1305,6 +1480,7 @@ export default function App() {
   const [newPortIsTakasaUygun, setNewPortIsTakasaUygun] = useState(false);
   const [newPortIsAcilSatilik, setNewPortIsAcilSatilik] = useState(false);
   const [newPortIsFiyatiDustu, setNewPortIsFiyatiDustu] = useState(false);
+  const [newPortPos, setNewPortPos] = useState<[number, number] | null>(null);
   const [newPortFiles, setNewPortFiles] = useState<File[]>([]);
   const [newPortSubmitting, setNewPortSubmitting] = useState(false);
 
@@ -1338,9 +1514,13 @@ export default function App() {
   const [editPortIsTakasaUygun, setEditPortIsTakasaUygun] = useState(false);
   const [editPortIsAcilSatilik, setEditPortIsAcilSatilik] = useState(false);
   const [editPortIsFiyatiDustu, setEditPortIsFiyatiDustu] = useState(false);
+  const [editPortPos, setEditPortPos] = useState<[number, number] | null>(null);
+  const [editPortSubmitting, setEditPortSubmitting] = useState(false);
 
   // Close Portfolio Transaction Modal States
   const [expandedCompletedCardId, setExpandedCompletedCardId] = useState<string | null>(null);
+  const [hoveredPortfolioId, setHoveredPortfolioId] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState<boolean>(true);
   const [showCloseTransactionModal, setShowCloseTransactionModal] = useState(false);
   const [closePortPortfolio, setClosePortPortfolio] = useState<any>(null);
   const [closeIslemTuru, setCloseIslemTuru] = useState<'SATIS' | 'KIRALAMA'>('SATIS');
@@ -2366,7 +2546,9 @@ export default function App() {
           isKrediyeUygun: newPortIsKrediyeUygun,
           isTakasaUygun: newPortIsTakasaUygun,
           isAcilSatilik: newPortIsAcilSatilik,
-          isFiyatiDustu: newPortIsFiyatiDustu
+          isFiyatiDustu: newPortIsFiyatiDustu,
+          latitude: newPortPos?.[0] || null,
+          longitude: newPortPos?.[1] || null
         })
       });
 
@@ -2425,6 +2607,7 @@ export default function App() {
         setNewPortIsTakasaUygun(false);
         setNewPortIsAcilSatilik(false);
         setNewPortIsFiyatiDustu(false);
+        setNewPortPos(null);
         setNewPortFiles([]);
         fetchPortfolios(token!);
         setActiveTab('documentOperations');
@@ -2516,7 +2699,9 @@ export default function App() {
           isKrediyeUygun: editPortIsKrediyeUygun,
           isTakasaUygun: editPortIsTakasaUygun,
           isAcilSatilik: editPortIsAcilSatilik,
-          isFiyatiDustu: editPortIsFiyatiDustu
+          isFiyatiDustu: editPortIsFiyatiDustu,
+          latitude: editPortPos?.[0] || null,
+          longitude: editPortPos?.[1] || null
         })
       });
 
@@ -2553,7 +2738,9 @@ export default function App() {
           isKrediyeUygun: editPortIsKrediyeUygun,
           isTakasaUygun: editPortIsTakasaUygun,
           isAcilSatilik: editPortIsAcilSatilik,
-          isFiyatiDustu: editPortIsFiyatiDustu
+          isFiyatiDustu: editPortIsFiyatiDustu,
+          latitude: editPortPos?.[0] || null,
+          longitude: editPortPos?.[1] || null
         };
         setSelectedPortfolio(updated);
         fetchPortfolios(token!);
@@ -3791,7 +3978,7 @@ export default function App() {
                     </span>
                     {user?.firmaAdi && (
                       <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full truncate max-w-[200px]" title={user.firmaAdi}>
-                        🏢 {user.firmaAdi}
+                        {user.firmaAdi}
                       </span>
                     )}
                   </h1>
@@ -4591,6 +4778,12 @@ export default function App() {
                     <Filter size={14} /> Filtrele
                   </button>
                   <button
+                    onClick={() => setShowMap(!showMap)}
+                    className={`px-4 py-2 text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 border-2 ${showMap ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50 shadow-sm'}`}
+                  >
+                    <MapPin size={14} /> {showMap ? 'Haritayı Gizle' : 'Haritada Göster'}
+                  </button>
+                  <button
                     onClick={() => setShowAddPortfolioModal(true)}
                     className="px-5 py-2 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors flex items-center gap-1.5 border-none"
                   >
@@ -4695,6 +4888,12 @@ export default function App() {
               )}
 
 
+              {showMap && (
+                <div className="w-full h-[400px] mb-6 rounded-3xl overflow-hidden shadow-sm">
+                  <MultiMarkerMap portfolios={filteredPortfolios} hoveredPortfolioId={hoveredPortfolioId} onMarkerClick={setSelectedPortfolio} />
+                </div>
+              )}
+
               <div className="flex flex-col gap-3 mb-6">
                 {/* Visibility Mode Toggle Switch */}
                 <div className="flex items-center gap-4 p-4 bg-zinc-50 rounded-2xl border border-zinc-200">
@@ -4739,22 +4938,25 @@ export default function App() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {filteredPortfolios.map(p => {
-                  const photos = p.fotograflar || (p.kapakFoto ? [p.kapakFoto] : []);
-                  return (
-                    <PortfolioCardItem
-                      key={p.id}
-                      portfolio={p}
-                      photos={photos}
-                      onSelect={() => setSelectedPortfolio(p)}
-                      isPublished={isPortfolioPublished(p)}
-                      onTogglePublish={() => handleTogglePortfolioPublish(p)}
-                      publishLoading={publishLoadingPortfolioId === p.id}
-                      isOwner={isOwnPortfolio(p)} requireAuthAgreement={firmaSettings.YetkilendirmeSarti === true}
-                    />
-                  );
-                })}
+              <div className="w-full">
+                <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+                  {filteredPortfolios.map(p => {
+                    const photos = p.fotograflar || (p.kapakFoto ? [p.kapakFoto] : []);
+                    return (
+                      <div key={p.id} onMouseEnter={() => showMap && setHoveredPortfolioId(p.id)} onMouseLeave={() => showMap && setHoveredPortfolioId(null)}>
+                        <PortfolioCardItem
+                          portfolio={p}
+                          photos={photos}
+                          onSelect={() => setSelectedPortfolio(p)}
+                          isPublished={isPortfolioPublished(p)}
+                          onTogglePublish={() => handleTogglePortfolioPublish(p)}
+                          publishLoading={publishLoadingPortfolioId === p.id}
+                          isOwner={isOwnPortfolio(p)} requireAuthAgreement={firmaSettings.YetkilendirmeSarti === true}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -4763,37 +4965,1077 @@ export default function App() {
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-3 md:p-4 overflow-y-auto">
                 {isEditingPortfolio ? (
                   /* Edit Mode Form */
+                  <div className="flex flex-col lg:flex-row gap-4 max-w-5xl w-full my-auto items-stretch h-[90vh] max-h-[90vh]">
+                    <form
+                      onSubmit={handleSaveEditPortfolio}
+                      className="bg-white rounded-3xl p-5 md:p-8 flex-1 relative border-none shadow-none flex flex-col gap-4 overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
+                          <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Portföy Düzenle</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal"
+                          onClick={() => setIsEditingPortfolio(false)}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* Satılık / Kiralık Toggle Tab */}
+                      <div className="flex gap-2 mb-2 p-1 bg-zinc-100 rounded-full border border-zinc-200">
+                        <button
+                          type="button"
+                          className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${editPortTur === 'SATILIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                          onClick={() => { setEditPortTur('SATILIK'); setEditPortDepozito(''); }}
+                        >
+                          Satılık
+                        </button>
+                        <button
+                          type="button"
+                          className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${editPortTur === 'KIRALIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                          onClick={() => setEditPortTur('KIRALIK')}
+                        >
+                          Kiralık
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Başlık</label>
+                        <input
+                          type="text"
+                          placeholder="Örn: Deniz Manzaralı Lüks Daire"
+                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-xl bg-white focus:outline-none mb-3"
+                          value={editPortBaslik}
+                          onChange={e => setEditPortBaslik(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
+                        <select
+                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                          value={editPortTip}
+                          onChange={e => setEditPortTip(e.target.value)}
+                        >
+                          <option value="DAIRE">Daire</option>
+                          <option value="VILLA">Villa</option>
+                          <option value="MUSTAKIL">Müstakil Ev</option>
+                          <option value="ARSA">Arsa</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Fiyat (TL)</label>
+                          <input
+                            type="number"
+                            placeholder="Fiyat girin"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortFiyat}
+                            onChange={e => setEditPortFiyat(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Metrekare (m²)</label>
+                          <input
+                            type="number"
+                            placeholder="Örn: 120"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortMetrekare}
+                            onChange={e => setEditPortMetrekare(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {editPortTip !== 'ARSA' && (
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Oda Sayısı</label>
+                          <select
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortOdaSayisi}
+                            onChange={e => setEditPortOdaSayisi(e.target.value)}
+                          >
+                            <option value="1+0">1+0 (Stüdyo)</option>
+                            <option value="1+1">1+1</option>
+                            <option value="2+1">2+1</option>
+                            <option value="3+1">3+1</option>
+                            <option value="4+1">4+1</option>
+                            <option value="4+2">4+2</option>
+                            <option value="5+1">5+1 ve üzeri</option>
+                          </select>
+                        </div>
+                      )}
+
+                      <div className={`grid gap-3 ${editPortTur === 'KIRALIK' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Otomatik)</label>
+                          <input
+                            type="number"
+                            placeholder="Örn: 50000"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortKapora}
+                            onChange={e => setEditPortKapora(e.target.value)}
+                          />
+                        </div>
+                        {editPortTur === 'KIRALIK' && (
+                          <div>
+                            <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Otomatik)</label>
+                            <input
+                              type="number"
+                              placeholder="Örn: 20000"
+                              className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                              value={editPortDepozito}
+                              onChange={e => setEditPortDepozito(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {(() => {
+                        const f = Number(editPortFiyat) || 0;
+                        if (f <= 0) return null;
+                        let komisyon = 0;
+                        if (editPortTur === 'KIRALIK') {
+                          komisyon = f * (Number(firmaSettings.KiralamaKomisyonOrani) || 1);
+                        } else {
+                          const oran = (Number(firmaSettings.SatisAliciKomisyon) || 2) + (Number(firmaSettings.SatisSaticiKomisyon) || 2);
+                          komisyon = f * (oran / 100);
+                        }
+                        return (
+                          <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-charcoal/10">
+                            <div className="flex justify-between items-center flex-wrap gap-3">
+                              <div>
+                                <span className="text-xs font-bold text-zinc-600 block">Öngörülen Hizmet Bedeli (KDV Dahil)</span>
+                                <span className="text-[10px] text-zinc-400">Senaryo A (Kendi Müşterisi)</span>
+                              </div>
+                              <div className="text-lg font-extrabold text-charcoal">
+                                {komisyon.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">İl</label>
+                          <input
+                            type="text"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortIl}
+                            onChange={e => setEditPortIl(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">İlçe</label>
+                          <input
+                            type="text"
+                            placeholder="İlçe"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortIlce}
+                            onChange={e => setEditPortIlce(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Semt</label>
+                          <input
+                            type="text"
+                            placeholder="Semt"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortSemt}
+                            onChange={e => setEditPortSemt(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Mahalle</label>
+                          <input
+                            type="text"
+                            placeholder="Mahalle"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortMahalle}
+                            onChange={e => setEditPortMahalle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Cadde</label>
+                          <input
+                            type="text"
+                            placeholder="Cadde adı"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortCadde}
+                            onChange={e => setEditPortCadde(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-600 font-semibold block mb-1">Sokak</label>
+                          <input
+                            type="text"
+                            placeholder="Sokak adı"
+                            className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
+                            value={editPortSokak}
+                            onChange={e => setEditPortSokak(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+
+                      <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase block">Ev Sahibi (Mülk Sahibi) İrtibat Bilgileri</span>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-zinc-600 block mb-0.5">Adı Soyadı</label>
+                            <input
+                              type="text"
+                              placeholder="Ad Soyad"
+                              className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                              value={editPortLandlordName}
+                              onChange={e => setEditPortLandlordName(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-zinc-600 block mb-0.5">Telefon</label>
+                            <input
+                              type="text"
+                              placeholder="05xx..."
+                              className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                              value={editPortLandlordPhone}
+                              onChange={e => setEditPortLandlordPhone(e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Property Features Section */}
+                      <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase block">Yapı Özellikleri</span>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Açıklama</label>
+                          <textarea
+                            placeholder="Portföy hakkında detaylı açıklama yazınız..."
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none resize-none"
+                            rows={3}
+                            value={editPortAciklama}
+                            onChange={e => setEditPortAciklama(e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Otopark Tipi</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortOtoparkTipi}
+                            onChange={e => setEditPortOtoparkTipi(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Açık Otopark">Açık Otopark</option>
+                            <option value="Kapalı Otopark">Kapalı Otopark</option>
+                            <option value="Otopark Yok">Otopark Yok</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Isıtma Tipi</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortIsinmaTipi}
+                            onChange={e => setEditPortIsinmaTipi(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Kombi (Doğalgaz)">Kombi (Doğalgaz)</option>
+                            <option value="Merkezi Sistem">Merkezi Sistem</option>
+                            <option value="Yerden Isıtma">Yerden Isıtma</option>
+                            <option value="Klima">Klima</option>
+                            <option value="Soba">Soba</option>
+                            <option value="Yok">Yok</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Balkon Durumu</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortBalkonDurumu}
+                            onChange={e => setEditPortBalkonDurumu(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Balkonlu">Balkonlu</option>
+                            <option value="Çift Balkonlu">Çift Balkonlu</option>
+                            <option value="Teraslı">Teraslı</option>
+                            <option value="Cam Balkon">Cam Balkon</option>
+                            <option value="Balkon Yok">Balkon Yok</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Eşya Durumu</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortEsyaDurumu}
+                            onChange={e => setEditPortEsyaDurumu(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Eşyalı">Eşyalı</option>
+                            <option value="Eşyasız">Eşyasız</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-zinc-600 block mb-1">Kullanım Durumu</label>
+                          <select
+                            className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                            value={editPortKullanimDurumu}
+                            onChange={e => setEditPortKullanimDurumu(e.target.value)}
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="Mülk Sahibi Oturuyor">Mülk Sahibi Oturuyor</option>
+                            <option value="Kiracı Var">Kiracı Var</option>
+                            <option value="Boş (Hemen Taşınmaya Uygun)">Boş (Hemen Taşınmaya Uygun)</option>
+                          </select>
+                        </div>
+
+                        {editPortTur === 'SATILIK' && (
+                          <div>
+                            <label className="text-[10px] text-zinc-600 block mb-1">Tapu Durumu</label>
+                            <select
+                              className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
+                              value={editPortTapuDurumu}
+                              onChange={e => setEditPortTapuDurumu(e.target.value)}
+                            >
+                              <option value="">Seçiniz</option>
+                              <option value="Kat Mülkiyetli (İskanlı)">Kat Mülkiyetli (İskanlı)</option>
+                              <option value="Kat İrtifaklı">Kat İrtifaklı</option>
+                              <option value="Hisseli Tapu">Hisseli Tapu</option>
+                              <option value="Arsa Tapulu">Arsa Tapulu</option>
+                            </select>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-3">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                              checked={editPortHasAsansor}
+                              onChange={e => setEditPortHasAsansor(e.target.checked)}
+                            />
+                            <span className="text-[10px] text-zinc-600">Asansör Var</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                              checked={editPortIsAcilSatilik}
+                              onChange={e => setEditPortIsAcilSatilik(e.target.checked)}
+                            />
+                            <span className="text-[10px] text-zinc-600">Acil Satılık</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                              checked={editPortIsFiyatiDustu}
+                              onChange={e => setEditPortIsFiyatiDustu(e.target.checked)}
+                            />
+                            <span className="text-[10px] text-zinc-600">Fiyatı Düştü</span>
+                          </label>
+                        </div>
+
+                        {editPortTur === 'SATILIK' && (
+                          <div className="flex flex-wrap gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                                checked={editPortIsKrediyeUygun}
+                                onChange={e => setEditPortIsKrediyeUygun(e.target.checked)}
+                              />
+                              <span className="text-[10px] text-zinc-600">Krediye Uygun</span>
+                            </label>
+
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
+                                checked={editPortIsTakasaUygun}
+                                onChange={e => setEditPortIsTakasaUygun(e.target.checked)}
+                              />
+                              <span className="text-[10px] text-zinc-600">Takas Yapılabilir</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none"
+                        >
+                          Değişiklikleri Kaydet
+                        </button>
+                        <button
+                          type="button"
+                          className="flex-1 py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none"
+                          onClick={() => setIsEditingPortfolio(false)}
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </form>
+                    {/* Right: Map Content for Edit Mode */}
+                    <div className="hidden lg:flex w-full lg:w-[400px] bg-white rounded-3xl p-5 shadow-2xl flex-col gap-3 relative overflow-hidden shrink-0">
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 z-10">
+                        <MapPin size={14} className="text-zinc-400" /> HARİTADA KONUM SEÇİN
+                      </span>
+                      <span className="text-[9px] text-zinc-400 font-normal block -mt-2 mb-1 z-10">Tam konumu işaretlemek için haritaya tıklayın.</span>
+                      <div className="flex-1 rounded-2xl overflow-hidden relative">
+                        <LocationPickerMap position={editPortPos} setPosition={setEditPortPos} className="h-full border-none" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* View Mode */
+                  <div className="flex flex-col lg:flex-row gap-4 max-w-5xl w-full my-auto items-stretch h-[90vh] max-h-[90vh]">
+                    <div className="bg-white rounded-3xl p-5 md:p-6 flex-1 relative border-none shadow-2xl flex flex-col gap-5 overflow-y-auto">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy Detayı</span>
+                          <h2 className="text-xl md:text-xl sm:text-2xl font-extrabold text-charcoal mt-1 break-words">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
+                        </div>
+                        <button className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" onClick={() => setSelectedPortfolio(null)}>
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* Fotoğraf Galerisi & Kaydırılabilir Yapı (Max 12) */}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center flex-wrap gap-3">
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <ImageIcon size={14} /> Fotoğraf Galerisi ({portfolioImages.length}/12)
+                          </span>
+                          {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length < 12 && (
+                            <label className="cursor-pointer px-3 py-1 bg-charcoal hover:bg-black text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
+                              {uploadLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                              <span>Fotoğraf Ekle</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleUploadPortfolioImage}
+                                disabled={uploadLoading}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Ana Görsel Gösterim Alanı (İki Tarafa Kaydırılabilir) */}
+                        {imagesLoading ? (
+                          <div className="h-[280px] rounded-2xl bg-zinc-100 flex items-center justify-center text-xs text-zinc-400">
+                            <Loader2 size={24} className="animate-spin text-charcoal" />
+                          </div>
+                        ) : portfolioImages.length > 0 ? (
+                          <div className="relative group rounded-2xl overflow-hidden bg-zinc-950 h-[280px] md:h-[320px] flex items-center justify-center shadow-md">
+                            <img
+                              src={portfolioImages[activeImageIndex]?.FotografUrl}
+                              alt="Portföy Görseli"
+                              className="max-h-full max-w-full object-contain transition-all duration-300"
+                            />
+
+                            {/* Kapak Rozeti */}
+                            {portfolioImages[activeImageIndex]?.IsKapak && (
+                              <span className="absolute top-3 left-3 bg-pastelYellow text-charcoal text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-charcoal shadow-sm flex items-center gap-1">
+                                <CheckCircle2 size={12} /> KAPAK FOTOĞRAFI
+                              </span>
+                            )}
+
+                            {/* Sol / Sağ Kaydırma Okları */}
+                            {portfolioImages.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveImageIndex(prev => (prev === 0 ? portfolioImages.length - 1 : prev - 1))}
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black text-white transition-all backdrop-blur-sm cursor-pointer"
+                                  title="Önceki Fotoğraf"
+                                >
+                                  <ChevronLeft size={18} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveImageIndex(prev => (prev === portfolioImages.length - 1 ? 0 : prev + 1))}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black text-white transition-all backdrop-blur-sm cursor-pointer"
+                                  title="Sonraki Fotoğraf"
+                                >
+                                  <ChevronLeft size={18} className="rotate-180" />
+                                </button>
+                              </>
+                            )}
+
+                            {/* Fotoğraf Sayacı */}
+                            <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm whitespace-nowrap">
+                              {activeImageIndex + 1} / {portfolioImages.length}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-44 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center gap-2 text-zinc-400 p-4 text-center">
+                            <ImageIcon size={32} className="opacity-40" />
+                            <span className="text-xs font-semibold">Bu portföye henüz fotoğraf eklenmemiş.</span>
+                            {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && (
+                              <span className="text-[11px] text-zinc-500">Yukarıdaki "Fotoğraf Ekle" butonunu kullanarak en fazla 12 görsel yükleyebilirsiniz.</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Yatay Kaydırılabilir Küçük Resim (Thumbnail) Listesi */}
+                        {portfolioImages.length > 0 && (
+                          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                            {portfolioImages.map((img, idx) => (
+                              <div
+                                key={img.Id || idx}
+                                onClick={() => setActiveImageIndex(idx)}
+                                className={`relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${activeImageIndex === idx ? 'border-charcoal scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                                  }`}
+                              >
+                                <img src={img.FotografUrl} alt="" className="w-full h-full object-cover" />
+                                {img.IsKapak && (
+                                  <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
+                                    Kapak
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Seçili Fotoğraf İşlem Alanı (Kapak Yap / Sil) */}
+                        {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length > 0 && (
+                          <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-cream/70 border border-zinc-200 text-xs flex-wrap">
+                            <span className="font-semibold text-zinc-600 truncate">Seçili Fotoğraf: #{activeImageIndex + 1}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {!portfolioImages[activeImageIndex]?.IsKapak && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetCoverImage(portfolioImages[activeImageIndex].Id)}
+                                  className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold rounded-full transition-colors border border-amber-300 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <BadgeCheck size={12} /> Kapak Yap
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePortfolioImage(portfolioImages[activeImageIndex].Id, portfolioImages[activeImageIndex].FotografUrl)}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-bold rounded-full transition-colors border border-red-200 flex items-center gap-1 cursor-pointer"
+                              >
+                                <X size={12} /> Sil
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Kare Kartlı Yan Yana Kompakt Bilgi Alanı */}
+                      {/* 2 Kolonlu Kompakt Bilgi ve Özellikler Alanı */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Sol Taraf: Temel Bilgiler (Alt Alta) */}
+                        <div className="flex flex-col gap-2">
+                          <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1.5"><DollarSign size={13} /> Fiyat</span>
+                            <strong className="text-sm font-black text-indigo-900">{selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL</strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><MapPin size={13} /> Konum</span>
+                            <strong className="text-xs font-extrabold text-charcoal truncate ml-2" title={`${selectedPortfolio.il} / ${selectedPortfolio.ilce} - ${selectedPortfolio.mahalle}`}>
+                              {selectedPortfolio.ilce} / {selectedPortfolio.mahalle}
+                            </strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><Ruler size={13} /> Metrekare</span>
+                            <strong className="text-xs font-extrabold text-charcoal">{selectedPortfolio.metrekare ? `${selectedPortfolio.metrekare} m²` : 'Belirtilmedi'}</strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                              {selectedPortfolio.tip === 'ARSA' ? <MapPin size={13} /> : <Bed size={13} />} {selectedPortfolio.tip === 'ARSA' ? 'İlan Tipi' : 'Oda Sayısı'}
+                            </span>
+                            <strong className="text-xs font-extrabold text-charcoal">
+                              {selectedPortfolio.tip === 'ARSA' ? selectedPortfolio.tur : (selectedPortfolio.odaSayisi || 'Belirtilmedi')}
+                            </strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Banknote size={13} /> Kapora / Depozito</span>
+                            <strong className="text-xs font-extrabold text-amber-950 truncate ml-2">
+                              {(selectedPortfolio.kapora || 0).toLocaleString('tr-TR')} / {(selectedPortfolio.depozito || 0).toLocaleString('tr-TR')} TL
+                            </strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5"><User size={13} /> Sorumlu Uzman</span>
+                            <strong className="text-xs font-extrabold text-emerald-950 truncate ml-2">{selectedPortfolio.gorevliUzman || 'Belirtilmedi'}</strong>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-cream border border-charcoal/10 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5"><Building size={13} /> Ev Sahibi İletişim Bilgileri</span>
+                            {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
+                              <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-end">
+                                <strong className="text-xs font-extrabold text-charcoal truncate">{selectedPortfolio.evSahibiAdi}</strong>
+                                {selectedPortfolio.evSahibiTelefon && (
+                                  <strong className="text-xs font-extrabold text-charcoal shrink-0">
+                                    {selectedPortfolio.evSahibiTelefon}
+                                  </strong>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-red-600 text-[11px] font-bold">
+                                <Lock size={12} />
+                                <span>Gizli Veri</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sağ Taraf: Özellikler */}
+                        <div className="p-5 rounded-2xl bg-zinc-50/50 border border-zinc-200 flex flex-col gap-4 h-full">
+                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <Sparkles size={14} className="text-indigo-500" /> ÖZELLİKLER
+                          </span>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {selectedPortfolio.isAcilSatilik && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-red-700">
+                                <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0"><AlertTriangle size={13} className="text-red-600" /></div> <span>Acil Satılık</span>
+                              </div>
+                            )}
+                            {selectedPortfolio.isFiyatiDustu && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-green-700">
+                                <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0"><TrendingUp size={13} className="text-green-600" /></div> <span>Fiyatı Düştü</span>
+                              </div>
+                            )}
+                            {selectedPortfolio.isKrediyeUygun && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-blue-700">
+                                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0"><Banknote size={13} className="text-blue-600" /></div> <span>Krediye Uygun</span>
+                              </div>
+                            )}
+                            {selectedPortfolio.isTakasaUygun && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-purple-700">
+                                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0"><RotateCcw size={13} className="text-purple-600" /></div> <span>Takasa Uygun</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.hasAsansor && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><ArrowUpDown size={13} className="text-zinc-500" /></div> <span>Asansör</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.otoparkTipi && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Car size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">{selectedPortfolio.otoparkTipi}</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.isinmaTipi && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Flame size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">{selectedPortfolio.isinmaTipi}</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.balkonDurumu && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Layers size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">{selectedPortfolio.balkonDurumu}</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.esyaDurumu && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Sofa size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">
+                                  {selectedPortfolio.esyaDurumu === 'Boş' ? 'Eşyasız' : selectedPortfolio.esyaDurumu}
+                                </span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.kullanimDurumu && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Key size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">{selectedPortfolio.kullanimDurumu}</span>
+                              </div>
+                            )}
+
+                            {selectedPortfolio.tapuDurumu && (
+                              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
+                                <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><FileCheck size={13} className="text-zinc-500" /></div>
+                                <span className="leading-tight">{selectedPortfolio.tapuDurumu}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Eğer hiçbir özellik yoksa */}
+                          {!(selectedPortfolio.hasAsansor || selectedPortfolio.isKrediyeUygun || selectedPortfolio.isTakasaUygun || selectedPortfolio.isAcilSatilik || selectedPortfolio.isFiyatiDustu || selectedPortfolio.otoparkTipi || selectedPortfolio.isinmaTipi || selectedPortfolio.balkonDurumu || selectedPortfolio.esyaDurumu || selectedPortfolio.kullanimDurumu || selectedPortfolio.tapuDurumu) && (
+                            <div className="text-xs text-zinc-500 italic py-4 text-center">Belirtilmiş ekstra özellik bulunmuyor.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Edit & Close actions for owners/admins */}
+                      {(selectedPortfolio.gorevliUzmanId === user?.id) && (
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => startEditPortfolio(selectedPortfolio)}
+                            className="w-full py-2.5 bg-pastelYellow hover:bg-pastelYellow/80 text-amber-950 dark:text-amber-950 text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
+                          >
+                            Portföyü Düzenle
+                          </button>
+
+                          {selectedPortfolio.durum !== 'SATILDI' && selectedPortfolio.durum !== 'KIRALANDI' && (
+                            <button
+                              onClick={() => openCloseTransactionModal(selectedPortfolio)}
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-full transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
+                            >
+                              <Check size={16} /> İşlemi Kapat / Satıldı-Kiralandı Yap
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Randevu Oluşturma & Özel Randevu Takvimi (Yan Yana Kompakt 2 Kolonlu Alan) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        {/* SOL KOLON: Randevu Oluştur / Talep Et Formu */}
+                        {(() => {
+                          const isOwner = compareIds(selectedPortfolio.gorevliUzmanId, user?.id);
+
+                          return (
+                            <div className={`p-4 rounded-2xl border-2 flex flex-col justify-between gap-3 ${isOwner ? 'bg-pastelGreen/20 border-emerald-300' : 'bg-pastelPurple/20 border-indigo-300'}`}>
+                              <div>
+                                <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
+                                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
+                                    {isOwner ? 'DOĞRUDAN RANDEVU' : 'RANDEVU TALEBİ'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${isOwner ? 'bg-pastelGreen text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'}`}>
+                                    {isOwner ? 'İlan Sahibisiniz' : `Uzman: ${selectedPortfolio.gorevliUzman || 'Uzman'}`}
+                                  </span>
+                                </div>
+                                <h4 className="font-extrabold text-xs text-charcoal flex items-center gap-1.5">
+                                  <Calendar size={14} />
+                                  {isOwner ? 'Doğrudan Randevu Ekle' : 'Randevu Talep Et'}
+                                </h4>
+                              </div>
+
+                              {selectedPortfolio.durum === 'KAPORA_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
+                                <div className="flex items-center gap-1.5 text-[11px] text-red-700 font-semibold p-2.5 bg-red-50 rounded-xl border border-red-200">
+                                  <AlertTriangle size={14} className="shrink-0" />
+                                  <span>Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-2 text-xs">
+                                  <div>
+                                    <label className="text-[11px] text-zinc-600 font-semibold block mb-0.5">
+                                      Müşteri <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                      className="w-full text-xs p-2 border border-charcoal/40 rounded-xl bg-white focus:outline-none font-medium"
+                                      value={selectedMusteriId}
+                                      onChange={e => setSelectedMusteriId(e.target.value)}
+                                    >
+                                      <option value="">-- Müşteri Seçin --</option>
+                                      {clients.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.ad} {c.soyad} ({c.musteriTipi || c.tip})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[11px] text-zinc-600 font-semibold block mb-0.5">
+                                      Tarih & Saat <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                      type="datetime-local"
+                                      className="w-full text-xs p-2 border border-charcoal/40 rounded-xl bg-white focus:outline-none font-medium"
+                                      value={selectedDate}
+                                      min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                      onChange={e => setSelectedDate(e.target.value)}
+                                    />
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full py-2.5 text-xs font-extrabold rounded-xl transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 mt-1 ${isOwner
+                                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                      : 'bg-charcoal hover:bg-black text-white'
+                                      }`}
+                                    onClick={() => handleCreateOrRequestAppointment(selectedPortfolio, isOwner)}
+                                  >
+                                    {isOwner ? '➕ Randevu Oluştur' : '📤 Talep Gönder'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* SAĞ KOLON: Skeuomorphic & Modern Masa Takvimi (Desk Calendar Card) */}
+                        <div className="relative bg-[#FFFBEB] dark:bg-zinc-100 p-4 rounded-3xl border-2 border-amber-900/10 dark:border-zinc-200 shadow-xl flex flex-col justify-between gap-3 overflow-hidden">
+
+                          {/* 1. Spiral Halkalar (Ring Binding Details) */}
+                          <div className="absolute -top-3 left-0 right-0 flex justify-around px-6 pointer-events-none z-20">
+                            {[...Array(6)].map((_, i) => (
+                              <div key={`modal-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 dark:from-zinc-400 dark:via-zinc-300 dark:to-zinc-500 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
+                                <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
+                                <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Takvim Yaprak Banner */}
+                          <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 dark:border-zinc-200/50 pb-2">
+                            <h4 className="font-black text-xs text-charcoal flex items-center justify-center gap-1.5 w-full">
+                              <Calendar size={14} className="text-amber-800 dark:text-zinc-500" />
+                              <span>RANDEVU TAKVİMİ</span>
+                            </h4>
+                          </div>
+
+                          {/* Fiziksel Takvim Yaprağı (Dev Gün Rakamı & Ay) */}
+                          <div className="bg-white p-3 rounded-2xl border border-amber-200/80 dark:border-zinc-200/50 shadow-sm flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-3">
+                              {/* Dev Rakam Yaprağı */}
+                              <div className="w-14 h-14 rounded-xl bg-amber-50 dark:bg-zinc-200 border border-amber-200 dark:border-zinc-300 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
+                                <span className="text-2xl font-black text-charcoal leading-none">
+                                  {popSelectedDay}
+                                </span>
+                                <span className="text-[8px] font-extrabold text-amber-800 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
+                                  {popMonthName.slice(0, 3)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">SEÇİLİ TARİH</span>
+                                <strong className="text-xs font-black text-charcoal capitalize block">
+                                  {popSelectedDay} {popMonthName} {popYear}
+                                </strong>
+                              </div>
+                            </div>
+
+                            {/* Takvim Navigasyonu */}
+                            <div className="flex gap-1 items-center shrink-0">
+                              <button
+                                type="button"
+                                onClick={handlePopToday}
+                                className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 dark:border-zinc-400 rounded bg-amber-50 dark:bg-zinc-200 hover:bg-amber-100 dark:hover:bg-zinc-300 text-amber-900 dark:text-zinc-600 cursor-pointer transition-colors"
+                              >
+                                Bugün
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handlePopPrevMonth}
+                                className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
+                              >
+                                <ChevronLeft size={10} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handlePopNextMonth}
+                                className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
+                              >
+                                <ChevronLeft className="rotate-180" size={10} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Izgara Gün Seçici */}
+                          <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-200/50">
+                            <div className="grid grid-cols-7 gap-0.5 text-[8px] text-center font-black">
+                              {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((d, di) => (
+                                <span key={di} className="text-zinc-400">{d}</span>
+                              ))}
+                              {popBlankDays.map((_, i) => (
+                                <span key={`pop-blank-${i}`} className="p-0.5"></span>
+                              ))}
+                              {popDaysArray.map(day => {
+                                const hasApp = popAppointments.some((a: any) => Number(a.gun) === day && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear && a.durum !== 'REJECTED' && a.durum !== 'CANCELLED');
+                                const isPastDate = new Date(popYear, popMonth, day) < new Date(new Date().setHours(0, 0, 0, 0));
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => !isPastDate && setPopSelectedDay(day)}
+                                    disabled={isPastDate}
+                                    className={`p-1 rounded transition-all relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed' :
+                                      popSelectedDay === day ? 'bg-charcoal text-white font-black scale-105 shadow-sm cursor-pointer' : 'hover:bg-amber-50 cursor-pointer'
+                                      }`}
+                                  >
+                                    <span>{day}</span>
+                                    {hasApp && (
+                                      <span className={`w-1 h-1 rounded-full absolute bottom-0.5 ${popSelectedDay === day ? 'bg-amber-300' : 'bg-amber-600'}`} />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Randevu Defteri Detaylı Bilgilendirme Kartları (Reddedilenler Gizlenir) */}
+                          <div className="flex flex-col gap-1 text-[10px]">
+                            {(() => {
+                              const dayApps = popAppointments.filter((a: any) => Number(a.gun) === popSelectedDay && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear && a.durum !== 'REJECTED');
+                              if (dayApps.length === 0) {
+                                return (
+                                  <span className="text-[10px] text-amber-900/60 italic p-2 bg-white/80 rounded-lg text-center border border-amber-200/50">
+                                    📝 {popSelectedDay} {popMonthName} tarihinde gösterim bulunmuyor.
+                                  </span>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                                  {dayApps.map((app: any) => {
+                                    const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id);
+                                    const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
+
+                                    return (
+                                      <div key={app.id} className="p-2 rounded-xl bg-white border-l-4 border-l-amber-600 border border-zinc-200 flex flex-col gap-1 text-xs shadow-2xs">
+                                        <div className="flex justify-between items-center gap-1 flex-wrap">
+                                          <div className="flex items-center gap-1">
+                                            <Clock size={11} className="text-amber-800 shrink-0" />
+                                            <strong className="font-extrabold text-charcoal">{app.saat || app.zaman || '12:00'}</strong>
+                                          </div>
+                                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
+                                            app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300' :
+                                              app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
+                                                'bg-pastelPink text-red-950 border-red-300'
+                                            }`}>
+                                            {app.durum === 'APPROVED' ? 'Onaylı ✅' :
+                                              app.durum === 'PENDING' ? 'Bekliyor ⏳' :
+                                                app.durum === 'CANCELLED' ? 'İptal 🚫' : 'Reddedildi ❌'}
+                                          </span>
+                                        </div>
+
+                                        <div className="text-[10px] text-zinc-600 font-medium flex flex-col gap-0.5">
+                                          <div><span className="text-zinc-400 font-semibold">Uzman:</span> <strong className="text-charcoal font-bold">{app.talepEden || 'Belirtilmedi'}</strong></div>
+                                          <div><span className="text-zinc-400 font-semibold">Müşteri:</span> <strong className="text-charcoal font-bold">{app.musteriAdi || app.musteri || 'Belirtilmedi'}</strong> {app.musteriTelefon && <span className="text-zinc-400">({app.musteriTelefon})</span>}</div>
+                                        </div>
+
+                                        {/* Onayla / Reddet / İptal Aksiyon Butonları */}
+                                        {app.durum === 'PENDING' && (
+                                          <div className="flex justify-end items-center gap-1 mt-1 pt-1 border-t border-zinc-100">
+                                            {canManageAppointment && (
+                                              <>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
+                                                  className="px-2 py-0.5 bg-pastelGreen border border-emerald-400 rounded text-[9px] font-extrabold text-emerald-950 hover:bg-emerald-300 cursor-pointer"
+                                                >
+                                                  Onayla
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
+                                                  className="px-2 py-0.5 bg-pastelPink border border-red-300 rounded text-[9px] font-extrabold text-red-950 hover:bg-pink-200 cursor-pointer"
+                                                >
+                                                  Reddet
+                                                </button>
+                                              </>
+                                            )}
+                                            {!canManageAppointment && canCancelAppointment && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
+                                                className="px-2 py-0.5 bg-zinc-100 border border-zinc-300 rounded text-[9px] font-extrabold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+                                              >
+                                                İptal Et 🚫
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button className="w-full py-2.5 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none cursor-pointer mt-2" onClick={() => setSelectedPortfolio(null)}>
+                        Kapat
+                      </button>
+
+                    </div>
+                    {/* Right: Map Content */}
+                    {selectedPortfolio.latitude && selectedPortfolio.longitude && (
+                      <div className="hidden lg:flex w-full lg:w-[400px] bg-white rounded-3xl p-5 shadow-2xl flex-col gap-3 relative overflow-hidden shrink-0">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 z-10">
+                          <MapPin size={14} className="text-zinc-400" /> HARİTADA KONUM
+                        </span>
+                        <div className="flex-1 rounded-2xl overflow-hidden relative border-2 border-zinc-200">
+                          <MapContainer center={[selectedPortfolio.latitude, selectedPortfolio.longitude]} zoom={15} style={{ height: '100%', width: '100%' }} dragging={false} zoomControl={false} scrollWheelZoom={true}>
+                            <CustomScrollWheelZoom />
+                            <TileLayer
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <Marker position={[selectedPortfolio.latitude, selectedPortfolio.longitude]}></Marker>
+                          </MapContainer>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add Portfolio Modal */}
+            {showAddPortfolioModal && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-3 md:p-4 overflow-y-auto">
+                <div className="flex flex-col lg:flex-row gap-4 max-w-5xl w-full my-auto items-stretch h-[90vh] max-h-[90vh]">
                   <form
-                    onSubmit={handleSaveEditPortfolio}
-                    className="bg-white rounded-3xl p-5 md:p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto my-auto"
+                    onSubmit={handleAddPortfolio}
+                    className="bg-white rounded-3xl p-5 md:p-8 flex-1 relative border-none shadow-none flex flex-col gap-4 overflow-y-auto"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
-                        <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Portföy Düzenle</h2>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Yeni Portföy Ekle</h2>
                       </div>
                       <button
                         type="button"
                         className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal"
-                        onClick={() => setIsEditingPortfolio(false)}
+                        onClick={() => setShowAddPortfolioModal(false)}
                       >
                         <X size={16} />
                       </button>
                     </div>
 
-                    {/* Satılık / Kiralık Toggle Tab */}
                     <div className="flex gap-2 mb-2 p-1 bg-zinc-100 rounded-full border border-zinc-200">
                       <button
                         type="button"
-                        className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${editPortTur === 'SATILIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
-                        onClick={() => { setEditPortTur('SATILIK'); setEditPortDepozito(''); }}
+                        className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'SATILIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                        onClick={() => { setNewPortTur('SATILIK'); setNewPortDepozito(''); }}
                       >
                         Satılık
                       </button>
                       <button
                         type="button"
-                        className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${editPortTur === 'KIRALIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
-                        onClick={() => setEditPortTur('KIRALIK')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'KIRALIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
+                        onClick={() => setNewPortTur('KIRALIK')}
                       >
                         Kiralık
                       </button>
@@ -4805,8 +6047,8 @@ export default function App() {
                         type="text"
                         placeholder="Örn: Deniz Manzaralı Lüks Daire"
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-xl bg-white focus:outline-none mb-3"
-                        value={editPortBaslik}
-                        onChange={e => setEditPortBaslik(e.target.value)}
+                        value={newPortBaslik}
+                        onChange={e => setNewPortBaslik(e.target.value)}
                       />
                     </div>
 
@@ -4814,8 +6056,8 @@ export default function App() {
                       <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
                       <select
                         className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={editPortTip}
-                        onChange={e => setEditPortTip(e.target.value)}
+                        value={newPortTip}
+                        onChange={e => setNewPortTip(e.target.value)}
                       >
                         <option value="DAIRE">Daire</option>
                         <option value="VILLA">Villa</option>
@@ -4831,8 +6073,8 @@ export default function App() {
                           type="number"
                           placeholder="Fiyat girin"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortFiyat}
-                          onChange={e => setEditPortFiyat(e.target.value)}
+                          value={newPortFiyat}
+                          onChange={e => setNewPortFiyat(e.target.value)}
                           required
                         />
                       </div>
@@ -4842,20 +6084,19 @@ export default function App() {
                           type="number"
                           placeholder="Örn: 120"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortMetrekare}
-                          onChange={e => setEditPortMetrekare(e.target.value)}
+                          value={newPortMetrekare}
+                          onChange={e => setNewPortMetrekare(e.target.value)}
                           required
                         />
                       </div>
                     </div>
-
-                    {editPortTip !== 'ARSA' && (
+                    {newPortTip !== 'ARSA' && (
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Oda Sayısı</label>
                         <select
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortOdaSayisi}
-                          onChange={e => setEditPortOdaSayisi(e.target.value)}
+                          value={newPortOdaSayisi}
+                          onChange={e => setNewPortOdaSayisi(e.target.value)}
                         >
                           <option value="1+0">1+0 (Stüdyo)</option>
                           <option value="1+1">1+1</option>
@@ -4868,36 +6109,36 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className={`grid gap-3 ${editPortTur === 'KIRALIK' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <div className={`grid gap-3 ${newPortTur === 'KIRALIK' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                       <div>
                         <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Otomatik)</label>
                         <input
                           type="number"
                           placeholder="Örn: 50000"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortKapora}
-                          onChange={e => setEditPortKapora(e.target.value)}
+                          value={newPortKapora}
+                          onChange={e => setNewPortKapora(e.target.value)}
                         />
                       </div>
-                      {editPortTur === 'KIRALIK' && (
+                      {newPortTur === 'KIRALIK' && (
                         <div>
                           <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Otomatik)</label>
                           <input
                             type="number"
                             placeholder="Örn: 20000"
                             className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                            value={editPortDepozito}
-                            onChange={e => setEditPortDepozito(e.target.value)}
+                            value={newPortDepozito}
+                            onChange={e => setNewPortDepozito(e.target.value)}
                           />
                         </div>
                       )}
                     </div>
 
                     {(() => {
-                      const f = Number(editPortFiyat) || 0;
+                      const f = Number(newPortFiyat) || 0;
                       if (f <= 0) return null;
                       let komisyon = 0;
-                      if (editPortTur === 'KIRALIK') {
+                      if (newPortTur === 'KIRALIK') {
                         komisyon = f * (Number(firmaSettings.KiralamaKomisyonOrani) || 1);
                       } else {
                         const oran = (Number(firmaSettings.SatisAliciKomisyon) || 2) + (Number(firmaSettings.SatisSaticiKomisyon) || 2);
@@ -4924,8 +6165,8 @@ export default function App() {
                         <input
                           type="text"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortIl}
-                          onChange={e => setEditPortIl(e.target.value)}
+                          value={newPortIl}
+                          onChange={e => setNewPortIl(e.target.value)}
                           required
                         />
                       </div>
@@ -4935,8 +6176,8 @@ export default function App() {
                           type="text"
                           placeholder="İlçe"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortIlce}
-                          onChange={e => setEditPortIlce(e.target.value)}
+                          value={newPortIlce}
+                          onChange={e => setNewPortIlce(e.target.value)}
                           required
                         />
                       </div>
@@ -4946,8 +6187,8 @@ export default function App() {
                           type="text"
                           placeholder="Semt"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortSemt}
-                          onChange={e => setEditPortSemt(e.target.value)}
+                          value={newPortSemt}
+                          onChange={e => setNewPortSemt(e.target.value)}
                         />
                       </div>
                     </div>
@@ -4959,8 +6200,8 @@ export default function App() {
                           type="text"
                           placeholder="Mahalle"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortMahalle}
-                          onChange={e => setEditPortMahalle(e.target.value)}
+                          value={newPortMahalle}
+                          onChange={e => setNewPortMahalle(e.target.value)}
                         />
                       </div>
                       <div>
@@ -4969,8 +6210,8 @@ export default function App() {
                           type="text"
                           placeholder="Cadde adı"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortCadde}
-                          onChange={e => setEditPortCadde(e.target.value)}
+                          value={newPortCadde}
+                          onChange={e => setNewPortCadde(e.target.value)}
                         />
                       </div>
                       <div>
@@ -4979,11 +6220,13 @@ export default function App() {
                           type="text"
                           placeholder="Sokak adı"
                           className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={editPortSokak}
-                          onChange={e => setEditPortSokak(e.target.value)}
+                          value={newPortSokak}
+                          onChange={e => setNewPortSokak(e.target.value)}
                         />
                       </div>
                     </div>
+
+
 
                     <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
                       <span className="text-[10px] text-zinc-500 font-bold uppercase block">Ev Sahibi (Mülk Sahibi) İrtibat Bilgileri</span>
@@ -4995,8 +6238,8 @@ export default function App() {
                             type="text"
                             placeholder="Ad Soyad"
                             className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                            value={editPortLandlordName}
-                            onChange={e => setEditPortLandlordName(e.target.value)}
+                            value={newPortLandlordName}
+                            onChange={e => setNewPortLandlordName(e.target.value)}
                             required
                           />
                         </div>
@@ -5006,12 +6249,71 @@ export default function App() {
                             type="text"
                             placeholder="05xx..."
                             className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                            value={editPortLandlordPhone}
-                            onChange={e => setEditPortLandlordPhone(e.target.value)}
+                            value={newPortLandlordPhone}
+                            onChange={e => setNewPortLandlordPhone(e.target.value)}
                             required
                           />
                         </div>
                       </div>
+                    </div>
+
+                    {/* Fotoğraf Yükleme Alanı (Max 12) */}
+                    <div className="p-4 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col gap-3">
+                      <div className="flex justify-between items-center flex-wrap gap-3">
+                        <span className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <ImageIcon size={14} /> Portföy Fotoğrafları ({newPortFiles.length}/12)
+                        </span>
+                        {newPortFiles.length < 12 && (
+                          <label className="cursor-pointer px-3 py-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
+                            <Plus size={12} />
+                            <span>Fotoğraf Seç</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => {
+                                const selectedFiles = Array.from(e.target.files || []);
+                                if (selectedFiles.length === 0) return;
+                                const combined = [...newPortFiles, ...selectedFiles].slice(0, 12);
+                                setNewPortFiles(combined);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      {newPortFiles.length > 0 ? (
+                        <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-1">
+                          {newPortFiles.map((file, idx) => (
+                            <div key={idx} className="relative group w-full h-16 rounded-xl overflow-hidden border border-zinc-200 bg-white">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt="Önizleme"
+                                className="w-full h-full object-cover"
+                              />
+                              {idx === 0 && (
+                                <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
+                                  Kapak
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setNewPortFiles(newPortFiles.filter((_, i) => i !== idx))}
+                                className="absolute top-1 right-1 p-0.5 bg-black/70 hover:bg-black text-white rounded-full transition-all cursor-pointer"
+                                title="Fotoğrafı Kaldır"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-zinc-400 text-center italic">
+                          İsteğe bağlı: En fazla 12 adet fotoğraf yükleyebilirsiniz. İlk seçilen fotoğraf varsayılan kapak fotoğrafı olacaktır.
+                        </p>
+                      )}
                     </div>
 
                     {/* Property Features Section */}
@@ -5024,8 +6326,8 @@ export default function App() {
                           placeholder="Portföy hakkında detaylı açıklama yazınız..."
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none resize-none"
                           rows={3}
-                          value={editPortAciklama}
-                          onChange={e => setEditPortAciklama(e.target.value)}
+                          value={newPortAciklama}
+                          onChange={e => setNewPortAciklama(e.target.value)}
                         />
                       </div>
 
@@ -5033,8 +6335,8 @@ export default function App() {
                         <label className="text-[10px] text-zinc-600 block mb-1">Otopark Tipi</label>
                         <select
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={editPortOtoparkTipi}
-                          onChange={e => setEditPortOtoparkTipi(e.target.value)}
+                          value={newPortOtoparkTipi}
+                          onChange={e => setNewPortOtoparkTipi(e.target.value)}
                         >
                           <option value="">Seçiniz</option>
                           <option value="Açık Otopark">Açık Otopark</option>
@@ -5047,8 +6349,8 @@ export default function App() {
                         <label className="text-[10px] text-zinc-600 block mb-1">Isıtma Tipi</label>
                         <select
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={editPortIsinmaTipi}
-                          onChange={e => setEditPortIsinmaTipi(e.target.value)}
+                          value={newPortIsinmaTipi}
+                          onChange={e => setNewPortIsinmaTipi(e.target.value)}
                         >
                           <option value="">Seçiniz</option>
                           <option value="Kombi (Doğalgaz)">Kombi (Doğalgaz)</option>
@@ -5064,8 +6366,8 @@ export default function App() {
                         <label className="text-[10px] text-zinc-600 block mb-1">Balkon Durumu</label>
                         <select
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={editPortBalkonDurumu}
-                          onChange={e => setEditPortBalkonDurumu(e.target.value)}
+                          value={newPortBalkonDurumu}
+                          onChange={e => setNewPortBalkonDurumu(e.target.value)}
                         >
                           <option value="">Seçiniz</option>
                           <option value="Balkonlu">Balkonlu</option>
@@ -5080,8 +6382,8 @@ export default function App() {
                         <label className="text-[10px] text-zinc-600 block mb-1">Eşya Durumu</label>
                         <select
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={editPortEsyaDurumu}
-                          onChange={e => setEditPortEsyaDurumu(e.target.value)}
+                          value={newPortEsyaDurumu}
+                          onChange={e => setNewPortEsyaDurumu(e.target.value)}
                         >
                           <option value="">Seçiniz</option>
                           <option value="Eşyalı">Eşyalı</option>
@@ -5093,8 +6395,8 @@ export default function App() {
                         <label className="text-[10px] text-zinc-600 block mb-1">Kullanım Durumu</label>
                         <select
                           className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={editPortKullanimDurumu}
-                          onChange={e => setEditPortKullanimDurumu(e.target.value)}
+                          value={newPortKullanimDurumu}
+                          onChange={e => setNewPortKullanimDurumu(e.target.value)}
                         >
                           <option value="">Seçiniz</option>
                           <option value="Mülk Sahibi Oturuyor">Mülk Sahibi Oturuyor</option>
@@ -5103,13 +6405,13 @@ export default function App() {
                         </select>
                       </div>
 
-                      {editPortTur === 'SATILIK' && (
+                      {newPortTur === 'SATILIK' && (
                         <div>
                           <label className="text-[10px] text-zinc-600 block mb-1">Tapu Durumu</label>
                           <select
                             className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                            value={editPortTapuDurumu}
-                            onChange={e => setEditPortTapuDurumu(e.target.value)}
+                            value={newPortTapuDurumu}
+                            onChange={e => setNewPortTapuDurumu(e.target.value)}
                           >
                             <option value="">Seçiniz</option>
                             <option value="Kat Mülkiyetli (İskanlı)">Kat Mülkiyetli (İskanlı)</option>
@@ -5125,8 +6427,8 @@ export default function App() {
                           <input
                             type="checkbox"
                             className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                            checked={editPortHasAsansor}
-                            onChange={e => setEditPortHasAsansor(e.target.checked)}
+                            checked={newPortHasAsansor}
+                            onChange={e => setNewPortHasAsansor(e.target.checked)}
                           />
                           <span className="text-[10px] text-zinc-600">Asansör Var</span>
                         </label>
@@ -5135,8 +6437,8 @@ export default function App() {
                           <input
                             type="checkbox"
                             className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                            checked={editPortIsAcilSatilik}
-                            onChange={e => setEditPortIsAcilSatilik(e.target.checked)}
+                            checked={newPortIsAcilSatilik}
+                            onChange={e => setNewPortIsAcilSatilik(e.target.checked)}
                           />
                           <span className="text-[10px] text-zinc-600">Acil Satılık</span>
                         </label>
@@ -5145,21 +6447,21 @@ export default function App() {
                           <input
                             type="checkbox"
                             className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                            checked={editPortIsFiyatiDustu}
-                            onChange={e => setEditPortIsFiyatiDustu(e.target.checked)}
+                            checked={newPortIsFiyatiDustu}
+                            onChange={e => setNewPortIsFiyatiDustu(e.target.checked)}
                           />
                           <span className="text-[10px] text-zinc-600">Fiyatı Düştü</span>
                         </label>
                       </div>
 
-                      {editPortTur === 'SATILIK' && (
+                      {newPortTur === 'SATILIK' && (
                         <div className="flex flex-wrap gap-3">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
                               className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                              checked={editPortIsKrediyeUygun}
-                              onChange={e => setEditPortIsKrediyeUygun(e.target.checked)}
+                              checked={newPortIsKrediyeUygun}
+                              onChange={e => setNewPortIsKrediyeUygun(e.target.checked)}
                             />
                             <span className="text-[10px] text-zinc-600">Krediye Uygun</span>
                           </label>
@@ -5168,8 +6470,8 @@ export default function App() {
                             <input
                               type="checkbox"
                               className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                              checked={editPortIsTakasaUygun}
-                              onChange={e => setEditPortIsTakasaUygun(e.target.checked)}
+                              checked={newPortIsTakasaUygun}
+                              onChange={e => setNewPortIsTakasaUygun(e.target.checked)}
                             />
                             <span className="text-[10px] text-zinc-600">Takas Yapılabilir</span>
                           </label>
@@ -5180,1089 +6482,34 @@ export default function App() {
                     <div className="flex gap-2 mt-2">
                       <button
                         type="submit"
-                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none"
+                        disabled={newPortSubmitting}
+                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none flex items-center justify-center gap-2"
                       >
-                        Değişiklikleri Kaydet
+                        {newPortSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
+                        <span>{newPortSubmitting ? 'Portföy & Fotoğraflar Kaydediliyor...' : 'Portföy Oluştur ve Yetkilendirme Sözleşmesine Git'}</span>
                       </button>
                       <button
                         type="button"
+                        disabled={newPortSubmitting}
                         className="flex-1 py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none"
-                        onClick={() => setIsEditingPortfolio(false)}
+                        onClick={() => { setShowAddPortfolioModal(false); setNewPortFiles([]); }}
                       >
                         İptal
                       </button>
                     </div>
+
                   </form>
-                ) : (
-                  /* View Mode */
-                  <div className="bg-white rounded-3xl p-5 md:p-6 max-w-3xl w-full relative border-none shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto my-auto">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy Detayı</span>
-                        <h2 className="text-xl md:text-xl sm:text-2xl font-extrabold text-charcoal mt-1 break-words">{selectedPortfolio.tip} - {selectedPortfolio.tur}</h2>
-                      </div>
-                      <button className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal" onClick={() => setSelectedPortfolio(null)}>
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    {/* Fotoğraf Galerisi & Kaydırılabilir Yapı (Max 12) */}
-                    <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center flex-wrap gap-3">
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <ImageIcon size={14} /> Fotoğraf Galerisi ({portfolioImages.length}/12)
-                        </span>
-                        {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length < 12 && (
-                          <label className="cursor-pointer px-3 py-1 bg-charcoal hover:bg-black text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
-                            {uploadLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                            <span>Fotoğraf Ekle</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleUploadPortfolioImage}
-                              disabled={uploadLoading}
-                            />
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Ana Görsel Gösterim Alanı (İki Tarafa Kaydırılabilir) */}
-                      {imagesLoading ? (
-                        <div className="h-[280px] rounded-2xl bg-zinc-100 flex items-center justify-center text-xs text-zinc-400">
-                          <Loader2 size={24} className="animate-spin text-charcoal" />
-                        </div>
-                      ) : portfolioImages.length > 0 ? (
-                        <div className="relative group rounded-2xl overflow-hidden bg-zinc-950 h-[280px] md:h-[320px] flex items-center justify-center shadow-md">
-                          <img
-                            src={portfolioImages[activeImageIndex]?.FotografUrl}
-                            alt="Portföy Görseli"
-                            className="max-h-full max-w-full object-contain transition-all duration-300"
-                          />
-
-                          {/* Kapak Rozeti */}
-                          {portfolioImages[activeImageIndex]?.IsKapak && (
-                            <span className="absolute top-3 left-3 bg-pastelYellow text-charcoal text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-charcoal shadow-sm flex items-center gap-1">
-                              <CheckCircle2 size={12} /> KAPAK FOTOĞRAFI
-                            </span>
-                          )}
-
-                          {/* Sol / Sağ Kaydırma Okları */}
-                          {portfolioImages.length > 1 && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setActiveImageIndex(prev => (prev === 0 ? portfolioImages.length - 1 : prev - 1))}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black text-white transition-all backdrop-blur-sm cursor-pointer"
-                                title="Önceki Fotoğraf"
-                              >
-                                <ChevronLeft size={18} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setActiveImageIndex(prev => (prev === portfolioImages.length - 1 ? 0 : prev + 1))}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black text-white transition-all backdrop-blur-sm cursor-pointer"
-                                title="Sonraki Fotoğraf"
-                              >
-                                <ChevronLeft size={18} className="rotate-180" />
-                              </button>
-                            </>
-                          )}
-
-                          {/* Fotoğraf Sayacı */}
-                          <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm whitespace-nowrap">
-                            {activeImageIndex + 1} / {portfolioImages.length}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="h-44 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center gap-2 text-zinc-400 p-4 text-center">
-                          <ImageIcon size={32} className="opacity-40" />
-                          <span className="text-xs font-semibold">Bu portföye henüz fotoğraf eklenmemiş.</span>
-                          {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && (
-                            <span className="text-[11px] text-zinc-500">Yukarıdaki "Fotoğraf Ekle" butonunu kullanarak en fazla 12 görsel yükleyebilirsiniz.</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Yatay Kaydırılabilir Küçük Resim (Thumbnail) Listesi */}
-                      {portfolioImages.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                          {portfolioImages.map((img, idx) => (
-                            <div
-                              key={img.Id || idx}
-                              onClick={() => setActiveImageIndex(idx)}
-                              className={`relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${activeImageIndex === idx ? 'border-charcoal scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
-                                }`}
-                            >
-                              <img src={img.FotografUrl} alt="" className="w-full h-full object-cover" />
-                              {img.IsKapak && (
-                                <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
-                                  Kapak
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Seçili Fotoğraf İşlem Alanı (Kapak Yap / Sil) */}
-                      {(compareIds(selectedPortfolio.gorevliUzmanId, user?.id)) && portfolioImages.length > 0 && (
-                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-cream/70 border border-zinc-200 text-xs flex-wrap">
-                          <span className="font-semibold text-zinc-600 truncate">Seçili Fotoğraf: #{activeImageIndex + 1}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {!portfolioImages[activeImageIndex]?.IsKapak && (
-                              <button
-                                type="button"
-                                onClick={() => handleSetCoverImage(portfolioImages[activeImageIndex].Id)}
-                                className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold rounded-full transition-colors border border-amber-300 flex items-center gap-1 cursor-pointer"
-                              >
-                                <BadgeCheck size={12} /> Kapak Yap
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePortfolioImage(portfolioImages[activeImageIndex].Id, portfolioImages[activeImageIndex].FotografUrl)}
-                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-bold rounded-full transition-colors border border-red-200 flex items-center gap-1 cursor-pointer"
-                            >
-                              <X size={12} /> Sil
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Kare Kartlı Yan Yana Kompakt Bilgi Alanı */}
-                    {/* 2 Kolonlu Kompakt Bilgi ve Özellikler Alanı */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {/* Sol Taraf: Temel Bilgiler (Alt Alta) */}
-                      <div className="flex flex-col gap-2">
-                        <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1.5"><DollarSign size={13} /> Fiyat</span>
-                          <strong className="text-sm font-black text-indigo-900">{selectedPortfolio.fiyat.toLocaleString('tr-TR')} TL</strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><MapPin size={13} /> Konum</span>
-                          <strong className="text-xs font-extrabold text-charcoal truncate ml-2" title={`${selectedPortfolio.il} / ${selectedPortfolio.ilce} - ${selectedPortfolio.mahalle}`}>
-                            {selectedPortfolio.ilce} / {selectedPortfolio.mahalle}
-                          </strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><Ruler size={13} /> Metrekare</span>
-                          <strong className="text-xs font-extrabold text-charcoal">{selectedPortfolio.metrekare ? `${selectedPortfolio.metrekare} m²` : 'Belirtilmedi'}</strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                            {selectedPortfolio.tip === 'ARSA' ? <MapPin size={13} /> : <Bed size={13} />} {selectedPortfolio.tip === 'ARSA' ? 'İlan Tipi' : 'Oda Sayısı'}
-                          </span>
-                          <strong className="text-xs font-extrabold text-charcoal">
-                            {selectedPortfolio.tip === 'ARSA' ? selectedPortfolio.tur : (selectedPortfolio.odaSayisi || 'Belirtilmedi')}
-                          </strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Banknote size={13} /> Kapora / Depozito</span>
-                          <strong className="text-xs font-extrabold text-amber-950 truncate ml-2">
-                            {(selectedPortfolio.kapora || 0).toLocaleString('tr-TR')} / {(selectedPortfolio.depozito || 0).toLocaleString('tr-TR')} TL
-                          </strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5"><User size={13} /> Sorumlu Uzman</span>
-                          <strong className="text-xs font-extrabold text-emerald-950 truncate ml-2">{selectedPortfolio.gorevliUzman || 'Belirtilmedi'}</strong>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-cream border border-charcoal/10 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5"><Building size={13} /> Ev Sahibi İletişim Bilgileri</span>
-                          {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) ? (
-                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap justify-end">
-                              <strong className="text-xs font-extrabold text-charcoal truncate">{selectedPortfolio.evSahibiAdi}</strong>
-                              {selectedPortfolio.evSahibiTelefon && (
-                                <strong className="text-xs font-extrabold text-charcoal shrink-0">
-                                  {selectedPortfolio.evSahibiTelefon}
-                                </strong>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-red-600 text-[11px] font-bold">
-                              <Lock size={12} />
-                              <span>Gizli Veri</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Sağ Taraf: Özellikler */}
-                      <div className="p-5 rounded-2xl bg-zinc-50/50 border border-zinc-200 flex flex-col gap-4 h-full">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                          <Sparkles size={14} className="text-indigo-500" /> ÖZELLİKLER
-                        </span>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {selectedPortfolio.isAcilSatilik && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-red-700">
-                              <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0"><AlertTriangle size={13} className="text-red-600" /></div> <span>Acil Satılık</span>
-                            </div>
-                          )}
-                          {selectedPortfolio.isFiyatiDustu && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-green-700">
-                              <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0"><TrendingUp size={13} className="text-green-600" /></div> <span>Fiyatı Düştü</span>
-                            </div>
-                          )}
-                          {selectedPortfolio.isKrediyeUygun && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-blue-700">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0"><Banknote size={13} className="text-blue-600" /></div> <span>Krediye Uygun</span>
-                            </div>
-                          )}
-                          {selectedPortfolio.isTakasaUygun && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-purple-700">
-                              <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0"><RotateCcw size={13} className="text-purple-600" /></div> <span>Takasa Uygun</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.hasAsansor && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><ArrowUpDown size={13} className="text-zinc-500" /></div> <span>Asansör</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.otoparkTipi && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Car size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">{selectedPortfolio.otoparkTipi}</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.isinmaTipi && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Flame size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">{selectedPortfolio.isinmaTipi}</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.balkonDurumu && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Layers size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">{selectedPortfolio.balkonDurumu}</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.esyaDurumu && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Sofa size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">
-                                {selectedPortfolio.esyaDurumu === 'Boş' ? 'Eşyasız' : selectedPortfolio.esyaDurumu}
-                              </span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.kullanimDurumu && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><Key size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">{selectedPortfolio.kullanimDurumu}</span>
-                            </div>
-                          )}
-
-                          {selectedPortfolio.tapuDurumu && (
-                            <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal">
-                              <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0"><FileCheck size={13} className="text-zinc-500" /></div>
-                              <span className="leading-tight">{selectedPortfolio.tapuDurumu}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Eğer hiçbir özellik yoksa */}
-                        {!(selectedPortfolio.hasAsansor || selectedPortfolio.isKrediyeUygun || selectedPortfolio.isTakasaUygun || selectedPortfolio.isAcilSatilik || selectedPortfolio.isFiyatiDustu || selectedPortfolio.otoparkTipi || selectedPortfolio.isinmaTipi || selectedPortfolio.balkonDurumu || selectedPortfolio.esyaDurumu || selectedPortfolio.kullanimDurumu || selectedPortfolio.tapuDurumu) && (
-                          <div className="text-xs text-zinc-500 italic py-4 text-center">Belirtilmiş ekstra özellik bulunmuyor.</div>
-                        )}
-                      </div>
-                    </div>
-
-
-                    {/* Edit & Close actions for owners/admins */}
-                    {(selectedPortfolio.gorevliUzmanId === user?.id) && (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => startEditPortfolio(selectedPortfolio)}
-                          className="w-full py-2.5 bg-pastelYellow hover:bg-pastelYellow/80 text-amber-950 dark:text-amber-950 text-xs font-bold rounded-full transition-colors border-none cursor-pointer"
-                        >
-                          Portföyü Düzenle
-                        </button>
-
-                        {selectedPortfolio.durum !== 'SATILDI' && selectedPortfolio.durum !== 'KIRALANDI' && (
-                          <button
-                            onClick={() => openCloseTransactionModal(selectedPortfolio)}
-                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-full transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <Check size={16} /> İşlemi Kapat / Satıldı-Kiralandı Yap
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Randevu Oluşturma & Özel Randevu Takvimi (Yan Yana Kompakt 2 Kolonlu Alan) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                      {/* SOL KOLON: Randevu Oluştur / Talep Et Formu */}
-                      {(() => {
-                        const isOwner = compareIds(selectedPortfolio.gorevliUzmanId, user?.id);
-
-                        return (
-                          <div className={`p-4 rounded-2xl border-2 flex flex-col justify-between gap-3 ${isOwner ? 'bg-pastelGreen/20 border-emerald-300' : 'bg-pastelPurple/20 border-indigo-300'}`}>
-                            <div>
-                              <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
-                                  {isOwner ? 'DOĞRUDAN RANDEVU' : 'RANDEVU TALEBİ'}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${isOwner ? 'bg-pastelGreen text-emerald-950 border-emerald-400' : 'bg-indigo-100 text-indigo-950 border-indigo-400'}`}>
-                                  {isOwner ? 'İlan Sahibisiniz' : `Uzman: ${selectedPortfolio.gorevliUzman || 'Uzman'}`}
-                                </span>
-                              </div>
-                              <h4 className="font-extrabold text-xs text-charcoal flex items-center gap-1.5">
-                                <Calendar size={14} />
-                                {isOwner ? 'Doğrudan Randevu Ekle' : 'Randevu Talep Et'}
-                              </h4>
-                            </div>
-
-                            {selectedPortfolio.durum === 'KAPORA_ASAMASINDA' || selectedPortfolio.durum === 'KIRALANDI_SATILDI' ? (
-                              <div className="flex items-center gap-1.5 text-[11px] text-red-700 font-semibold p-2.5 bg-red-50 rounded-xl border border-red-200">
-                                <AlertTriangle size={14} className="shrink-0" />
-                                <span>Bu portföy kapora aşamasında veya satıldığı için yeni randevu oluşturulamaz.</span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-2 text-xs">
-                                <div>
-                                  <label className="text-[11px] text-zinc-600 font-semibold block mb-0.5">
-                                    Müşteri <span className="text-red-500">*</span>
-                                  </label>
-                                  <select
-                                    className="w-full text-xs p-2 border border-charcoal/40 rounded-xl bg-white focus:outline-none font-medium"
-                                    value={selectedMusteriId}
-                                    onChange={e => setSelectedMusteriId(e.target.value)}
-                                  >
-                                    <option value="">-- Müşteri Seçin --</option>
-                                    {clients.map(c => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.ad} {c.soyad} ({c.musteriTipi || c.tip})
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="text-[11px] text-zinc-600 font-semibold block mb-0.5">
-                                    Tarih & Saat <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="datetime-local"
-                                    className="w-full text-xs p-2 border border-charcoal/40 rounded-xl bg-white focus:outline-none font-medium"
-                                    value={selectedDate}
-                                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                                    onChange={e => setSelectedDate(e.target.value)}
-                                  />
-                                </div>
-
-                                <button
-                                  type="button"
-                                  className={`w-full py-2.5 text-xs font-extrabold rounded-xl transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 mt-1 ${isOwner
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                    : 'bg-charcoal hover:bg-black text-white'
-                                    }`}
-                                  onClick={() => handleCreateOrRequestAppointment(selectedPortfolio, isOwner)}
-                                >
-                                  {isOwner ? '➕ Randevu Oluştur' : '📤 Talep Gönder'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* SAĞ KOLON: Skeuomorphic & Modern Masa Takvimi (Desk Calendar Card) */}
-                      <div className="relative bg-[#FFFBEB] dark:bg-zinc-100 p-4 rounded-3xl border-2 border-amber-900/10 dark:border-zinc-200 shadow-xl flex flex-col justify-between gap-3 overflow-hidden">
-
-                        {/* 1. Spiral Halkalar (Ring Binding Details) */}
-                        <div className="absolute -top-3 left-0 right-0 flex justify-around px-6 pointer-events-none z-20">
-                          {[...Array(6)].map((_, i) => (
-                            <div key={`modal-spiral-${i}`} className="w-3 h-6 bg-gradient-to-b from-zinc-300 via-zinc-100 to-zinc-400 dark:from-zinc-400 dark:via-zinc-300 dark:to-zinc-500 rounded-full border border-zinc-500 shadow-sm flex flex-col justify-between items-center py-0.5">
-                              <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
-                              <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full shadow-inner"></div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Takvim Yaprak Banner */}
-                        <div className="flex justify-center items-center mt-1 border-b border-amber-200/60 dark:border-zinc-200/50 pb-2">
-                          <h4 className="font-black text-xs text-charcoal flex items-center justify-center gap-1.5 w-full">
-                            <Calendar size={14} className="text-amber-800 dark:text-zinc-500" />
-                            <span>RANDEVU TAKVİMİ</span>
-                          </h4>
-                        </div>
-
-                        {/* Fiziksel Takvim Yaprağı (Dev Gün Rakamı & Ay) */}
-                        <div className="bg-white p-3 rounded-2xl border border-amber-200/80 dark:border-zinc-200/50 shadow-sm flex items-center justify-between gap-3 flex-wrap">
-                          <div className="flex items-center gap-3">
-                            {/* Dev Rakam Yaprağı */}
-                            <div className="w-14 h-14 rounded-xl bg-amber-50 dark:bg-zinc-200 border border-amber-200 dark:border-zinc-300 flex flex-col items-center justify-center p-1 shrink-0 shadow-inner">
-                              <span className="text-2xl font-black text-charcoal leading-none">
-                                {popSelectedDay}
-                              </span>
-                              <span className="text-[8px] font-extrabold text-amber-800 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
-                                {popMonthName.slice(0, 3)}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block">SEÇİLİ TARİH</span>
-                              <strong className="text-xs font-black text-charcoal capitalize block">
-                                {popSelectedDay} {popMonthName} {popYear}
-                              </strong>
-                            </div>
-                          </div>
-
-                          {/* Takvim Navigasyonu */}
-                          <div className="flex gap-1 items-center shrink-0">
-                            <button
-                              type="button"
-                              onClick={handlePopToday}
-                              className="px-1.5 py-0.5 text-[8px] font-extrabold border border-amber-300 dark:border-zinc-400 rounded bg-amber-50 dark:bg-zinc-200 hover:bg-amber-100 dark:hover:bg-zinc-300 text-amber-900 dark:text-zinc-600 cursor-pointer transition-colors"
-                            >
-                              Bugün
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handlePopPrevMonth}
-                              className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
-                            >
-                              <ChevronLeft size={10} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handlePopNextMonth}
-                              className="p-1 border border-zinc-200 dark:border-zinc-200/50 rounded hover:bg-zinc-100 dark:hover:bg-zinc-200 cursor-pointer text-zinc-700 dark:text-zinc-300 transition-colors"
-                            >
-                              <ChevronLeft className="rotate-180" size={10} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Izgara Gün Seçici */}
-                        <div className="bg-white p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-200/50">
-                          <div className="grid grid-cols-7 gap-0.5 text-[8px] text-center font-black">
-                            {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((d, di) => (
-                              <span key={di} className="text-zinc-400">{d}</span>
-                            ))}
-                            {popBlankDays.map((_, i) => (
-                              <span key={`pop-blank-${i}`} className="p-0.5"></span>
-                            ))}
-                            {popDaysArray.map(day => {
-                              const hasApp = popAppointments.some((a: any) => Number(a.gun) === day && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear && a.durum !== 'REJECTED' && a.durum !== 'CANCELLED');
-                              const isPastDate = new Date(popYear, popMonth, day) < new Date(new Date().setHours(0, 0, 0, 0));
-                              return (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() => !isPastDate && setPopSelectedDay(day)}
-                                  disabled={isPastDate}
-                                  className={`p-1 rounded transition-all relative flex flex-col items-center justify-center ${isPastDate ? 'text-zinc-300 line-through cursor-not-allowed' :
-                                    popSelectedDay === day ? 'bg-charcoal text-white font-black scale-105 shadow-sm cursor-pointer' : 'hover:bg-amber-50 cursor-pointer'
-                                    }`}
-                                >
-                                  <span>{day}</span>
-                                  {hasApp && (
-                                    <span className={`w-1 h-1 rounded-full absolute bottom-0.5 ${popSelectedDay === day ? 'bg-amber-300' : 'bg-amber-600'}`} />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Randevu Defteri Detaylı Bilgilendirme Kartları (Reddedilenler Gizlenir) */}
-                        <div className="flex flex-col gap-1 text-[10px]">
-                          {(() => {
-                            const dayApps = popAppointments.filter((a: any) => Number(a.gun) === popSelectedDay && Number(a.ay) === (popMonth + 1) && Number(a.yil) === popYear && a.durum !== 'REJECTED');
-                            if (dayApps.length === 0) {
-                              return (
-                                <span className="text-[10px] text-amber-900/60 italic p-2 bg-white/80 rounded-lg text-center border border-amber-200/50">
-                                  📝 {popSelectedDay} {popMonthName} tarihinde gösterim bulunmuyor.
-                                </span>
-                              );
-                            }
-                            return (
-                              <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                                {dayApps.map((app: any) => {
-                                  const canManageAppointment = compareIds(selectedPortfolio?.gorevliUzmanId, user?.id);
-                                  const canCancelAppointment = compareIds(app.talepEdenId, user?.id);
-
-                                  return (
-                                    <div key={app.id} className="p-2 rounded-xl bg-white border-l-4 border-l-amber-600 border border-zinc-200 flex flex-col gap-1 text-xs shadow-2xs">
-                                      <div className="flex justify-between items-center gap-1 flex-wrap">
-                                        <div className="flex items-center gap-1">
-                                          <Clock size={11} className="text-amber-800 shrink-0" />
-                                          <strong className="font-extrabold text-charcoal">{app.saat || app.zaman || '12:00'}</strong>
-                                        </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase ${app.durum === 'APPROVED' ? 'bg-pastelGreen text-emerald-950 border-emerald-300' :
-                                          app.durum === 'PENDING' ? 'bg-pastelYellow text-amber-950 border-amber-300' :
-                                            app.durum === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700 border-zinc-300' :
-                                              'bg-pastelPink text-red-950 border-red-300'
-                                          }`}>
-                                          {app.durum === 'APPROVED' ? 'Onaylı ✅' :
-                                            app.durum === 'PENDING' ? 'Bekliyor ⏳' :
-                                              app.durum === 'CANCELLED' ? 'İptal 🚫' : 'Reddedildi ❌'}
-                                        </span>
-                                      </div>
-
-                                      <div className="text-[10px] text-zinc-600 font-medium flex flex-col gap-0.5">
-                                        <div><span className="text-zinc-400 font-semibold">Uzman:</span> <strong className="text-charcoal font-bold">{app.talepEden || 'Belirtilmedi'}</strong></div>
-                                        <div><span className="text-zinc-400 font-semibold">Müşteri:</span> <strong className="text-charcoal font-bold">{app.musteriAdi || app.musteri || 'Belirtilmedi'}</strong> {app.musteriTelefon && <span className="text-zinc-400">({app.musteriTelefon})</span>}</div>
-                                      </div>
-
-                                      {/* Onayla / Reddet / İptal Aksiyon Butonları */}
-                                      {app.durum === 'PENDING' && (
-                                        <div className="flex justify-end items-center gap-1 mt-1 pt-1 border-t border-zinc-100">
-                                          {canManageAppointment && (
-                                            <>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppStatus(app.id, 'APPROVED')}
-                                                className="px-2 py-0.5 bg-pastelGreen border border-emerald-400 rounded text-[9px] font-extrabold text-emerald-950 hover:bg-emerald-300 cursor-pointer"
-                                              >
-                                                Onayla
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}
-                                                className="px-2 py-0.5 bg-pastelPink border border-red-300 rounded text-[9px] font-extrabold text-red-950 hover:bg-pink-200 cursor-pointer"
-                                              >
-                                                Reddet
-                                              </button>
-                                            </>
-                                          )}
-                                          {!canManageAppointment && canCancelAppointment && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handleUpdateAppStatus(app.id, 'CANCELLED')}
-                                              className="px-2 py-0.5 bg-zinc-100 border border-zinc-300 rounded text-[9px] font-extrabold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
-                                            >
-                                              İptal Et 🚫
-                                            </button>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button className="w-full py-2.5 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none cursor-pointer mt-2" onClick={() => setSelectedPortfolio(null)}>
-                      Kapat
-                    </button>
-
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Add Portfolio Modal */}
-            {showAddPortfolioModal && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <form
-                  onSubmit={handleAddPortfolio}
-                  className="bg-white rounded-3xl p-8 max-w-lg w-full relative border-none shadow-none flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Portföy İşlemleri</span>
-                      <h2 className="text-xl sm:text-2xl font-extrabold text-charcoal mt-1">Yeni Portföy Ekle</h2>
-                    </div>
-                    <button
-                      type="button"
-                      className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal"
-                      onClick={() => setShowAddPortfolioModal(false)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2 mb-2 p-1 bg-zinc-100 rounded-full border border-zinc-200">
-                    <button
-                      type="button"
-                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'SATILIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
-                      onClick={() => { setNewPortTur('SATILIK'); setNewPortDepozito(''); }}
-                    >
-                      Satılık
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${newPortTur === 'KIRALIK' ? 'bg-white text-charcoal shadow-sm' : 'text-zinc-500 hover:text-charcoal'}`}
-                      onClick={() => setNewPortTur('KIRALIK')}
-                    >
-                      Kiralık
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-zinc-600 font-semibold block mb-1">Başlık</label>
-                    <input
-                      type="text"
-                      placeholder="Örn: Deniz Manzaralı Lüks Daire"
-                      className="w-full text-xs p-2.5 border-2 border-charcoal rounded-xl bg-white focus:outline-none mb-3"
-                      value={newPortBaslik}
-                      onChange={e => setNewPortBaslik(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-zinc-600 font-semibold block mb-1">Emlak Tipi</label>
-                    <select
-                      className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                      value={newPortTip}
-                      onChange={e => setNewPortTip(e.target.value)}
-                    >
-                      <option value="DAIRE">Daire</option>
-                      <option value="VILLA">Villa</option>
-                      <option value="MUSTAKIL">Müstakil Ev</option>
-                      <option value="ARSA">Arsa</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Fiyat (TL)</label>
-                      <input
-                        type="number"
-                        placeholder="Fiyat girin"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortFiyat}
-                        onChange={e => setNewPortFiyat(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Metrekare (m²)</label>
-                      <input
-                        type="number"
-                        placeholder="Örn: 120"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortMetrekare}
-                        onChange={e => setNewPortMetrekare(e.target.value)}
-                        required
-                      />
+                  {/* Right: Map Content for Add Mode */}
+                  <div className="hidden lg:flex w-full lg:w-[400px] bg-white rounded-3xl p-5 shadow-2xl flex-col gap-3 relative overflow-hidden shrink-0">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5 z-10">
+                      <MapPin size={14} className="text-zinc-400" /> HARİTADA KONUM SEÇİN
+                    </span>
+                    <span className="text-[9px] text-zinc-400 font-normal block -mt-2 mb-1 z-10">Tam konumu işaretlemek için haritaya tıklayın.</span>
+                    <div className="flex-1 rounded-2xl overflow-hidden relative">
+                      <LocationPickerMap position={newPortPos} setPosition={setNewPortPos} className="h-full border-none" />
                     </div>
                   </div>
-                  {newPortTip !== 'ARSA' && (
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Oda Sayısı</label>
-                      <select
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortOdaSayisi}
-                        onChange={e => setNewPortOdaSayisi(e.target.value)}
-                      >
-                        <option value="1+0">1+0 (Stüdyo)</option>
-                        <option value="1+1">1+1</option>
-                        <option value="2+1">2+1</option>
-                        <option value="3+1">3+1</option>
-                        <option value="4+1">4+1</option>
-                        <option value="4+2">4+2</option>
-                        <option value="5+1">5+1 ve üzeri</option>
-                      </select>
-                    </div>
-                  )}
-
-                  <div className={`grid gap-3 ${newPortTur === 'KIRALIK' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Kapora Miktarı (Otomatik)</label>
-                      <input
-                        type="number"
-                        placeholder="Örn: 50000"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortKapora}
-                        onChange={e => setNewPortKapora(e.target.value)}
-                      />
-                    </div>
-                    {newPortTur === 'KIRALIK' && (
-                      <div>
-                        <label className="text-xs text-zinc-600 font-semibold block mb-1">Depozito Miktarı (Otomatik)</label>
-                        <input
-                          type="number"
-                          placeholder="Örn: 20000"
-                          className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                          value={newPortDepozito}
-                          onChange={e => setNewPortDepozito(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {(() => {
-                    const f = Number(newPortFiyat) || 0;
-                    if (f <= 0) return null;
-                    let komisyon = 0;
-                    if (newPortTur === 'KIRALIK') {
-                      komisyon = f * (Number(firmaSettings.KiralamaKomisyonOrani) || 1);
-                    } else {
-                      const oran = (Number(firmaSettings.SatisAliciKomisyon) || 2) + (Number(firmaSettings.SatisSaticiKomisyon) || 2);
-                      komisyon = f * (oran / 100);
-                    }
-                    return (
-                      <div className="bg-[#FDF8F2] p-4 rounded-2xl border border-charcoal/10">
-                        <div className="flex justify-between items-center flex-wrap gap-3">
-                          <div>
-                            <span className="text-xs font-bold text-zinc-600 block">Öngörülen Hizmet Bedeli (KDV Dahil)</span>
-                            <span className="text-[10px] text-zinc-400">Senaryo A (Kendi Müşterisi)</span>
-                          </div>
-                          <div className="text-lg font-extrabold text-charcoal">
-                            {komisyon.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">İl</label>
-                      <input
-                        type="text"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortIl}
-                        onChange={e => setNewPortIl(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">İlçe</label>
-                      <input
-                        type="text"
-                        placeholder="İlçe"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortIlce}
-                        onChange={e => setNewPortIlce(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Semt</label>
-                      <input
-                        type="text"
-                        placeholder="Semt"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortSemt}
-                        onChange={e => setNewPortSemt(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Mahalle</label>
-                      <input
-                        type="text"
-                        placeholder="Mahalle"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortMahalle}
-                        onChange={e => setNewPortMahalle(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Cadde</label>
-                      <input
-                        type="text"
-                        placeholder="Cadde adı"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortCadde}
-                        onChange={e => setNewPortCadde(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-zinc-600 font-semibold block mb-1">Sokak</label>
-                      <input
-                        type="text"
-                        placeholder="Sokak adı"
-                        className="w-full text-xs p-2.5 border-2 border-charcoal rounded-full bg-white focus:outline-none"
-                        value={newPortSokak}
-                        onChange={e => setNewPortSokak(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Ev Sahibi (Mülk Sahibi) İrtibat Bilgileri</span>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-zinc-600 block mb-0.5">Adı Soyadı</label>
-                        <input
-                          type="text"
-                          placeholder="Ad Soyad"
-                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={newPortLandlordName}
-                          onChange={e => setNewPortLandlordName(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-zinc-600 block mb-0.5">Telefon</label>
-                        <input
-                          type="text"
-                          placeholder="05xx..."
-                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={newPortLandlordPhone}
-                          onChange={e => setNewPortLandlordPhone(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fotoğraf Yükleme Alanı (Max 12) */}
-                  <div className="p-4 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col gap-3">
-                    <div className="flex justify-between items-center flex-wrap gap-3">
-                      <span className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <ImageIcon size={14} /> Portföy Fotoğrafları ({newPortFiles.length}/12)
-                      </span>
-                      {newPortFiles.length < 12 && (
-                        <label className="cursor-pointer px-3 py-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-[11px] font-extrabold rounded-full transition-all flex items-center gap-1 shrink-0">
-                          <Plus size={12} />
-                          <span>Fotoğraf Seç</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={(e) => {
-                              const selectedFiles = Array.from(e.target.files || []);
-                              if (selectedFiles.length === 0) return;
-                              const combined = [...newPortFiles, ...selectedFiles].slice(0, 12);
-                              setNewPortFiles(combined);
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-                      )}
-                    </div>
-
-                    {newPortFiles.length > 0 ? (
-                      <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-1">
-                        {newPortFiles.map((file, idx) => (
-                          <div key={idx} className="relative group w-full h-16 rounded-xl overflow-hidden border border-zinc-200 bg-white">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt="Önizleme"
-                              className="w-full h-full object-cover"
-                            />
-                            {idx === 0 && (
-                              <span className="absolute bottom-0.5 left-0.5 bg-pastelYellow text-charcoal text-[8px] font-black px-1 rounded">
-                                Kapak
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setNewPortFiles(newPortFiles.filter((_, i) => i !== idx))}
-                              className="absolute top-1 right-1 p-0.5 bg-black/70 hover:bg-black text-white rounded-full transition-all cursor-pointer"
-                              title="Fotoğrafı Kaldır"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-zinc-400 text-center italic">
-                        İsteğe bağlı: En fazla 12 adet fotoğraf yükleyebilirsiniz. İlk seçilen fotoğraf varsayılan kapak fotoğrafı olacaktır.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Property Features Section */}
-                  <div className="p-4 rounded-2xl bg-cream border-none flex flex-col gap-3">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Yapı Özellikleri</span>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Açıklama</label>
-                      <textarea
-                        placeholder="Portföy hakkında detaylı açıklama yazınız..."
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none resize-none"
-                        rows={3}
-                        value={newPortAciklama}
-                        onChange={e => setNewPortAciklama(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Otopark Tipi</label>
-                      <select
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                        value={newPortOtoparkTipi}
-                        onChange={e => setNewPortOtoparkTipi(e.target.value)}
-                      >
-                        <option value="">Seçiniz</option>
-                        <option value="Açık Otopark">Açık Otopark</option>
-                        <option value="Kapalı Otopark">Kapalı Otopark</option>
-                        <option value="Otopark Yok">Otopark Yok</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Isıtma Tipi</label>
-                      <select
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                        value={newPortIsinmaTipi}
-                        onChange={e => setNewPortIsinmaTipi(e.target.value)}
-                      >
-                        <option value="">Seçiniz</option>
-                        <option value="Kombi (Doğalgaz)">Kombi (Doğalgaz)</option>
-                        <option value="Merkezi Sistem">Merkezi Sistem</option>
-                        <option value="Yerden Isıtma">Yerden Isıtma</option>
-                        <option value="Klima">Klima</option>
-                        <option value="Soba">Soba</option>
-                        <option value="Yok">Yok</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Balkon Durumu</label>
-                      <select
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                        value={newPortBalkonDurumu}
-                        onChange={e => setNewPortBalkonDurumu(e.target.value)}
-                      >
-                        <option value="">Seçiniz</option>
-                        <option value="Balkonlu">Balkonlu</option>
-                        <option value="Çift Balkonlu">Çift Balkonlu</option>
-                        <option value="Teraslı">Teraslı</option>
-                        <option value="Cam Balkon">Cam Balkon</option>
-                        <option value="Balkon Yok">Balkon Yok</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Eşya Durumu</label>
-                      <select
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                        value={newPortEsyaDurumu}
-                        onChange={e => setNewPortEsyaDurumu(e.target.value)}
-                      >
-                        <option value="">Seçiniz</option>
-                        <option value="Eşyalı">Eşyalı</option>
-                        <option value="Eşyasız">Eşyasız</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-zinc-600 block mb-1">Kullanım Durumu</label>
-                      <select
-                        className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                        value={newPortKullanimDurumu}
-                        onChange={e => setNewPortKullanimDurumu(e.target.value)}
-                      >
-                        <option value="">Seçiniz</option>
-                        <option value="Mülk Sahibi Oturuyor">Mülk Sahibi Oturuyor</option>
-                        <option value="Kiracı Var">Kiracı Var</option>
-                        <option value="Boş (Hemen Taşınmaya Uygun)">Boş (Hemen Taşınmaya Uygun)</option>
-                      </select>
-                    </div>
-
-                    {newPortTur === 'SATILIK' && (
-                      <div>
-                        <label className="text-[10px] text-zinc-600 block mb-1">Tapu Durumu</label>
-                        <select
-                          className="w-full text-xs p-2 border-2 border-zinc-300 rounded-lg bg-white focus:outline-none"
-                          value={newPortTapuDurumu}
-                          onChange={e => setNewPortTapuDurumu(e.target.value)}
-                        >
-                          <option value="">Seçiniz</option>
-                          <option value="Kat Mülkiyetli (İskanlı)">Kat Mülkiyetli (İskanlı)</option>
-                          <option value="Kat İrtifaklı">Kat İrtifaklı</option>
-                          <option value="Hisseli Tapu">Hisseli Tapu</option>
-                          <option value="Arsa Tapulu">Arsa Tapulu</option>
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                          checked={newPortHasAsansor}
-                          onChange={e => setNewPortHasAsansor(e.target.checked)}
-                        />
-                        <span className="text-[10px] text-zinc-600">Asansör Var</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                          checked={newPortIsAcilSatilik}
-                          onChange={e => setNewPortIsAcilSatilik(e.target.checked)}
-                        />
-                        <span className="text-[10px] text-zinc-600">Acil Satılık</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                          checked={newPortIsFiyatiDustu}
-                          onChange={e => setNewPortIsFiyatiDustu(e.target.checked)}
-                        />
-                        <span className="text-[10px] text-zinc-600">Fiyatı Düştü</span>
-                      </label>
-                    </div>
-
-                    {newPortTur === 'SATILIK' && (
-                      <div className="flex flex-wrap gap-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                            checked={newPortIsKrediyeUygun}
-                            onChange={e => setNewPortIsKrediyeUygun(e.target.checked)}
-                          />
-                          <span className="text-[10px] text-zinc-600">Krediye Uygun</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 border-2 border-zinc-300 rounded bg-white focus:outline-none"
-                            checked={newPortIsTakasaUygun}
-                            onChange={e => setNewPortIsTakasaUygun(e.target.checked)}
-                          />
-                          <span className="text-[10px] text-zinc-600">Takas Yapılabilir</span>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="submit"
-                      disabled={newPortSubmitting}
-                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-full transition-colors border-none flex items-center justify-center gap-2"
-                    >
-                      {newPortSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <span>{newPortSubmitting ? 'Portföy & Fotoğraflar Kaydediliyor...' : 'Portföy Oluştur ve Yetkilendirme Sözleşmesine Git'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={newPortSubmitting}
-                      className="flex-1 py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors border-none"
-                      onClick={() => { setShowAddPortfolioModal(false); setNewPortFiles([]); }}
-                    >
-                      İptal
-                    </button>
-                  </div>
-
-                </form>
+                </div>
               </div>
             )}
           </div>

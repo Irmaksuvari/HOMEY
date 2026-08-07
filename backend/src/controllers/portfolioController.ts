@@ -9,7 +9,8 @@ export const addPortfolio = async (req: any, res: Response) => {
     kaporaMiktari: reqKaporaMiktari, depozitoMiktari: reqDepozitoMiktari,
     isPublished: reqIsPublished,
     aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
-    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik,
+    latitude, longitude
   } = req.body;
   const { firmaId, userId } = req.user;
 
@@ -67,6 +68,8 @@ export const addPortfolio = async (req: any, res: Response) => {
       .input('isTakasaUygun', sql.Bit, tur === 'SATILIK' ? (isTakasaUygun === true || isTakasaUygun === 'true' || isTakasaUygun === 1) : 0)
       .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
       .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
+      .input('latitude', sql.Float, latitude ? parseFloat(latitude) : null)
+      .input('longitude', sql.Float, longitude ? parseFloat(longitude) : null)
       .query(`
         DECLARE @mulkSahibiId UNIQUEIDENTIFIER;
         SELECT @mulkSahibiId = Id FROM Musteriler WHERE Telefon = @evSahibiTelefon AND FirmaId = @firmaId;
@@ -83,7 +86,7 @@ export const addPortfolio = async (req: any, res: Response) => {
           KaporaMiktari, DepozitoMiktari, Il, Ilce, Mahalle, Semt, Cadde, Sokak,
           EvSahibiAdi, EvSahibiTelefon, Durum, IsPublished, Aciklama, OtoparkTipi,
           IsinmaTipi, BalkonDurumu, EsyaDurumu, KullanimDurumu, TapuDurumu, HasAsansor,
-          IsKrediyeUygun, IsTakasaUygun, IsAcilSatilik, IsFiyatiDustu, Baslik
+          IsKrediyeUygun, IsTakasaUygun, IsAcilSatilik, IsFiyatiDustu, Baslik, Latitude, Longitude
         )
         OUTPUT inserted.Id
         VALUES (
@@ -91,7 +94,7 @@ export const addPortfolio = async (req: any, res: Response) => {
           @kaporaMiktari, @depozitoMiktari, @il, @ilce, @mahalle, @semt, @cadde, @sokak,
           @evSahibiAdi, @evSahibiTelefon, 'BOSTA', @isPublished, @aciklama, @otoparkTipi,
           @isinmaTipi, @balkonDurumu, @esyaDurumu, @kullanimDurumu, @tapuDurumu, @hasAsansor,
-          @isKrediyeUygun, @isTakasaUygun, @isAcilSatilik, @isFiyatiDustu, @baslik
+          @isKrediyeUygun, @isTakasaUygun, @isAcilSatilik, @isFiyatiDustu, @baslik, @latitude, @longitude
         )
       `);
 
@@ -177,7 +180,9 @@ export const listPortfolios = async (req: any, res: Response) => {
         baslik: p.Baslik,
         createdAt: p.KayitTarihi,
         fotograflar: photos,
-        kapakFoto: photos[0] || null
+        kapakFoto: photos[0] || null,
+        latitude: p.Latitude || null,
+        longitude: p.Longitude || null
       };
     });
 
@@ -196,7 +201,8 @@ export const editPortfolio = async (req: any, res: Response) => {
     tip, tur, fiyat, metrekare, odaSayisi,
     il, ilce, mahalle, semt, cadde, sokak, evSahibiAdi, evSahibiTelefon,
     aciklama, otoparkTipi, isinmaTipi, balkonDurumu, esyaDurumu, kullanimDurumu,
-    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik
+    tapuDurumu, hasAsansor, isKrediyeUygun, isTakasaUygun, isAcilSatilik, isFiyatiDustu, baslik,
+    latitude, longitude
   } = req.body;
   const { firmaId, userId, rol } = req.user;
 
@@ -256,6 +262,8 @@ export const editPortfolio = async (req: any, res: Response) => {
       .input('isTakasaUygun', sql.Bit, tur === 'SATILIK' ? (isTakasaUygun === true || isTakasaUygun === 'true' || isTakasaUygun === 1) : 0)
       .input('isAcilSatilik', sql.Bit, isAcilSatilik === true || isAcilSatilik === 'true' || isAcilSatilik === 1)
       .input('isFiyatiDustu', sql.Bit, isFiyatiDustu === true || isFiyatiDustu === 'true' || isFiyatiDustu === 1)
+      .input('latitude', sql.Float, latitude ? parseFloat(latitude) : null)
+      .input('longitude', sql.Float, longitude ? parseFloat(longitude) : null)
       .query(`
         DECLARE @mulkSahibiId UNIQUEIDENTIFIER;
         SELECT @mulkSahibiId = Id FROM Musteriler WHERE Telefon = @evSahibiTelefon AND FirmaId = (SELECT FirmaId FROM Portfoyler WHERE Id = @id);
@@ -297,7 +305,9 @@ export const editPortfolio = async (req: any, res: Response) => {
             IsTakasaUygun = @isTakasaUygun,
             IsAcilSatilik = @isAcilSatilik,
             IsFiyatiDustu = @isFiyatiDustu,
-            Baslik = @baslik
+            Baslik = @baslik,
+            Latitude = @latitude,
+            Longitude = @longitude
         WHERE Id = @id
       `);
 
