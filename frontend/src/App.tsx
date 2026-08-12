@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { useGoogleLogin } from '@react-oauth/google';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -19,10 +20,29 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LogOut, MapPin, User, Briefcase,
   FileText, Clock, LayoutDashboard, Loader2,
   Trophy, Banknote, UserPlus, BadgeCheck, Building2, Bell,
-  Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles,
+  Bed, Ruler, Tag, Key, Image as ImageIcon, CheckCircle2, Filter, Info, HelpCircle, RotateCcw, Sparkles, Map as MapIcon,
   GitPullRequest, Layers, UploadCloud, Trash2, Download, Settings, Moon, Sun, Monitor,
   ArrowUpDown, Car, Flame, Sofa, Scroll, FileCheck, Snowflake, GripVertical, MoreVertical
 } from 'lucide-react';
+
+// Helper for case-insensitive UUID & string comparisons
+const compareIds = (id1?: string | number, id2?: string | number) => {
+  if (id1 === undefined || id1 === null || id2 === undefined || id2 === null) return false;
+  return String(id1).trim().toLowerCase() === String(id2).trim().toLowerCase();
+};
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 // ─── Dikey Portföy Kart Bileşeni (Üstte Görsel Carousel, Altta Bilgiler) ─────
 function PortfolioCardItem({ portfolio, photos, onSelect, isPublished, onTogglePublish, publishLoading, isOwner, requireAuthAgreement }: { portfolio: any; photos: string[]; onSelect: () => void; isPublished: boolean; onTogglePublish: () => void; publishLoading: boolean; isOwner: boolean; requireAuthAgreement?: boolean }) {
@@ -406,7 +426,7 @@ const DocumentOperationsTab = ({ token, portfolios, user, clientProcesses = [], 
     setExpandedProcesses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const pendingPortfolios = portfolios.filter(p => p.yetkilendirmeSozlesmesiYapildi === false && p.gorevliUzmanId === user?.id);
+  const pendingPortfolios = portfolios.filter(p => p.yetkilendirmeSozlesmesiYapildi === false && compareIds(p.gorevliUzmanId, user?.id));
 
   const agreementProcesses = clientProcesses.filter(p => Number(p.asamaId) === 3);
   const saleProcesses = agreementProcesses.filter(p => p.portfoyTur === 'SATILIK');
@@ -808,15 +828,79 @@ function CustomScrollWheelZoom() {
   return null;
 }
 
-function LocationPickerMap({ position, setPosition, className }: { position: [number, number] | null; setPosition: (pos: [number, number]) => void; className?: string }) {
+const MapLayers = () => {
+  const [provider, setProvider] = useState(localStorage.getItem('mapProvider') || 'google');
+
+  useEffect(() => {
+    const handleProviderChange = (e: any) => setProvider(e.detail);
+    window.addEventListener('mapProviderChange', handleProviderChange);
+    return () => window.removeEventListener('mapProviderChange', handleProviderChange);
+  }, []);
+
+  if (provider === 'leaflet') {
+    return (
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+    );
+  }
+
+  return (
+    <LayersControl position="topright" key={provider}>
+      <LayersControl.BaseLayer checked name="Google Sokak">
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains={['mt0','mt1','mt2','mt3']}
+        />
+      </LayersControl.BaseLayer>
+      <LayersControl.BaseLayer name="Google Uydu">
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+          subdomains={['mt0','mt1','mt2','mt3']}
+        />
+      </LayersControl.BaseLayer>
+      <LayersControl.BaseLayer name="Google Karma">
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+          subdomains={['mt0','mt1','mt2','mt3']}
+        />
+      </LayersControl.BaseLayer>
+    </LayersControl>
+  );
+};
+
+function LocationPickerMap({ position, setPosition, className, onMapClick }: { position: [number, number] | null; setPosition: (pos: [number, number]) => void; className?: string; onMapClick?: (lat: number, lng: number) => void }) {
   const defaultPos: [number, number] = [41.0082, 28.9784]; // Istanbul by default
 
   function LocationMarker() {
+    const map = useMap();
+    const isMapClick = useRef(false);
+
     useMapEvents({
       click(e) {
+        isMapClick.current = true;
         setPosition([e.latlng.lat, e.latlng.lng]);
+        if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng);
       },
     });
+
+    useEffect(() => {
+      if (position) {
+        if (isMapClick.current) {
+          isMapClick.current = false;
+          return;
+        }
+        const currentCenter = map.getCenter();
+        const dist = currentCenter.distanceTo(L.latLng(position[0], position[1]));
+        if (dist > 10) {
+          map.setView(position, map.getZoom() < 13 ? 15 : map.getZoom(), { animate: false });
+        }
+      }
+    }, [position, map]);
 
     return position === null ? null : (
       <Marker position={position}></Marker>
@@ -827,10 +911,7 @@ function LocationPickerMap({ position, setPosition, className }: { position: [nu
     <div className={`w-full rounded-2xl overflow-hidden border-2 border-zinc-200 z-0 relative ${className || 'h-64'}`}>
       <MapContainer center={position || defaultPos} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
         <CustomScrollWheelZoom />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <MapLayers />
         <LocationMarker />
       </MapContainer>
     </div>
@@ -843,9 +924,7 @@ function StaticMap({ position }: { position: [number, number] | null }) {
     <div className="h-48 w-full rounded-2xl overflow-hidden border-2 border-zinc-200 z-0 relative mt-4">
       <MapContainer center={position} zoom={15} style={{ height: '100%', width: '100%' }} dragging={false} zoomControl={false} scrollWheelZoom={false}>
         <CustomScrollWheelZoom />
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <MapLayers />
         <Marker position={position}></Marker>
       </MapContainer>
     </div>
@@ -900,9 +979,7 @@ function MultiMarkerMap({ portfolios, hoveredPortfolioId, onMarkerClick }: { por
         scrollWheelZoom={true}
       >
         <CustomScrollWheelZoom />
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <MapLayers />
         {portfolios.map(p => {
           if (!p.latitude || !p.longitude) return null;
           const isHovered = hoveredPortfolioId === p.id;
@@ -944,6 +1021,12 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  // Password Reset States
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resetPasswordNew, setResetPasswordNew] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
   // Register Form States
   const [regFirmaName, setRegFirmaName] = useState('');
   const [regVergiNo, setRegVergiNo] = useState('');
@@ -972,6 +1055,22 @@ export default function App() {
   const [openProcessMenuId, setOpenProcessMenuId] = useState<string | null>(null);
   const [openDetailsMenuId, setOpenDetailsMenuId] = useState<string | null>(null);
 
+  // Çalışan Silme Modal State
+  const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [reassignedUserId, setReassignedUserId] = useState<string>('');
+
+  // Map Provider State
+  const [mapProvider, setMapProvider] = useState<'google' | 'leaflet'>(() => {
+    return (localStorage.getItem('mapProvider') as any) || 'google';
+  });
+
+  const handleMapProviderChange = (provider: 'google' | 'leaflet') => {
+    setMapProvider(provider);
+    localStorage.setItem('mapProvider', provider);
+    window.dispatchEvent(new CustomEvent('mapProviderChange', { detail: provider }));
+  };
+
   // Theme Preference State
   const [themePreference, setThemePreference] = useState<'light' | 'dark' | 'system'>(() => {
     const savedUser = localStorage.getItem('homey_user');
@@ -981,7 +1080,7 @@ export default function App() {
         if (parsed.temaTercihi) return parsed.temaTercihi;
       } catch (e) { }
     }
-    return (localStorage.getItem('themePreference') as 'light' | 'dark' | 'system') || 'system';
+    return (localStorage.getItem('themePreference') as 'light' | 'dark' | 'system') || 'light';
   });
 
   const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
@@ -1006,6 +1105,12 @@ export default function App() {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
 
+    // İlk giriş şifre değiştirme ekranında veya kullanıcı giriş yapmamışsa karanlık modu devre dışı bırak
+    if (user?.ilkGirisMi || !user) {
+      root.classList.add('light');
+      return;
+    }
+
     if (themePreference === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       root.classList.add(systemTheme);
@@ -1014,12 +1119,21 @@ export default function App() {
     }
 
     localStorage.setItem('themePreference', themePreference);
-  }, [themePreference]);
+  }, [themePreference, user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('resetToken');
+    if (token) {
+      setResetToken(token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // Completed Portfolios States
   const [completedPortfolios, setCompletedPortfolios] = useState<any[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
-  const [completedScopeFilter, setCompletedScopeFilter] = useState<'all' | 'mine' | 'others'>('all');
+  const [completedScopeFilter, setCompletedScopeFilter] = useState<'all' | 'mine' | 'others'>('mine');
   const [completedTypeFilter, setCompletedTypeFilter] = useState<'all' | 'SATILDI' | 'KIRALANDI'>('all');
   const [completedSearchQuery, setCompletedSearchQuery] = useState('');
   const [selectedCompletedPortfolio, setSelectedCompletedPortfolio] = useState<any | null>(null);
@@ -1417,11 +1531,7 @@ export default function App() {
   }, [selectedPortfolio?.id, token]);
 
 
-  // Helper for case-insensitive UUID & string comparisons
-  const compareIds = (id1?: string | number, id2?: string | number) => {
-    if (id1 === undefined || id1 === null || id2 === undefined || id2 === null) return false;
-    return String(id1).trim().toLowerCase() === String(id2).trim().toLowerCase();
-  };
+
 
   const isOwnPortfolio = (portfolio: any) => {
     const myName = `${user?.ad || ''} ${user?.soyad || ''}`.trim();
@@ -1516,6 +1626,104 @@ export default function App() {
   const [editPortIsFiyatiDustu, setEditPortIsFiyatiDustu] = useState(false);
   const [editPortPos, setEditPortPos] = useState<[number, number] | null>(null);
   const [editPortSubmitting, setEditPortSubmitting] = useState(false);
+
+  // Map-Address Sync State
+  const [syncMapAddress, setSyncMapAddress] = useState(true);
+
+  // New Portfolio Debounce
+  const debouncedNewPortIl = useDebounce(newPortIl, 1000);
+  const debouncedNewPortIlce = useDebounce(newPortIlce, 1000);
+  const debouncedNewPortSemt = useDebounce(newPortSemt, 1000);
+  const debouncedNewPortMahalle = useDebounce(newPortMahalle, 1000);
+  const debouncedNewPortCadde = useDebounce(newPortCadde, 1000);
+  const debouncedNewPortSokak = useDebounce(newPortSokak, 1000);
+
+  // Edit Portfolio Debounce
+  const debouncedEditPortIl = useDebounce(editPortIl, 1000);
+  const debouncedEditPortIlce = useDebounce(editPortIlce, 1000);
+  const debouncedEditPortSemt = useDebounce(editPortSemt, 1000);
+  const debouncedEditPortMahalle = useDebounce(editPortMahalle, 1000);
+  const debouncedEditPortCadde = useDebounce(editPortCadde, 1000);
+  const debouncedEditPortSokak = useDebounce(editPortSokak, 1000);
+
+  const skipGeocodeRef = useRef(false);
+
+  // Geocoding function
+  const geocodeAddress = async (il: string, ilce: string, semt: string, mahalle: string, cadde: string, sokak: string, setter: (pos: [number, number]) => void) => {
+    if (!syncMapAddress) return;
+    const queryParts = [];
+    if (sokak) queryParts.push(sokak);
+    if (cadde) queryParts.push(cadde);
+    if (mahalle) queryParts.push(mahalle);
+    if (semt) queryParts.push(semt);
+    if (ilce) queryParts.push(ilce);
+    if (il) queryParts.push(il);
+    
+    if (queryParts.length === 0) return;
+    
+    const q = queryParts.join(' ');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setter([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      }
+    } catch (e) {
+      console.error("Geocoding error", e);
+    }
+  };
+
+  // Reverse Geocoding function
+  const reverseGeocode = async (lat: number, lng: number, setIl: any, setIlce: any, setSemt: any, setMahalle: any, setCadde: any, setSokak: any) => {
+    if (!syncMapAddress) return;
+    skipGeocodeRef.current = true;
+    setTimeout(() => { skipGeocodeRef.current = false; }, 2000); // Rescue if effect doesn't fire
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.address) {
+          const a = data.address;
+          if (a.province || a.city || a.state) setIl(a.province || a.city || a.state || '');
+          if (a.town || a.county || a.district || a.city_district || a.borough || a.municipality) setIlce(a.town || a.county || a.district || a.city_district || a.borough || a.municipality || '');
+          if (a.quarter || a.city_district) setSemt(a.quarter || a.city_district || '');
+          if (a.suburb || a.village || a.neighbourhood || a.quarter) setMahalle(a.suburb || a.village || a.neighbourhood || a.quarter || '');
+          const road = a.road || a.pedestrian || a.path || '';
+          if (road.toLowerCase().includes('cadde') || road.toLowerCase().includes('bulvar')) {
+            setCadde(road);
+            setSokak('');
+          } else {
+            setSokak(road);
+            setCadde('');
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Reverse geocoding error", e);
+    }
+  };
+
+  useEffect(() => {
+    if (showAddPortfolioModal) {
+      if (skipGeocodeRef.current) {
+        skipGeocodeRef.current = false;
+        return;
+      }
+      geocodeAddress(debouncedNewPortIl, debouncedNewPortIlce, debouncedNewPortSemt, debouncedNewPortMahalle, debouncedNewPortCadde, debouncedNewPortSokak, setNewPortPos);
+    }
+  }, [debouncedNewPortIl, debouncedNewPortIlce, debouncedNewPortSemt, debouncedNewPortMahalle, debouncedNewPortCadde, debouncedNewPortSokak, showAddPortfolioModal]);
+
+  useEffect(() => {
+    if (isEditingPortfolio) {
+      if (skipGeocodeRef.current) {
+        skipGeocodeRef.current = false;
+        return;
+      }
+      geocodeAddress(debouncedEditPortIl, debouncedEditPortIlce, debouncedEditPortSemt, debouncedEditPortMahalle, debouncedEditPortCadde, debouncedEditPortSokak, setEditPortPos);
+    }
+  }, [debouncedEditPortIl, debouncedEditPortIlce, debouncedEditPortSemt, debouncedEditPortMahalle, debouncedEditPortCadde, debouncedEditPortSokak, isEditingPortfolio]);
 
   // Close Portfolio Transaction Modal States
   const [expandedCompletedCardId, setExpandedCompletedCardId] = useState<string | null>(null);
@@ -1705,6 +1913,9 @@ export default function App() {
 
     const monthlyCiroSums = monthNames.map((label, monthIndex) => {
       const monthCompleted = completedPortfolios.filter(p => {
+        // Sadece giriş yapan kullanıcının işlemi olanları filtrele (Bireysel Ciro)
+        if (!compareIds(p.islemYapanDanismanId, user?.id) && !compareIds(p.gorevliUzmanId, user?.id)) return false;
+
         const dateStr = p.islemTarihi || p.updatedAt || p.createdAt;
         const d = dateStr ? new Date(dateStr) : null;
         return d ? d.getMonth() === monthIndex : false;
@@ -1726,7 +1937,7 @@ export default function App() {
       '6A_2': monthlyCiroSums.slice(6, 12).map(d => ({ label: d.label, ciro: d.ciro, y: mapCiroToY(d.ciro) })),
       '1Y': monthlyCiroSums.map(d => ({ label: d.label, ciro: d.ciro, y: mapCiroToY(d.ciro) }))
     };
-  }, [completedPortfolios]);
+  }, [completedPortfolios, user?.id]);
 
   // Dynamic Month/Year Navigation States for Mini Calendar
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); // Default to current month
@@ -2268,6 +2479,53 @@ export default function App() {
     }
   }, [showAddPortfolioModal, newPortFiyat, newPortTur, firmaSettings]);
 
+  const handleForgotPassword = async () => {
+    if (!loginEmail) {
+      showToast("Lütfen önce e-posta adresinizi giriniz.", "error");
+      return;
+    }
+    setIsForgotPasswordLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message, "success");
+      } else {
+        showToast(data.message, "error");
+      }
+    } catch (e) {
+      showToast("Bir hata oluştu, lütfen daha sonra tekrar deneyin.", "error");
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetToken || !resetPasswordNew) return;
+    
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, newPassword: resetPasswordNew })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message, "success");
+        setResetToken(null);
+      } else {
+        setResetPasswordError(data.message);
+      }
+    } catch (e) {
+      setResetPasswordError("Bir hata oluştu, lütfen daha sonra tekrar deneyin.");
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -2304,6 +2562,60 @@ export default function App() {
       setLoginError('Sunucuyla bağlantı kurulamadı.');
     }
   };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoginError(null);
+      try {
+        const res = await fetch('/api/auth/google-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: tokenResponse.access_token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('homey_token', data.token);
+          localStorage.setItem('homey_user', JSON.stringify(data.user));
+          setToken(data.token);
+          setUser(data.user);
+          setPackageType(data.user.paketTipi);
+          if (data.user.temaTercihi) {
+            setThemePreference(data.user.temaTercihi);
+          }
+        } else {
+          setLoginError(data.message || 'Google ile giriş başarısız.');
+        }
+      } catch (err) {
+        setLoginError('Sunucuyla bağlantı kurulamadı.');
+      }
+    },
+    onError: () => {
+      setLoginError('Google ile giriş işlemi iptal edildi veya başarısız oldu.');
+    }
+  });
+
+  const fillWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setRegError(null);
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        const payload = await res.json();
+        if (payload && payload.email) {
+          setRegEmail(payload.email);
+          setRegAd(payload.given_name || '');
+          setRegSoyad(payload.family_name || '');
+          showToast('Yetkili bilgileri Google üzerinden çekildi!', 'success');
+        }
+      } catch (err) {
+        setRegError('Google bilgileri alınamadı.');
+      }
+    },
+    onError: () => {
+      setRegError('Google işlemi iptal edildi.');
+    }
+  });
 
   // Register Broker Handler
   const handleRegisterBroker = async (e: React.FormEvent) => {
@@ -2417,6 +2729,46 @@ export default function App() {
   };
 
   const calcResults = calculateCommissionResult();
+
+  const handleDeleteEmployee = async () => {
+    if (!userToDelete || !reassignedUserId) {
+      showToast('Lütfen portföylerin kime aktarılacağını seçin.', 'error');
+      return;
+    }
+    
+    if (userToDelete.id === reassignedUserId) {
+      showToast('Portföyler aynı kişiye aktarılamaz.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/employees/${userToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reassignedUserId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Kullanıcı başarıyla silindi ve portföyler aktarıldı.', 'success');
+        setShowDeleteUserModal(false);
+        setUserToDelete(null);
+        setReassignedUserId('');
+        if (selectedEmployee?.id === userToDelete.id) {
+          setSelectedEmployee(null);
+        }
+        if (token) {
+          fetchEmployees(token);
+        }
+      } else {
+        showToast(data.message || 'Silme işlemi başarısız.', 'error');
+      }
+    } catch (err) {
+      showToast('Sunucu hatası oluştu.', 'error');
+    }
+  };
 
   // Employee Add Handler with real subscription check
   const handleAddEmployee = async (e: React.FormEvent) => {
@@ -3253,24 +3605,47 @@ export default function App() {
 
           {/* Left Branding Panel */}
           <div className="bg-charcoal text-white rounded-3xl p-8 flex flex-col justify-between border-none shadow-none">
-            <div>
-              <span className="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent">
+            <div className="text-center mt-12 mb-4">
+              <span className="text-4xl font-extrabold tracking-widest bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent inline-block">
                 HOMEY
               </span>
-              <h2 className="text-4xl font-extrabold mt-6 leading-tight">Emlak SaaS Platformu</h2>
-              <p className="text-zinc-400 text-sm mt-4 leading-relaxed">
+              <p className="text-zinc-400 text-sm mt-6 leading-relaxed max-w-sm mx-auto">
                 Ofisinizi, gayrimenkul danışmanlarınızı, müşteri taleplerinizi ve komisyon paylaşım senaryolarını tek merkezden yönetmenin en modern yolu.
               </p>
             </div>
 
             <div className="mt-8 pt-8 border-t border-zinc-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-pastelYellow border-none flex items-center justify-center font-bold text-charcoal text-xs">
-                  ★
+              <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest block mb-4">Üyelik Modellerimiz</span>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-pastelYellow border-none flex items-center justify-center font-bold text-charcoal text-[10px]">
+                      ★
+                    </div>
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Deneme</span>
+                  </div>
+                  <span className="text-sm font-semibold text-white ml-8">4 Danışman</span>
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">Üyelik Modeli</span>
-                  <span className="text-sm font-semibold text-white">30 Günlük Deneme Sürümüyle Başlayın</span>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-pastelBlue border-none flex items-center justify-center font-bold text-charcoal text-[10px]">
+                      ★
+                    </div>
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Basic</span>
+                  </div>
+                  <span className="text-sm font-semibold text-white ml-8">4 Danışman</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-pastelGreen border-none flex items-center justify-center font-bold text-charcoal text-[10px]">
+                      ★
+                    </div>
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Premium</span>
+                  </div>
+                  <span className="text-sm font-semibold text-white ml-8">∞ Danışman</span>
                 </div>
               </div>
             </div>
@@ -3304,7 +3679,39 @@ export default function App() {
               )}
 
               {/* Login Form */}
-              {authMode === 'login' ? (
+              {resetToken ? (
+                <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-charcoal">Yeni Şifre Belirle</h3>
+                  <p className="text-xs text-zinc-500">Lütfen hesabınız için yeni bir şifre girin.</p>
+                  
+                  {resetPasswordError && (
+                    <div className="p-4 rounded-2xl bg-red-100 text-red-950 text-xs font-semibold border-none flex items-center gap-2">
+                      <AlertTriangle size={16} />
+                      <span>{resetPasswordError}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-zinc-500 block mb-1">Yeni Şifre</label>
+                    <input
+                      type="password"
+                      className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
+                      placeholder="••••••••"
+                      value={resetPasswordNew}
+                      onChange={e => setResetPasswordNew(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full py-3 bg-emerald-500 text-white font-extrabold rounded-full hover:bg-emerald-600 transition-all border-none mt-2">
+                    Şifreyi Güncelle
+                  </button>
+                  
+                  <button type="button" onClick={() => { setResetToken(null); window.history.replaceState({}, document.title, window.location.pathname); }} className="w-full py-3 bg-zinc-100 text-zinc-700 font-extrabold rounded-full hover:bg-zinc-200 transition-all border-none mt-1">
+                    Giriş Ekranına Dön
+                  </button>
+                </form>
+              ) : authMode === 'login' ? (
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
                   <h3 className="text-xl sm:text-2xl font-extrabold text-charcoal">Hesabınıza Giriş Yapın</h3>
 
@@ -3328,7 +3735,17 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-zinc-500 block mb-1">Şifre</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-zinc-500 block">Şifre</label>
+                      <button 
+                        type="button" 
+                        onClick={handleForgotPassword} 
+                        disabled={isForgotPasswordLoading}
+                        className="text-[10px] font-extrabold text-charcoal hover:underline bg-transparent border-none p-0 cursor-pointer disabled:opacity-50"
+                      >
+                        {isForgotPasswordLoading ? 'Gönderiliyor...' : 'Şifremi unuttum'}
+                      </button>
+                    </div>
                     <input
                       type="password"
                       className="w-full text-sm p-3 rounded-2xl bg-zinc-50 border-none focus:outline-none"
@@ -3342,11 +3759,31 @@ export default function App() {
                   <button type="submit" className="w-full py-3 bg-charcoal text-white font-extrabold rounded-full hover:bg-black transition-all border-none mt-2">
                     Giriş Yap
                   </button>
+
+                  <div className="flex items-center gap-2 my-1">
+                    <div className="h-px bg-zinc-200 flex-1"></div>
+                    <span className="text-[10px] font-bold text-zinc-400">VEYA</span>
+                    <div className="h-px bg-zinc-200 flex-1"></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => loginWithGoogle()}
+                    className="w-full py-3 bg-white text-charcoal border-2 border-zinc-200 font-extrabold rounded-full hover:bg-zinc-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                    Google ile Giriş Yap
+                  </button>
                 </form>
               ) : (
                 /* Registration Form */
                 <form onSubmit={handleRegisterBroker} className="flex flex-col gap-3 overflow-y-auto max-h-[420px] pr-2">
-                  <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Yeni Firma ve Broker Kaydı</h3>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-charcoal">Yeni Firma ve Yetkili Kaydı</h3>
 
                   {regError && (
                     <div className="p-3 rounded-2xl bg-red-100 text-red-950 text-xs font-semibold border-none flex items-center gap-2">
@@ -3377,9 +3814,26 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div className="mt-2 mb-1 p-3 bg-zinc-50 rounded-xl border border-zinc-100 flex flex-col gap-2">
+                    <p className="text-[10px] font-bold text-zinc-500 text-center">Yetkili Bilgilerini Manuel veya Google ile Doldurun</p>
+                    <button
+                      type="button"
+                      onClick={() => fillWithGoogle()}
+                      className="w-full py-2 bg-white text-charcoal border border-zinc-200 font-bold text-xs rounded-lg hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                      Google ile Bilgileri Çek
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-500 block mb-0.5">Broker Adı</label>
+                      <label className="text-[10px] font-bold text-zinc-500 block mb-0.5">Yetkili Adı</label>
                       <input type="text" className="w-full text-xs p-2 rounded-xl bg-zinc-50 border-none focus:outline-none" placeholder="Ad" value={regAd} onChange={e => setRegAd(e.target.value)} required />
                     </div>
                     <div>
@@ -3390,7 +3844,7 @@ export default function App() {
 
                   <div>
                     <label className="text-[10px] font-bold text-zinc-500 block mb-0.5">E-posta</label>
-                    <input type="email" className="w-full text-xs p-2 rounded-xl bg-zinc-50 border-none focus:outline-none" placeholder="broker@ofis.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
+                    <input type="email" className="w-full text-xs p-2 rounded-xl bg-zinc-50 border-none focus:outline-none" placeholder="yetkili@ofis.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
                   </div>
 
                   <div>
@@ -3453,7 +3907,7 @@ export default function App() {
                       >
                         <span className="text-[10px] font-extrabold block">Premium</span>
                         <span className="text-[9px] text-zinc-600 block mt-0.5">Tam Sınırsız</span>
-                        <span className="text-[8px] font-bold text-zinc-500 mt-1 block">Sınırsız Danışman</span>
+                        <span className="text-[8px] font-bold text-zinc-500 mt-1 block">∞ Danışman</span>
                       </div>
                     </div>
                   </div>
@@ -3556,7 +4010,11 @@ export default function App() {
                 <div className="w-10 h-10 shrink-0" />
 
                 {/* Centered HOMEY Logo Text & Firm Badge */}
-                <div className="flex flex-col items-center justify-center text-center leading-tight transition-all duration-300 flex-1 min-w-0">
+                <div 
+                  className="flex flex-col items-center justify-center text-center leading-tight transition-all duration-300 flex-1 min-w-0 cursor-pointer hover:opacity-80"
+                  onClick={() => setActiveTab('dashboard')}
+                  title="Anasayfaya Dön"
+                >
                   <span className="text-xl sm:text-2xl font-extrabold tracking-wider bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue bg-clip-text text-transparent leading-none">
                     HOMEY
                   </span>
@@ -3794,7 +4252,7 @@ export default function App() {
       {/* Account Settings Modal */}
       {showAccountSettingsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-5 md:p-6 max-w-sm w-full relative border-none shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl p-5 md:p-6 max-w-2xl w-full relative border-none shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center mb-1">
               <div>
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Kullanıcı İşlemleri</span>
@@ -3808,44 +4266,70 @@ export default function App() {
               </button>
             </div>
 
-            <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
-              <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Lock size={14} /> Şifre Değiştir</h4>
-              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4">
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Mevcut Şifre</label>
-                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.eskiSifre} onChange={e => setPasswordForm({ ...passwordForm, eskiSifre: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre</label>
-                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.yeniSifre} onChange={e => setPasswordForm({ ...passwordForm, yeniSifre: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre (Tekrar)</label>
-                  <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white mb-1" placeholder="••••••••" value={passwordForm.yeniSifreTekrar} onChange={e => setPasswordForm({ ...passwordForm, yeniSifreTekrar: e.target.value })} />
-                </div>
-                <button type="submit" disabled={isChangingPassword} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 mt-1">
-                  {isChangingPassword ? 'Kaydediliyor...' : 'Şifreyi Güncelle'}
-                </button>
-              </form>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Sol Sütun: Şifre Değiştir */}
+              <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner h-fit">
+                <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Lock size={14} /> Şifre Değiştir</h4>
+                <form onSubmit={handlePasswordChange} className="flex flex-col gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-600 block mb-1">Mevcut Şifre</label>
+                    <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.eskiSifre} onChange={e => setPasswordForm({ ...passwordForm, eskiSifre: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre</label>
+                    <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white" placeholder="••••••••" value={passwordForm.yeniSifre} onChange={e => setPasswordForm({ ...passwordForm, yeniSifre: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-600 block mb-1">Yeni Şifre (Tekrar)</label>
+                    <input type="password" required className="w-full text-xs p-2.5 border-2 border-zinc-200 rounded-xl focus:border-emerald-500 focus:outline-none bg-white mb-1" placeholder="••••••••" value={passwordForm.yeniSifreTekrar} onChange={e => setPasswordForm({ ...passwordForm, yeniSifreTekrar: e.target.value })} />
+                  </div>
+                  <button type="submit" disabled={isChangingPassword} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 mt-1">
+                    {isChangingPassword ? 'Kaydediliyor...' : 'Şifreyi Güncelle'}
+                  </button>
+                </form>
+              </div>
 
-            <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
-              <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Monitor size={14} /> Görüntüleme Tercihi</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => handleThemeChange('light')}
-                  className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
-                >
-                  <Sun size={18} />
-                  <span className="text-[10px] font-bold">Açık Tema</span>
-                </button>
-                <button
-                  onClick={() => handleThemeChange('dark')}
-                  className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'dark' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
-                >
-                  <Moon size={18} />
-                  <span className="text-[10px] font-bold">Koyu Tema</span>
-                </button>
+              {/* Sağ Sütun: Tercihler */}
+              <div className="flex flex-col gap-5">
+                <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
+                  <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><Monitor size={14} /> Görüntüleme Tercihi</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                    >
+                      <Sun size={18} />
+                      <span className="text-[10px] font-bold">Açık Tema</span>
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${themePreference === 'dark' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                    >
+                      <Moon size={18} />
+                      <span className="text-[10px] font-bold">Koyu Tema</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50 shadow-inner">
+                  <h4 className="font-bold text-charcoal mb-3 flex items-center gap-2 text-sm"><MapIcon size={14} /> Harita Sağlayıcısı</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleMapProviderChange('google')}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${mapProvider === 'google' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                    >
+                      <MapIcon size={18} />
+                      <span className="text-[10px] font-bold text-center">Google Haritalar</span>
+                    </button>
+                    <button
+                      onClick={() => handleMapProviderChange('leaflet')}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${mapProvider === 'leaflet' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'}`}
+                    >
+                      <MapIcon size={18} />
+                      <span className="text-[10px] font-bold text-center">Leaflet (OSM)</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3863,7 +4347,7 @@ export default function App() {
                 <div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-charcoal leading-tight flex items-center gap-2 flex-wrap">
                     <span className="flex items-center gap-3 flex-wrap">
-                      <span className="whitespace-nowrap">İyi günler, {user?.ad || ''} 👋</span>
+                      <span className="whitespace-nowrap">İyi günler, {user?.ad || ''} </span>
                       {/* Notification Bell Inline next to Welcome text */}
                       <div className="relative inline-flex items-center">
                         {(() => {
@@ -4398,10 +4882,18 @@ export default function App() {
 
                   {(() => {
                     const currentDataList = ciroChartData[ciroTimeframe];
-                    const activePoint = (hoveredCiroIndex !== null && currentDataList[hoveredCiroIndex])
-                      ? currentDataList[hoveredCiroIndex]
-                      : currentDataList[currentDataList.length - 1];
-                    const displayCiro = activePoint ? activePoint.ciro : personalCiro;
+                    let activePoint = null;
+                    if (hoveredCiroIndex !== null && currentDataList[hoveredCiroIndex]) {
+                      activePoint = currentDataList[hoveredCiroIndex];
+                    } else {
+                      // Hover yapılmadığında her zaman bu ayın bireysel cirosunu göster
+                      const currentMonthIndex = new Date().getMonth();
+                      activePoint = {
+                        ciro: ciroChartData['1Y'][currentMonthIndex].ciro,
+                        label: ciroChartData['1Y'][currentMonthIndex].label
+                      };
+                    }
+                    const displayCiro = activePoint.ciro;
                     const officeShare = displayCiro * (commSettings.aOfis / 100);
                     const userEarned = displayCiro * (commSettings.aDanisman / 100);
 
@@ -4458,49 +4950,51 @@ export default function App() {
                     };
 
                     return (
-                      <svg
-                        className="w-full h-12 overflow-visible cursor-pointer"
-                        viewBox="0 0 100 30"
-                        preserveAspectRatio="none"
-                        onClick={handleChartClick}
-                      >
-                        <defs>
-                          <linearGradient id="ciroGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#111111" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#111111" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
+                      <div className="relative w-full h-12">
+                        <svg
+                          className="absolute inset-0 w-full h-full cursor-pointer overflow-visible"
+                          viewBox="0 0 100 30"
+                          preserveAspectRatio="none"
+                          onClick={handleChartClick}
+                        >
+                          <defs>
+                            <linearGradient id="ciroGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#111111" stopOpacity="0.25" />
+                              <stop offset="100%" stopColor="#111111" stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
 
-                        <path d={areaPath} fill="url(#ciroGrad)" />
-                        <path d={linePath} fill="none" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d={areaPath} fill="url(#ciroGrad)" />
+                          <path d={linePath} fill="none" stroke="#111111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
 
+                        {/* Absolutely positioned HTML dots overlaid on top */}
                         {data.map((d, i) => {
-                          const cx = i * step;
                           const isHovered = hoveredCiroIndex === i;
+                          const cx = i * step; // percentage 0-100
+                          const cy = (d.y / 30) * 100; // percentage 0-100
+                          
                           return (
-                            <g
+                            <div
                               key={`ciro-pt-${i}`}
-                              transform={`translate(${cx}, ${d.y})`}
-                              className="cursor-pointer"
+                              className="absolute w-6 h-6 -ml-3 -mt-3 flex items-center justify-center cursor-pointer z-10"
+                              style={{ left: `${cx}%`, top: `${cy}%` }}
                               onClick={() => setHoveredCiroIndex(prev => prev === i ? null : i)}
                             >
-                              {/* Invisible extended touch/hover area */}
-                              <rect x="-6" y="-6" width="12" height="12" fill="transparent" />
-
-                              {/* Small House Icon */}
-                              <path
-                                d="M 0,-2.5 L 2.2,-0.3 H 1.5 V 2.2 H -1.5 V -0.3 H -2.2 Z"
-                                fill={isHovered ? "#059669" : "#111111"}
-                                stroke={isHovered ? "#FFFFFF" : "#111111"}
-                                strokeWidth="0.5"
-                                strokeLinejoin="round"
-                                className="transition-all duration-150"
-                                transform={isHovered ? "scale(1.25)" : "scale(1)"}
+                              <div
+                                className="rounded-full transition-all duration-150"
+                                style={{
+                                  width: isHovered ? '12px' : '10px',
+                                  height: isHovered ? '12px' : '10px',
+                                  backgroundColor: isHovered ? '#059669' : '#111111',
+                                  border: isHovered ? '2px solid #FFFFFF' : '2px solid #111111',
+                                  boxShadow: isHovered ? '0 0 4px rgba(0,0,0,0.3)' : 'none'
+                                }}
                               />
-                            </g>
+                            </div>
                           );
                         })}
-                      </svg>
+                      </div>
                     );
                   })()}
 
@@ -5121,6 +5615,20 @@ export default function App() {
                         );
                       })()}
 
+                      <div className="flex items-center justify-between mt-4 mb-2 bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                        <span className="text-xs font-semibold text-zinc-600 flex items-center gap-2">
+                          <MapPin size={16} className="text-emerald-600" />
+                          Harita & Adres Senkronizasyonu
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSyncMapAddress(!syncMapAddress)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${syncMapAddress ? 'bg-emerald-500' : 'bg-zinc-300'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${syncMapAddress ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-xs text-zinc-600 font-semibold block mb-1">İl</label>
@@ -5404,7 +5912,7 @@ export default function App() {
                       </span>
                       <span className="text-[9px] text-zinc-400 font-normal block -mt-2 mb-1 z-10">Tam konumu işaretlemek için haritaya tıklayın.</span>
                       <div className="flex-1 rounded-2xl overflow-hidden relative">
-                        <LocationPickerMap position={editPortPos} setPosition={setEditPortPos} className="h-full border-none" />
+                        <LocationPickerMap position={editPortPos} setPosition={setEditPortPos} className="h-full border-none" onMapClick={(lat, lng) => reverseGeocode(lat, lng, setEditPortIl, setEditPortIlce, setEditPortSemt, setEditPortMahalle, setEditPortCadde, setEditPortSokak)} />
                       </div>
                     </div>
                   </div>
@@ -5697,7 +6205,7 @@ export default function App() {
                       </div>
 
                       {/* Edit & Close actions for owners/admins */}
-                      {(selectedPortfolio.gorevliUzmanId === user?.id) && (
+                      {compareIds(selectedPortfolio.gorevliUzmanId, user?.id) && (
                         <div className="flex flex-col gap-2">
                           <button
                             onClick={() => startEditPortfolio(selectedPortfolio)}
@@ -5989,9 +6497,7 @@ export default function App() {
                         <div className="flex-1 rounded-2xl overflow-hidden relative border-2 border-zinc-200">
                           <MapContainer center={[selectedPortfolio.latitude, selectedPortfolio.longitude]} zoom={15} style={{ height: '100%', width: '100%' }} dragging={false} zoomControl={false} scrollWheelZoom={true}>
                             <CustomScrollWheelZoom />
-                            <TileLayer
-                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
+                            <MapLayers />
                             <Marker position={[selectedPortfolio.latitude, selectedPortfolio.longitude]}></Marker>
                           </MapContainer>
                         </div>
@@ -6158,6 +6664,20 @@ export default function App() {
                         </div>
                       );
                     })()}
+
+                    <div className="flex items-center justify-between mt-4 mb-2 bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                      <span className="text-xs font-semibold text-zinc-600 flex items-center gap-2">
+                        <MapPin size={16} className="text-emerald-600" />
+                        Harita & Adres Senkronizasyonu
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSyncMapAddress(!syncMapAddress)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${syncMapAddress ? 'bg-emerald-500' : 'bg-zinc-300'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${syncMapAddress ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
 
                     <div className="grid grid-cols-3 gap-2">
                       <div>
@@ -6506,7 +7026,7 @@ export default function App() {
                     </span>
                     <span className="text-[9px] text-zinc-400 font-normal block -mt-2 mb-1 z-10">Tam konumu işaretlemek için haritaya tıklayın.</span>
                     <div className="flex-1 rounded-2xl overflow-hidden relative">
-                      <LocationPickerMap position={newPortPos} setPosition={setNewPortPos} className="h-full border-none" />
+                      <LocationPickerMap position={newPortPos} setPosition={setNewPortPos} className="h-full border-none" onMapClick={(lat, lng) => reverseGeocode(lat, lng, setNewPortIl, setNewPortIlce, setNewPortSemt, setNewPortMahalle, setNewPortCadde, setNewPortSokak)} />
                     </div>
                   </div>
                 </div>
@@ -6528,7 +7048,9 @@ export default function App() {
                 <div>
                   <h2 className="text-lg sm:text-xl font-extrabold text-charcoal">Tamamlanan İşlemler</h2>
                   <p className="text-xs text-zinc-500 font-medium mt-1">
-                    {user?.firmaAdi ? `${user.firmaAdi} firmasına` : 'Giriş yapılı firmaya'} ait satışı ve kiralaması tamamlanmış portföyler.
+                    {completedScopeFilter === 'mine' 
+                      ? 'Size ait satışı ve kiralaması tamamlanmış bireysel portföyler.'
+                      : (user?.firmaAdi ? `${user.firmaAdi} firmasına` : 'Giriş yapılı firmaya') + ' ait satışı ve kiralaması tamamlanmış portföyler.'}
                   </p>
                 </div>
               </div>
@@ -8541,9 +9063,24 @@ export default function App() {
                           <span className="block text-zinc-500 mt-0.5">{emp.eposta || ''}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
-                        <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi || 0} Sözleşme</span>
+                      <div className="text-right flex flex-col items-end gap-1">
+                        <div>
+                          <strong>{(emp.getirdigiPara || 0).toLocaleString('tr-TR')} TL</strong>
+                          <span className="block text-[10px] text-zinc-400 mt-0.5">{emp.sozlesmeSayisi || 0} Sözleşme</span>
+                        </div>
+                        {user?.rol === 'YETKILI' && user.id !== emp.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUserToDelete(emp);
+                              setShowDeleteUserModal(true);
+                            }}
+                            className="text-red-500 hover:bg-red-50 p-1.5 rounded-full transition-colors mt-1 border-none cursor-pointer"
+                            title="Çalışanı Sil"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -8620,13 +9157,24 @@ export default function App() {
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => handleResetEmployeePassword(selectedEmployee.id)}
-                      className="w-full py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors"
+                      className="w-full py-2.5 bg-charcoal text-white text-xs font-bold rounded-full hover:bg-black transition-colors cursor-pointer border-none"
                     >
                       Şifreyi "Homey123!" Olarak Sıfırla
                     </button>
+                    {user?.rol === 'YETKILI' && user.id !== selectedEmployee.id && (
+                      <button
+                        onClick={() => {
+                          setUserToDelete(selectedEmployee);
+                          setShowDeleteUserModal(true);
+                        }}
+                        className="w-full py-2.5 bg-red-50 text-red-600 text-xs font-bold rounded-full hover:bg-red-100 transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Trash2 size={14} /> Kullanıcıyı Sil
+                      </button>
+                    )}
                     <button
                       onClick={() => setSelectedEmployee(null)}
-                      className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors"
+                      className="w-full py-2 text-zinc-500 text-xs font-bold rounded-full hover:bg-zinc-100 transition-colors cursor-pointer border-none"
                     >
                       Kapat
                     </button>
@@ -9895,6 +10443,65 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Kullanıcı Silme Modalı */}
+      {showDeleteUserModal && userToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full relative border-none shadow-none flex flex-col gap-4">
+            <div className="flex justify-between items-start mb-1">
+              <div>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-widest">KULLANICI SİL</span>
+                <h2 className="text-xl font-extrabold text-charcoal mt-1 flex items-center gap-2">
+                  <Trash2 size={22} className="text-red-600" /> Çalışanı Sil
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="p-1.5 border border-charcoal rounded-full hover:bg-zinc-100 text-charcoal cursor-pointer"
+                onClick={() => { setShowDeleteUserModal(false); setUserToDelete(null); setReassignedUserId(''); }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-sm text-zinc-600 font-medium">
+              <strong className="text-charcoal">{userToDelete.ad} {userToDelete.soyad}</strong> isimli çalışanı silmek üzeresiniz. Bu kullanıcının geçmişteki ciro ve işlem verileri korunacaktır. Ancak <strong className="text-red-500">aktif olan (Satılık/Kiralık vb.)</strong> portföylerinin başka bir çalışana devredilmesi gerekmektedir.
+            </p>
+
+            <div>
+              <label className="text-xs text-zinc-600 font-bold block mb-1">
+                Aktif Portföylerin Aktarılacağı Kişi <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="w-full text-sm p-3 border-2 border-charcoal rounded-2xl bg-white focus:outline-none font-bold"
+                value={reassignedUserId}
+                onChange={e => setReassignedUserId(e.target.value)}
+              >
+                <option value="">Lütfen seçin...</option>
+                {employees.filter(emp => emp.id !== userToDelete.id).map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.ad} {emp.soyad}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => { setShowDeleteUserModal(false); setUserToDelete(null); setReassignedUserId(''); }}
+                className="flex-1 py-3 text-xs font-extrabold rounded-full transition-all border border-zinc-200 text-zinc-600 hover:bg-zinc-100 cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleDeleteEmployee}
+                disabled={!reassignedUserId}
+                className="flex-1 py-3 text-xs font-extrabold rounded-full transition-all border-none shadow-none cursor-pointer bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sil ve Aktar
+              </button>
+            </div>
           </div>
         </div>
       )}

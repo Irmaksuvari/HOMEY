@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import { poolPromise } from './config/db';
+import connectDB from './config/db';
 import { authenticateJWT, AuthenticatedRequest } from './middleware/auth';
 import authRoutes from './routes/authRoutes';
 import employeeRoutes from './routes/employeeRoutes';
@@ -34,32 +34,13 @@ app.get('/api/health', async (req, res) => {
   let serverTime = null;
 
   try {
-    const pool = await poolPromise;
-    const result = await pool.request().query(`
-      IF COL_LENGTH('Musteriler', 'is_active') IS NULL
-      BEGIN
-        ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
-      END
-
-      -- 1. Geçmişte gerçekleşmiş satış/kiralama işlemlerindeki müşterileri pasife al (is_active = 0)
-      UPDATE Musteriler
-      SET is_active = 0
-      WHERE Id IN (
-        SELECT AliciMusteriId 
-        FROM SatisIslemleri 
-        WHERE AliciMusteriId IS NOT NULL
-      );
-
-      -- 2. Satılmış veya kiralanmış portföylere ait tüm randevuları sil
-      DELETE FROM Randevular
-      WHERE PortfoyId IN (
-        SELECT Id FROM Portfoyler WHERE Durum IN ('SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI')
-      );
-
-      SELECT GETDATE() as ServerTime
-    `);
-    dbStatus = 'connected';
-    serverTime = result.recordset[0].ServerTime;
+    const mongoose = (await import('mongoose')).default;
+    if (mongoose.connection.readyState === 1) {
+      dbStatus = 'connected';
+    } else {
+      dbError = 'Mongoose not connected (state: ' + mongoose.connection.readyState + ')';
+    }
+    serverTime = new Date();
   } catch (error: any) {
     dbError = error.message;
   }
@@ -129,8 +110,10 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[HOMEY API] Server ${PORT} portunda çalışmaya başladı.`);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`[HOMEY API] Server ${PORT} portunda çalışmaya başladı.`);
+  });
 });
 
 export default app;

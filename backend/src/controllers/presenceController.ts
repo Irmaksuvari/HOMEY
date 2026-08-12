@@ -1,31 +1,23 @@
 import { Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { User } from '../models/User';
 
 // POST /api/user/toggle-office-status
 // Giriş yapan kullanıcının OfisteMi durumunu tersine çevirir
 export const toggleOfficeStatus = async (req: any, res: Response) => {
-  const { userId, firmaId } = req.user;
+  const { userId } = req.user;
 
   try {
-    const pool = await poolPromise;
+    const user = await User.findById(userId);
 
-    // Mevcut durumu oku
-    const currentResult = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT OfisteMi FROM Kullanicilar WHERE Id = @userId');
-
-    if (currentResult.recordset.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
     }
 
-    const mevcutDurum: boolean = currentResult.recordset[0].OfisteMi;
+    const mevcutDurum: boolean = !!user.OfisteMi;
     const yeniDurum = !mevcutDurum;
 
-    // Durumu güncelle
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .input('yeniDurum', sql.Bit, yeniDurum ? 1 : 0)
-      .query('UPDATE Kullanicilar SET OfisteMi = @yeniDurum WHERE Id = @userId');
+    user.OfisteMi = yeniDurum;
+    await user.save();
 
     res.json({
       ofisteMi: yeniDurum,
@@ -44,21 +36,14 @@ export const getActiveInOffice = async (req: any, res: Response) => {
   const { firmaId } = req.user;
 
   try {
-    const pool = await poolPromise;
+    const activeUsers = await User.find({
+      FirmaId: firmaId,
+      OfisteMi: true,
+      AktifMi: true
+    }).sort({ Ad: 1 });
 
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT Id, Ad, Soyad, Rol, Eposta, OfisteMi
-        FROM Kullanicilar
-        WHERE FirmaId = @firmaId
-          AND OfisteMi = 1
-          AND AktifMi = 1
-        ORDER BY Ad ASC
-      `);
-
-    const users = result.recordset.map((u: any) => ({
-      id: u.Id,
+    const users = activeUsers.map((u: any) => ({
+      id: u._id,
       ad: u.Ad,
       soyad: u.Soyad,
       rol: u.Rol,
@@ -80,17 +65,13 @@ export const getMyOfficeStatus = async (req: any, res: Response) => {
   const { userId } = req.user;
 
   try {
-    const pool = await poolPromise;
+    const user = await User.findById(userId);
 
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT OfisteMi FROM Kullanicilar WHERE Id = @userId');
-
-    if (result.recordset.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
     }
 
-    res.json({ ofisteMi: !!result.recordset[0].OfisteMi });
+    res.json({ ofisteMi: !!user.OfisteMi });
 
   } catch (error: any) {
     console.error('[HOMEY API] getMyOfficeStatus Error:', error);

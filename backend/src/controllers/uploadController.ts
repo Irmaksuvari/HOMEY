@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToBlob, deleteFileFromBlob, extractBlobNameFromUrl } from '../services/blobService';
+import { Portfolio } from '../models/Portfolio';
+import { PortfolioPhoto } from '../models/PortfolioPhoto';
+import { User } from '../models/User';
+import { FirmDocument } from '../models/FirmDocument';
 
 // ─── Sabitler ─────────────────────────────────────────────────────────────────
 const CONTAINER_NAME = 'portfoy-fotograflari'; // Azure'daki container adı
@@ -43,20 +47,14 @@ export const uploadPortfolioImage = async (req: any, res: Response): Promise<voi
     // Sahiplik ve Yetki Kontrolü (portfoyId varsa)
     if (portfoyId) {
       try {
-        const pool = await poolPromise;
+        const portCheck = await Portfolio.findOne({ _id: portfoyId, FirmaId: firmaId });
 
-        // Portföy varlığını ve sahipliğini kontrol et
-        const portCheck = await pool.request()
-          .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-          .input('firmaId', sql.UniqueIdentifier, firmaId)
-          .query('SELECT GorevliUzmanId FROM Portfoyler WHERE Id = @portfoyId AND FirmaId = @firmaId');
-
-        if (portCheck.recordset.length === 0) {
+        if (!portCheck) {
           res.status(404).json({ message: 'Portföy bulunamadı veya yetkiniz yok.' });
           return;
         }
 
-        const isOwner = portCheck.recordset[0].GorevliUzmanId === userId;
+        const isOwner = portCheck.GorevliUzmanId === userId;
         const isYetkili = role === 'YETKILI';
 
         if (!isOwner && !isYetkili) {
@@ -65,11 +63,8 @@ export const uploadPortfolioImage = async (req: any, res: Response): Promise<voi
         }
 
         // 12 Fotoğraf Sınırı Kontrolü
-        const countRes = await pool.request()
-          .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-          .query('SELECT COUNT(*) as photoCount FROM PortfoyFotograflari WHERE PortfoyID = @portfoyId');
+        const count = await PortfolioPhoto.countDocuments({ PortfoyId: portfoyId });
         
-        const count = countRes.recordset[0]?.photoCount || 0;
         if (count >= 12) {
           res.status(400).json({ message: 'Bir portföye en fazla 12 adet fotoğraf eklenebilir.' });
           return;
@@ -91,32 +86,22 @@ export const uploadPortfolioImage = async (req: any, res: Response): Promise<voi
 
     let fotoId: string | null = null;
 
-    // 2. portfoyId geldiyse SQL Database [PortfoyFotograflari] Tablosuna Ekle
+    // 2. portfoyId geldiyse MongoDB'ye Ekle
     if (portfoyId) {
       try {
-        const pool = await poolPromise;
-
-        const countRes = await pool.request()
-          .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-          .query('SELECT COUNT(*) as photoCount FROM PortfoyFotograflari WHERE PortfoyID = @portfoyId');
-        const currentCount = countRes.recordset[0]?.photoCount || 0;
+        const currentCount = await PortfolioPhoto.countDocuments({ PortfoyId: portfoyId });
         const setAsCover = isKapak || currentCount === 0;
 
-        const insertResult = await pool.request()
-          .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-          .input('fotoUrl', sql.NVarChar, url)
-          .input('sira', sql.Int, setAsCover ? 1 : currentCount + 1)
-          .query(`
-            INSERT INTO PortfoyFotograflari (PortfoyID, FotoUrl, Sira)
-            OUTPUT INSERTED.Id
-            VALUES (@portfoyId, @fotoUrl, @sira)
-          `);
-
-        if (insertResult.recordset.length > 0) {
-          fotoId = insertResult.recordset[0].Id;
-        }
+        const newPhotoId = uuidv4();
+        await PortfolioPhoto.create({
+          _id: newPhotoId,
+          PortfoyId: portfoyId,
+          FotoUrl: url,
+          Sira: setAsCover ? 1 : currentCount + 1
+        });
+        fotoId = newPhotoId;
       } catch (dbErr: any) {
-        console.error('[UploadController] SQL PortfoyFotograflari ekleme hatası:', dbErr.message);
+        console.error('[UploadController] Mongoose PortfolioPhoto ekleme hatası:', dbErr.message);
       }
     }
 
@@ -163,20 +148,15 @@ export const deletePortfolioImage = async (req: Request, res: Response): Promise
       storageDeleted = await deleteFileFromBlob(CONTAINER_NAME, blobName);
     }
 
-    // 2. SQL Database [PortfoyFotograflari] Tablosundan Sil
+    // 2. MongoDB'den Sil
     try {
-      const pool = await poolPromise;
       if (fotoId) {
-        await pool.request()
-          .input('fotoId', sql.UniqueIdentifier, fotoId)
-          .query('DELETE FROM PortfoyFotograflari WHERE Id = @fotoId');
+        await PortfolioPhoto.deleteOne({ _id: fotoId });
       } else if (url) {
-        await pool.request()
-          .input('fotoUrl', sql.NVarChar, url)
-          .query('DELETE FROM PortfoyFotograflari WHERE FotoUrl = @fotoUrl');
+        await PortfolioPhoto.deleteOne({ FotoUrl: url });
       }
     } catch (dbErr: any) {
-      console.error('[UploadController] SQL PortfoyFotograflari silme hatası:', dbErr.message);
+      console.error('[UploadController] Mongoose PortfolioPhoto silme hatası:', dbErr.message);
     }
 
     res.json({
@@ -204,15 +184,16 @@ export const setCoverImage = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const pool = await poolPromise;
     // Seçilen fotoğrafı Sıra = 1 yap, diğerlerini arttır
-    await pool.request()
-      .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-      .query('UPDATE PortfoyFotograflari SET Sira = ISNULL(Sira, 1) + 1 WHERE PortfoyID = @portfoyId');
+    await PortfolioPhoto.updateMany(
+      { PortfoyId: portfoyId },
+      { $inc: { Sira: 1 } }
+    );
 
-    await pool.request()
-      .input('fotoId', sql.UniqueIdentifier, fotoId)
-      .query('UPDATE PortfoyFotograflari SET Sira = 1 WHERE Id = @fotoId');
+    await PortfolioPhoto.updateOne(
+      { _id: fotoId },
+      { $set: { Sira: 1 } }
+    );
 
     res.json({ message: 'Kapak fotoğrafı başarıyla güncellendi.', fotoId });
   } catch (error: any) {
@@ -233,12 +214,16 @@ export const getPortfolioImages = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-      .query('SELECT Id, PortfoyID, FotoUrl as FotografUrl, CASE WHEN ISNULL(Sira, 99) = 1 THEN 1 ELSE 0 END as IsKapak FROM PortfoyFotograflari WHERE PortfoyID = @portfoyId ORDER BY ISNULL(Sira, 99) ASC');
+    const photos = await PortfolioPhoto.find({ PortfoyId: portfoyId }).sort({ Sira: 1 });
+    
+    const result = photos.map(p => ({
+      Id: p._id,
+      PortfoyId: p.PortfoyId,
+      FotografUrl: p.FotoUrl,
+      IsKapak: (p.Sira === 1) ? 1 : 0
+    }));
 
-    res.json(result.recordset);
+    res.json(result);
   } catch (error: any) {
     console.error('[UploadController] getPortfolioImages hatası:', error);
     res.status(500).json({ message: 'Portföy fotoğrafları çekilirken hata oluştu.', error: error.message });
@@ -263,14 +248,11 @@ export const uploadProfilePicture = async (req: any, res: Response): Promise<voi
 
     const { userId } = req.user;
     console.log('[UploadController] User ID:', userId);
-    const pool = await poolPromise;
 
     // Mevcut fotoğrafı al ve Azure'dan sil
-    const userRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT ProfilFoto FROM Kullanicilar WHERE Id = @userId');
-
-    const currentUrl = userRes.recordset[0]?.ProfilFoto;
+    const user = await User.findOne({ _id: userId });
+    
+    const currentUrl = user?.ProfilFoto;
     if (currentUrl) {
       const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
       if (oldBlobName) {
@@ -283,10 +265,7 @@ export const uploadProfilePicture = async (req: any, res: Response): Promise<voi
     const { url } = await uploadFileToBlob(file.buffer, file.originalname, CONTAINER_NAME, prefix);
 
     // Veritabanını güncelle
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .input('profilFoto', sql.NVarChar, url)
-      .query('UPDATE Kullanicilar SET ProfilFoto = @profilFoto WHERE Id = @userId');
+    await User.updateOne({ _id: userId }, { $set: { ProfilFoto: url } });
 
     res.status(201).json({ message: 'Profil fotoğrafı güncellendi.', url });
   } catch (error: any) {
@@ -299,13 +278,10 @@ export const uploadProfilePicture = async (req: any, res: Response): Promise<voi
 export const deleteProfilePicture = async (req: any, res: Response): Promise<void> => {
   try {
     const { userId } = req.user;
-    const pool = await poolPromise;
 
-    const userRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT ProfilFoto FROM Kullanicilar WHERE Id = @userId');
+    const user = await User.findOne({ _id: userId });
 
-    const currentUrl = userRes.recordset[0]?.ProfilFoto;
+    const currentUrl = user?.ProfilFoto;
     if (!currentUrl) {
       res.status(400).json({ message: 'Silinecek profil fotoğrafı bulunamadı.' });
       return;
@@ -316,9 +292,7 @@ export const deleteProfilePicture = async (req: any, res: Response): Promise<voi
       await deleteFileFromBlob(CONTAINER_NAME, oldBlobName);
     }
 
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query('UPDATE Kullanicilar SET ProfilFoto = NULL WHERE Id = @userId');
+    await User.updateOne({ _id: userId }, { $set: { ProfilFoto: null } });
 
     res.json({ message: 'Profil fotoğrafı başarıyla silindi.' });
   } catch (error: any) {
@@ -341,21 +315,20 @@ export const getFirmDocuments = async (req: any, res: Response): Promise<void> =
   try {
     const { firmaId } = req.user;
 
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT 
-          KiraKontratSablonu, 
-          TahliyeTaahhutnamesiSablonu, 
-          SenetSablonu, 
-          OnSatisSozlesmesiSablonu, 
-          YetkilendirmeSozlesmesiSablonu 
-        FROM FirmaEvraklari 
-        WHERE FirmaId = @firmaId
-      `);
+    const result = await FirmDocument.findOne({ FirmaId: firmaId });
 
-    res.json(result.recordset[0] || {});
+    if (!result) {
+      res.json({});
+      return;
+    }
+    
+    res.json({
+      KiraKontratSablonu: result.KiraKontratSablonu,
+      TahliyeTaahhutnamesiSablonu: result.TahliyeTaahhutnamesiSablonu,
+      SenetSablonu: result.SenetSablonu,
+      OnSatisSozlesmesiSablonu: result.OnSatisSozlesmesiSablonu,
+      YetkilendirmeSozlesmesiSablonu: result.YetkilendirmeSozlesmesiSablonu
+    });
   } catch (error: any) {
     console.error('[UploadController] getFirmDocuments hatası:', error);
     res.status(500).json({ message: 'Evraklar getirilirken sunucu hatası oluştu.', error: error.message });
@@ -383,14 +356,11 @@ export const uploadFirmDocument = async (req: any, res: Response): Promise<void>
       return;
     }
 
-    const pool = await poolPromise;
-
     // Mevcut evrak var mı kontrol et, varsa Azure'dan sil
-    const existingRes = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`SELECT ${docType} as currentUrl FROM FirmaEvraklari WHERE FirmaId = @firmaId`);
+    const existingDoc = await FirmDocument.findOne({ FirmaId: firmaId });
 
-    const currentUrl = existingRes.recordset[0]?.currentUrl;
+    const currentUrl = existingDoc ? (existingDoc as any)[docType] : null;
+    
     if (currentUrl) {
       const oldBlobName = extractBlobNameFromUrl(currentUrl, CONTAINER_NAME);
       if (oldBlobName) {
@@ -403,16 +373,19 @@ export const uploadFirmDocument = async (req: any, res: Response): Promise<void>
     const { url } = await uploadFileToBlob(file.buffer, file.originalname, CONTAINER_NAME, prefix);
 
     // Veritabanını güncelle veya ekle
-    if (existingRes.recordset.length > 0) {
-      await pool.request()
-        .input('firmaId', sql.UniqueIdentifier, firmaId)
-        .input('docUrl', sql.NVarChar, url)
-        .query(`UPDATE FirmaEvraklari SET ${docType} = @docUrl, GuncellemeTarihi = GETDATE() WHERE FirmaId = @firmaId`);
+    if (existingDoc) {
+      const updateData: any = { GuncellemeTarihi: new Date() };
+      updateData[docType] = url;
+      await FirmDocument.updateOne({ FirmaId: firmaId }, { $set: updateData });
     } else {
-      await pool.request()
-        .input('firmaId', sql.UniqueIdentifier, firmaId)
-        .input('docUrl', sql.NVarChar, url)
-        .query(`INSERT INTO FirmaEvraklari (FirmaId, ${docType}, OlusturulmaTarihi, GuncellemeTarihi) VALUES (@firmaId, @docUrl, GETDATE(), GETDATE())`);
+      const createData: any = {
+        _id: uuidv4(),
+        FirmaId: firmaId,
+        OlusturulmaTarihi: new Date(),
+        GuncellemeTarihi: new Date()
+      };
+      createData[docType] = url;
+      await FirmDocument.create(createData);
     }
 
     res.status(201).json({ message: 'Evrak başarıyla yüklendi.', url });
@@ -437,12 +410,10 @@ export const deleteFirmDocument = async (req: any, res: Response): Promise<void>
       return;
     }
 
-    const pool = await poolPromise;
-    const existingRes = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`SELECT ${docType} as currentUrl FROM FirmaEvraklari WHERE FirmaId = @firmaId`);
+    const existingDoc = await FirmDocument.findOne({ FirmaId: firmaId });
 
-    const currentUrl = existingRes.recordset[0]?.currentUrl;
+    const currentUrl = existingDoc ? (existingDoc as any)[docType] : null;
+    
     if (!currentUrl) {
       res.status(400).json({ message: 'Silinecek evrak bulunamadı.' });
       return;
@@ -453,9 +424,10 @@ export const deleteFirmDocument = async (req: any, res: Response): Promise<void>
       await deleteFileFromBlob(CONTAINER_NAME, oldBlobName);
     }
 
-    await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`UPDATE FirmaEvraklari SET ${docType} = NULL, GuncellemeTarihi = GETDATE() WHERE FirmaId = @firmaId`);
+    const updateData: any = { GuncellemeTarihi: new Date() };
+    updateData[docType] = null;
+    
+    await FirmDocument.updateOne({ FirmaId: firmaId }, { $set: updateData });
 
     res.json({ message: 'Evrak başarıyla silindi.' });
   } catch (error: any) {

@@ -5,6 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'homey_super_secret_jwt_key_2026_ch
 
 export interface AuthenticatedRequest extends Request {
   user?: {
+    id?: string;
     userId: string;
     firmaId: string;
     rol: 'YETKILI' | 'UZMAN';
@@ -24,7 +25,13 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
         return res.status(403).json({ message: 'Geçersiz veya süresi dolmuş token.' });
       }
 
-      req.user = decoded as AuthenticatedRequest['user'];
+      const userPayload = decoded as any;
+      if (userPayload) {
+        if (userPayload.userId) userPayload.userId = userPayload.userId.toLowerCase();
+        if (userPayload.firmaId) userPayload.firmaId = userPayload.firmaId.toLowerCase();
+        if (userPayload.id) userPayload.id = userPayload.id.toLowerCase();
+      }
+      req.user = userPayload as AuthenticatedRequest['user'];
       next();
     });
   } else {

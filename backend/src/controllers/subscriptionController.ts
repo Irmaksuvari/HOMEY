@@ -1,39 +1,32 @@
 import { Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { Firm } from '../models/Firm';
+import { FirmSubscription } from '../models/FirmSubscription';
+import { SubscriptionPackage } from '../models/SubscriptionPackage';
 
 // Firmanın Aktif Abonelik Detaylarını ve Gelecek Paket Bilgisini Getirme (GET /api/subscription/details)
 export const getSubscriptionDetails = async (req: any, res: Response) => {
   const { firmaId } = req.user;
 
   try {
-    const pool = await poolPromise;
+    const firmData = await Firm.aggregate([
+      { $match: { _id: firmaId } },
+      { $lookup: { from: 'FirmaAbonelikleri', localField: '_id', foreignField: 'FirmaID', as: 'Abonelik' } },
+      { $unwind: { path: '$Abonelik', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'AbonelikPaketleri', localField: 'Abonelik.PaketID', foreignField: 'PaketID', as: 'MevcutPaket' } },
+      { $unwind: { path: '$MevcutPaket', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'AbonelikPaketleri', localField: 'Abonelik.GelecekPaketID', foreignField: 'PaketID', as: 'GelecekPaket' } },
+      { $unwind: { path: '$GelecekPaket', preserveNullAndEmptyArrays: true } }
+    ]);
 
-    // Firmaya ve aktif aboneliğe ait tüm detayları çekme
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT 
-          f.FirmaAdi, f.PaketTipi as FirmaPaketTipi, f.AbonelikTipi as FirmaAbonelikTipi, f.AbonelikBitisTarihi as FirmaBitisTarihi,
-          fa.AbonelikID, fa.PaketID, fa.Periyot, fa.BaslangicTarihi, fa.BitisTarihi, fa.Durum,
-          fa.GelecekPaketID, fa.GelecekPeriyot,
-          ap.PaketAdi as MevcutPaketAdi, ap.CalisanKotasi as MevcutCalisanKotasi, ap.DenemeSuresiGun,
-          gap.PaketAdi as GelecekPaketAdi, gap.CalisanKotasi as GelecekCalisanKotasi
-        FROM Firmalar f
-        LEFT JOIN FirmaAbonelikleri fa ON f.Id = fa.FirmaID AND fa.Durum = 'Aktif'
-        LEFT JOIN AbonelikPaketleri ap ON fa.PaketID = ap.PaketID
-        LEFT JOIN AbonelikPaketleri gap ON fa.GelecekPaketID = gap.PaketID
-        WHERE f.Id = @firmaId
-      `);
-
-    if (result.recordset.length === 0) {
+    if (firmData.length === 0) {
       return res.status(404).json({ message: 'Firma abonelik bilgisi bulunamadı.' });
     }
 
-    const row = result.recordset[0];
+    const row = firmData[0];
 
     const now = new Date();
-    const baslangicTarihi = row.BaslangicTarihi ? new Date(row.BaslangicTarihi) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const bitisTarihi = row.BitisTarihi ? new Date(row.BitisTarihi) : (row.FirmaBitisTarihi ? new Date(row.FirmaBitisTarihi) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+    const baslangicTarihi = row.Abonelik?.BaslangicTarihi ? new Date(row.Abonelik.BaslangicTarihi) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const bitisTarihi = row.Abonelik?.BitisTarihi ? new Date(row.Abonelik.BitisTarihi) : (row.AbonelikBitisTarihi ? new Date(row.AbonelikBitisTarihi) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
 
     // Gün hesaplamaları
     const diffMs = bitisTarihi.getTime() - now.getTime();
@@ -44,7 +37,7 @@ export const getSubscriptionDetails = async (req: any, res: Response) => {
     const ilerlemeYuzdesi = Math.min(100, Math.max(0, Math.round((gecenMs / toplamMs) * 100)));
 
     // Mevcut paket adı belirleme
-    let paketAdi = row.MevcutPaketAdi || row.FirmaPaketTipi || 'Deneme';
+    let paketAdi = row.MevcutPaket?.PaketAdi || row.PaketTipi || 'Deneme';
     if (paketAdi.toUpperCase() === 'DENEME') paketAdi = 'Deneme';
     else if (paketAdi.toUpperCase() === 'BASIC') paketAdi = 'Basic';
     else if (paketAdi.toUpperCase() === 'PREMIUM') paketAdi = 'Premium';
@@ -52,22 +45,22 @@ export const getSubscriptionDetails = async (req: any, res: Response) => {
     res.json({
       firmaAdi: row.FirmaAdi,
       mevcutPaket: {
-        paketId: row.PaketID || 1,
+        paketId: row.Abonelik?.PaketID || 1,
         paketAdi: paketAdi,
-        periyot: row.Periyot || row.FirmaAbonelikTipi || (paketAdi === 'Deneme' ? 'Deneme' : 'Aylik'),
-        calisanKotasi: row.MevcutCalisanKotasi !== undefined && row.MevcutCalisanKotasi !== null ? row.MevcutCalisanKotasi : (paketAdi === 'Premium' ? null : 4),
-        durum: row.Durum || 'Aktif',
+        periyot: row.Abonelik?.Periyot || row.AbonelikTipi || (paketAdi === 'Deneme' ? 'Deneme' : 'Aylik'),
+        calisanKotasi: row.MevcutPaket?.CalisanKotasi !== undefined && row.MevcutPaket?.CalisanKotasi !== null ? row.MevcutPaket.CalisanKotasi : (paketAdi === 'Premium' ? null : 4),
+        durum: row.Abonelik?.Durum || 'Aktif',
         baslangicTarihi: baslangicTarihi.toISOString(),
         bitisTarihi: bitisTarihi.toISOString()
       },
       kalanGun: kalanGun,
       ilerlemeYuzdesi: ilerlemeYuzdesi,
       uyariVerilsinMi: kalanGun <= 7,
-      gelecekPaket: row.GelecekPaketID ? {
-        paketId: row.GelecekPaketID,
-        paketAdi: row.GelecekPaketAdi || (row.GelecekPaketID === 2 ? 'Basic' : 'Premium'),
-        periyot: row.GelecekPeriyot || 'Aylik',
-        calisanKotasi: row.GelecekCalisanKotasi !== undefined && row.GelecekCalisanKotasi !== null ? row.GelecekCalisanKotasi : (row.GelecekPaketID === 3 ? null : 4)
+      gelecekPaket: row.Abonelik?.GelecekPaketID ? {
+        paketId: row.Abonelik.GelecekPaketID,
+        paketAdi: row.GelecekPaket?.PaketAdi || (row.Abonelik.GelecekPaketID === 2 ? 'Basic' : 'Premium'),
+        periyot: row.Abonelik?.GelecekPeriyot || 'Aylik',
+        calisanKotasi: row.GelecekPaket?.CalisanKotasi !== undefined && row.GelecekPaket?.CalisanKotasi !== null ? row.GelecekPaket.CalisanKotasi : (row.Abonelik.GelecekPaketID === 3 ? null : 4)
       } : null
     });
 
@@ -90,40 +83,33 @@ export const schedulePackageChange = async (req: any, res: Response) => {
   const normalizedPeriyot = gelecekPeriyot.toUpperCase() === 'YILLIK' ? 'Yillik' : 'Aylik';
 
   try {
-    const pool = await poolPromise;
+    const paketResult = await SubscriptionPackage.findOne({ PaketAdi: normalizedPaketAdi });
 
-    // 1. Gelecek paketin PaketID bilgisini çek
-    const paketResult = await pool.request()
-      .input('paketAdi', sql.NVarChar, normalizedPaketAdi)
-      .query('SELECT PaketID FROM AbonelikPaketleri WHERE PaketAdi = @paketAdi');
-
-    if (paketResult.recordset.length === 0) {
+    if (!paketResult) {
       return res.status(404).json({ message: 'Belirtilen paket sistemde bulunamadı.' });
     }
 
-    const gelecekPaketId = paketResult.recordset[0].PaketID;
+    const gelecekPaketId = paketResult.PaketID;
 
-    // 2. FirmaAbonelikleri tablosunda GelecekPaketID ve GelecekPeriyot güncelle
-    const updateResult = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('gelecekPaketId', sql.Int, gelecekPaketId)
-      .input('gelecekPeriyot', sql.NVarChar, normalizedPeriyot)
-      .query(`
-        UPDATE FirmaAbonelikleri
-        SET GelecekPaketID = @gelecekPaketId, GelecekPeriyot = @gelecekPeriyot
-        WHERE FirmaID = @firmaId AND Durum = 'Aktif'
-      `);
+    const updateResult = await FirmSubscription.updateOne(
+      { FirmaID: firmaId, Durum: 'Aktif' },
+      { $set: { GelecekPaketID: gelecekPaketId, GelecekPeriyot: normalizedPeriyot } }
+    );
 
-    // Eğer FirmaAbonelikleri tablosunda aktif satır yoksa oluştursun
-    if (updateResult.rowsAffected[0] === 0) {
-      await pool.request()
-        .input('firmaId', sql.UniqueIdentifier, firmaId)
-        .input('gelecekPaketId', sql.Int, gelecekPaketId)
-        .input('gelecekPeriyot', sql.NVarChar, normalizedPeriyot)
-        .query(`
-          INSERT INTO FirmaAbonelikleri (FirmaID, PaketID, Periyot, BaslangicTarihi, BitisTarihi, Durum, GelecekPaketID, GelecekPeriyot)
-          VALUES (@firmaId, 1, 'Deneme', GETDATE(), DATEADD(day, 30, GETDATE()), 'Aktif', @gelecekPaketId, @gelecekPeriyot)
-        `);
+    if (updateResult.modifiedCount === 0 && updateResult.matchedCount === 0) {
+      const now = new Date();
+      const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      await FirmSubscription.create({
+        FirmaID: firmaId,
+        PaketID: 1,
+        Periyot: 'Deneme',
+        BaslangicTarihi: now,
+        BitisTarihi: future,
+        Durum: 'Aktif',
+        GelecekPaketID: gelecekPaketId,
+        GelecekPeriyot: normalizedPeriyot
+      });
     }
 
     res.json({
@@ -146,15 +132,10 @@ export const cancelScheduledChange = async (req: any, res: Response) => {
   const { firmaId } = req.user;
 
   try {
-    const pool = await poolPromise;
-
-    await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        UPDATE FirmaAbonelikleri
-        SET GelecekPaketID = NULL, GelecekPeriyot = NULL
-        WHERE FirmaID = @firmaId
-      `);
+    await FirmSubscription.updateMany(
+      { FirmaID: firmaId },
+      { $unset: { GelecekPaketID: "", GelecekPeriyot: "" } }
+    );
 
     res.json({ message: 'Gelecek paket değişim planı başarıyla iptal edildi.' });
 

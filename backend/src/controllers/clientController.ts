@@ -1,5 +1,9 @@
 import { Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { v4 as uuidv4 } from 'uuid';
+import { Client } from '../models/Client';
+import { Portfolio } from '../models/Portfolio';
+import { Appointment } from '../models/Appointment';
+import { Sale } from '../models/Sale';
 
 // Müşteri Ekleme (POST /api/clients/add) - Korumalı
 export const addClient = async (req: any, res: Response) => {
@@ -11,28 +15,18 @@ export const addClient = async (req: any, res: Response) => {
   }
 
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('kayitEdenUzmanId', sql.UniqueIdentifier, userId)
-      .input('ad', sql.NVarChar, ad)
-      .input('soyad', sql.NVarChar, soyad || '')
-      .input('telefon', sql.NVarChar, telefon)
-      .input('aradigiButce', sql.Decimal(18, 2), aradigiButce ? Number(aradigiButce) : null)
-      .input('aradigiEmlakTipi', sql.NVarChar, aradigiEmlakTipi || null)
-      .input('musteriTipi', sql.NVarChar, musteriTipi)
-      .query(`
-        IF COL_LENGTH('Musteriler', 'is_active') IS NULL
-        BEGIN
-          ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
-        END
-        INSERT INTO Musteriler (
-          FirmaId, KayitEdenUzmanId, Ad, Soyad, Telefon, AradigiButce, AradigiEmlakTipi, Müşteri_Tipi, is_active
-        )
-        VALUES (
-          @firmaId, @kayitEdenUzmanId, @ad, @soyad, @telefon, @aradigiButce, @aradigiEmlakTipi, @musteriTipi, 1
-        )
-      `);
+    const newClient = await Client.create({
+      _id: uuidv4(),
+      FirmaId: firmaId,
+      KayitEdenUzmanId: userId,
+      Ad: ad,
+      Soyad: soyad || '',
+      Telefon: telefon,
+      AradigiButce: aradigiButce ? Number(aradigiButce) : null,
+      AradigiEmlakTipi: aradigiEmlakTipi || null,
+      Müşteri_Tipi: musteriTipi,
+      is_active: 1
+    });
 
     res.status(201).json({ message: 'Müşteri başarıyla kaydedildi.' });
   } catch (error: any) {
@@ -44,15 +38,37 @@ export const addClient = async (req: any, res: Response) => {
 // Müşterileri Listeleme (GET /api/clients/list) - Korumalı
 export const listClients = async (req: any, res: Response) => {
   const { firmaId } = req.user;
+  const userId = req.user?.userId || req.user?.id;
 
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query('SELECT * FROM Musteriler WHERE FirmaId = @firmaId ORDER BY KayitTarihi DESC');
+    // Portfolios of this user
+    const portfolios = await Portfolio.find({ GorevliUzmanId: userId, MulkSahibiId: { $ne: null } });
+    const portfolioClientIds = portfolios.map(p => p.MulkSahibiId);
 
-    const mapped = result.recordset.map(c => ({
-      id: c.Id,
+    // Appointments of this user
+    const appointments = await Appointment.find({ TeklifEdenUzmanId: userId, MusteriId: { $ne: null } });
+    const appointmentClientIds = appointments.map(a => a.MusteriId);
+
+    // Sales of this user
+    const sales = await Sale.find({ DanismanID: userId, AliciMusteriID: { $ne: null } });
+    const saleClientIds = sales.map(s => s.AliciMusteriID);
+
+    const validClientIds = [
+      ...portfolioClientIds,
+      ...appointmentClientIds,
+      ...saleClientIds
+    ];
+
+    const clients = await Client.find({
+      FirmaId: firmaId,
+      $or: [
+        { KayitEdenUzmanId: userId },
+        { _id: { $in: validClientIds } }
+      ]
+    }).sort({ KayitTarihi: -1 });
+
+    const mapped = clients.map((c: any) => ({
+      id: c._id,
       ad: c.Ad,
       soyad: c.Soyad,
       telefon: c.Telefon,
@@ -76,18 +92,10 @@ export const toggleClientStatus = async (req: any, res: Response) => {
   const { firmaId } = req.user;
 
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('id', sql.UniqueIdentifier, id)
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('isActive', sql.Bit, isActive ? 1 : 0)
-      .query(`
-        IF COL_LENGTH('Musteriler', 'is_active') IS NULL
-        BEGIN
-          ALTER TABLE Musteriler ADD is_active BIT NOT NULL DEFAULT 1;
-        END
-        UPDATE Musteriler SET is_active = @isActive WHERE Id = @id AND FirmaId = @firmaId
-      `);
+    await Client.updateOne(
+      { _id: id, FirmaId: firmaId },
+      { $set: { is_active: isActive ? 1 : 0 } }
+    );
 
     res.json({ message: 'Müşteri durumu güncellendi.', isActive });
   } catch (error: any) {
@@ -95,3 +103,4 @@ export const toggleClientStatus = async (req: any, res: Response) => {
     res.status(500).json({ message: 'Müşteri durumu güncellenirken hata oluştu.', error: error.message });
   }
 };
+

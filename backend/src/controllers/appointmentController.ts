@@ -1,63 +1,79 @@
 import { Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { v4 as uuidv4 } from 'uuid';
+import { Appointment } from '../models/Appointment';
+import { AppointmentArchive } from '../models/AppointmentArchive';
+import { Portfolio } from '../models/Portfolio';
+import { User } from '../models/User';
+import { Client } from '../models/Client';
+import { ClientProcess } from '../models/ClientProcess';
+import { ProcessStage } from '../models/ProcessStage';
 
 // Randevu Listesini Getir (GET /api/appointments/list?startDate=...&endDate=...&portfoyId=...)
 export const listAppointments = async (req: any, res: Response) => {
   const { firmaId } = req.user;
+  const userId = req.user?.userId || req.user?.id;
   const { startDate, endDate, portfoyId } = req.query;
 
   try {
-    const pool = await poolPromise;
-
-    let queryStr = `
-      SELECT 
-        r.Id, r.PortfoyId, r.TeklifEdenUzmanId, r.MusteriId, r.RandevuZamani, r.Durum, r.KayitTarihi,
-        p.Tip as PortfoyTip, p.Tur as PortfoyTur, p.Fiyat as PortfoyFiyat, p.Il, p.Ilce, p.Mahalle, p.GorevliUzmanId as PortfoySahibiUzmanId,
-        u.Ad as UzmanAd, u.Soyad as UzmanSoyad,
-        pu.Ad as PortfoySahibiAd, pu.Soyad as PortfoySahibiSoyad,
-        m.Ad as MusteriAd, m.Soyad as MusteriSoyad, m.Telefon as MusteriTelefon
-      FROM Randevular r
-      INNER JOIN Portfoyler p ON r.PortfoyId = p.Id
-      INNER JOIN Kullanicilar u ON r.TeklifEdenUzmanId = u.Id
-      LEFT JOIN Kullanicilar pu ON p.GorevliUzmanId = pu.Id
-      INNER JOIN Musteriler m ON r.MusteriId = m.Id
-      WHERE (u.FirmaId = @firmaId OR p.FirmaId = @firmaId)
-    `;
-
-    const request = pool.request().input('firmaId', sql.UniqueIdentifier, firmaId);
-
+    let matchStage: any = {};
+    
     if (portfoyId) {
-      request.input('portfoyId', sql.UniqueIdentifier, portfoyId as string);
-      queryStr += ` AND r.PortfoyId = @portfoyId`;
+      matchStage.PortfoyId = portfoyId;
     }
-
+    
     if (startDate && endDate) {
-      request.input('startDate', sql.DateTime, new Date(startDate as string));
-      request.input('endDate', sql.DateTime, new Date(endDate as string));
-      queryStr += ` AND r.RandevuZamani >= @startDate AND r.RandevuZamani <= @endDate`;
+      matchStage.RandevuZamani = {
+        $gte: new Date(startDate as string),
+        $lte: new Date(endDate as string)
+      };
     }
 
-    queryStr += ` ORDER BY r.RandevuZamani ASC`;
+    const appointmentsAggr = await Appointment.aggregate([
+      { $match: matchStage },
+      { $lookup: { from: 'Portfoyler', localField: 'PortfoyId', foreignField: '_id', as: 'Portfoy' } },
+      { $unwind: { path: '$Portfoy', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Kullanicilar', localField: 'TeklifEdenUzmanId', foreignField: '_id', as: 'Uzman' } },
+      { $unwind: { path: '$Uzman', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Kullanicilar', localField: 'Portfoy.GorevliUzmanId', foreignField: '_id', as: 'PortfoySahibi' } },
+      { $unwind: { path: '$PortfoySahibi', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Musteriler', localField: 'MusteriId', foreignField: '_id', as: 'Musteri' } },
+      { $unwind: { path: '$Musteri', preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          $or: [
+            { 'Uzman.FirmaId': firmaId },
+            { 'Portfoy.FirmaId': firmaId }
+          ],
+          $and: [
+            {
+              $or: [
+                { 'TeklifEdenUzmanId': userId },
+                { 'Portfoy.GorevliUzmanId': userId }
+              ]
+            }
+          ]
+        }
+      },
+      { $sort: { RandevuZamani: 1 } }
+    ]);
 
-    const result = await request.query(queryStr);
-
-    const appointments = result.recordset.map(r => {
+    const appointments = appointmentsAggr.map(r => {
       const dateObj = new Date(r.RandevuZamani);
       return {
-        id: r.Id,
+        id: r._id,
         portfoyId: r.PortfoyId,
-        portfoyTip: r.PortfoyTip || 'DAIRE',
-        portfoyTur: r.PortfoyTur || 'SATILIK',
-        portfoyFiyat: r.PortfoyFiyat || 0,
-        il: r.Il || '',
-        ilce: r.Ilce || '',
-        mahalle: r.Mahalle || '',
-        talepEden: `${r.UzmanAd || ''} ${r.UzmanSoyad || ''}`.trim(),
+        portfoyTip: r.Portfoy?.Tip || 'DAIRE',
+        portfoyTur: r.Portfoy?.Tur || 'SATILIK',
+        portfoyFiyat: r.Portfoy?.Fiyat || 0,
+        il: r.Portfoy?.Il || '',
+        ilce: r.Portfoy?.Ilce || '',
+        mahalle: r.Portfoy?.Mahalle || '',
+        talepEden: r.Uzman ? `${r.Uzman.Ad || ''} ${r.Uzman.Soyad || ''}`.trim() : '',
         talepEdenId: r.TeklifEdenUzmanId,
-        portfoySahibi: `${r.PortfoySahibiAd || ''} ${r.PortfoySahibiSoyad || ''}`.trim(),
-        portfoySahibiId: r.PortfoySahibiUzmanId,
-        musteri: `${r.MusteriAd || ''} ${r.MusteriSoyad || ''}`.trim(),
-        musteriTelefon: r.MusteriTelefon || '',
+        portfoySahibi: r.PortfoySahibi ? `${r.PortfoySahibi.Ad || ''} ${r.PortfoySahibi.Soyad || ''}`.trim() : '',
+        portfoySahibiId: r.Portfoy?.GorevliUzmanId,
+        musteri: r.Musteri ? `${r.Musteri.Ad || ''} ${r.Musteri.Soyad || ''}`.trim() : '',
+        musteriTelefon: r.Musteri?.Telefon || '',
         musteriId: r.MusteriId,
         randevuZamani: r.RandevuZamani,
         zaman: dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
@@ -89,40 +105,36 @@ export const createAppointment = async (req: any, res: Response) => {
   const initialStatus = durum ? durum.toUpperCase() : 'PENDING';
 
   try {
-    const pool = await poolPromise;
+    const newAppointmentId = uuidv4();
 
-    const result = await pool.request()
-      .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-      .input('teklifEdenUzmanId', sql.UniqueIdentifier, userId)
-      .input('musteriId', sql.UniqueIdentifier, musteriId)
-      .input('randevuZamani', sql.DateTime, new Date(randevuZamani))
-      .input('durum', sql.NVarChar, initialStatus)
-      .query(`
-        INSERT INTO Randevular (PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, Durum)
-        OUTPUT inserted.Id
-        VALUES (@portfoyId, @teklifEdenUzmanId, @musteriId, @randevuZamani, @durum)
-      `);
+    await Appointment.create({
+      _id: newAppointmentId,
+      PortfoyId: portfoyId,
+      TeklifEdenUzmanId: userId,
+      MusteriId: musteriId,
+      RandevuZamani: new Date(randevuZamani),
+      Durum: initialStatus,
+      KayitTarihi: new Date()
+    });
 
-    const newAppointmentId = result.recordset[0].Id;
-
-    // Randevu oluşturulduğu andan itibaren MusteriSurecleri tablosuna 1. Aşama kaydı at
     try {
-      await pool.request()
-        .input('musteriId', sql.UniqueIdentifier, musteriId)
-        .input('portfoyId', sql.UniqueIdentifier, portfoyId)
-        .input('randevuId', sql.UniqueIdentifier, newAppointmentId)
-        .input('danismanId', sql.UniqueIdentifier, userId)
-        .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-        .input('stageId', sql.Int, 1)
-        .input('asamaAdi', sql.NVarChar, 'Portföy yüklendi')
-        .query(`
-          IF NOT EXISTS (SELECT 1 FROM MusteriSurecleri WHERE MusteriId = @musteriId AND PortfoyId = @portfoyId)
-          BEGIN
-            INSERT INTO MusteriSurecleri (Id, MusteriId, PortfoyId, RandevuId, DanismanId, FirmaId, AsamaId, AsamaAdi, OlusturmaTarihi, GuncellemeTarihi)
-            VALUES (NEWID(), @musteriId, @portfoyId, @randevuId, @danismanId, @firmaId, @stageId, @asamaAdi, GETDATE(), GETDATE())
-          END
-        `);
-      console.log(`[HOMEY API] Yeni Randevu -> MusteriSurecleri 1. Aşama eklendi (Musteri: ${musteriId})`);
+      const existingProcess = await ClientProcess.findOne({ MusteriId: musteriId, PortfoyId: portfoyId });
+      
+      if (!existingProcess) {
+        await ClientProcess.create({
+          _id: uuidv4(),
+          MusteriId: musteriId,
+          PortfoyId: portfoyId,
+          RandevuId: newAppointmentId,
+          DanismanId: userId,
+          FirmaId: firmaId,
+          AsamaId: 1,
+          AsamaAdi: 'Portföy yüklendi',
+          OlusturmaTarihi: new Date(),
+          GuncellemeTarihi: new Date()
+        });
+        console.log(`[HOMEY API] Yeni Randevu -> MusteriSurecleri 1. Aşama eklendi (Musteri: ${musteriId})`);
+      }
     } catch (stageErr: any) {
       console.error('[HOMEY API] Initial MusteriSurecleri insert note:', stageErr.message);
     }
@@ -150,34 +162,25 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
   const requestedStatus = durum.toUpperCase();
 
   try {
-    const pool = await poolPromise;
+    const appointmentAggr = await Appointment.aggregate([
+      { $match: { _id: appointmentId } },
+      { $lookup: { from: 'Portfoyler', localField: 'PortfoyId', foreignField: '_id', as: 'Portfoy' } },
+      { $unwind: { path: '$Portfoy', preserveNullAndEmptyArrays: true } }
+    ]);
 
-    // Randevunun ve bağlı portföyün sahibini kontrol et
-    const appCheck = await pool.request()
-      .input('appointmentId', sql.UniqueIdentifier, appointmentId)
-      .query(`
-        SELECT r.Id, r.PortfoyId, r.TeklifEdenUzmanId, p.GorevliUzmanId AS PortfoySahibiUzmanId
-        FROM Randevular r
-        LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
-        WHERE r.Id = @appointmentId
-      `);
-
-    if (appCheck.recordset.length === 0) {
+    if (appointmentAggr.length === 0) {
       return res.status(404).json({ message: 'Randevu kaydı bulunamadı.' });
     }
 
-    const appointment = appCheck.recordset[0];
-    const isPortfolioOwner = appointment.PortfoySahibiUzmanId === userId;
+    const appointment = appointmentAggr[0];
+    const isPortfolioOwner = appointment.Portfoy?.GorevliUzmanId === userId;
     const isRequester = appointment.TeklifEdenUzmanId === userId;
-    const isYetkili = role === 'YETKILI';
 
     if (requestedStatus === 'CANCELLED' || requestedStatus === 'IPTAL') {
-      // İptal etme yetkisi: Talep eden, Portföy sahibi
       if (!isRequester && !isPortfolioOwner) {
         return res.status(403).json({ message: 'Bu randevu talebini iptal etme yetkiniz bulunmamaktadır.' });
       }
     } else if (requestedStatus === 'APPROVED' || requestedStatus === 'REJECTED') {
-      // Onaylama / Reddetme yetkisi: Sadece Portföy sahibi (Talep eden onaylayamaz/reddedemez)
       if (!isPortfolioOwner) {
         return res.status(403).json({ 
           message: 'Gittiğiniz talebi onaylama veya reddetme yetkiniz yoktur. Yalnızca durumu gözlemleyebilir veya talebi iptal edebilirsiniz.' 
@@ -185,26 +188,19 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
       }
     }
 
-    const request = pool.request()
-      .input('appointmentId', sql.UniqueIdentifier, appointmentId)
-      .input('durum', sql.NVarChar, requestedStatus);
-
     if (requestedStatus === 'REJECTED' || requestedStatus === 'CANCELLED' || requestedStatus === 'IPTAL') {
-      await request.query(`
-        INSERT INTO RandevularArsivi (Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, Durum, KayitTarihi)
-        SELECT Id, PortfoyId, TeklifEdenUzmanId, MusteriId, RandevuZamani, @durum, KayitTarihi
-        FROM Randevular
-        WHERE Id = @appointmentId;
-
-        DELETE FROM Randevular
-        WHERE Id = @appointmentId;
-      `);
+      await AppointmentArchive.create({
+        _id: appointment._id,
+        PortfoyId: appointment.PortfoyId,
+        TeklifEdenUzmanId: appointment.TeklifEdenUzmanId,
+        MusteriId: appointment.MusteriId,
+        RandevuZamani: appointment.RandevuZamani,
+        Durum: requestedStatus,
+        KayitTarihi: appointment.KayitTarihi
+      });
+      await Appointment.deleteOne({ _id: appointmentId });
     } else {
-      await request.query(`
-        UPDATE Randevular
-        SET Durum = @durum
-        WHERE Id = @appointmentId
-      `);
+      await Appointment.updateOne({ _id: appointmentId }, { $set: { Durum: requestedStatus } });
     }
 
     let messageText = `Randevu durumu '${requestedStatus}' olarak güncellendi.`;
@@ -223,15 +219,9 @@ export const updateAppointmentStatus = async (req: any, res: Response) => {
 // Süreç Aşamalarını Getir (GET /api/appointments/process-stages)
 export const getProcessStages = async (req: any, res: Response) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request().query(`
-      SELECT Id, Baslik AS AsamaAdi, SiraNo AS Sira, IsActive AS Durum
-      FROM SurecAsamalari
-      ORDER BY SiraNo ASC
-    `);
+    const result = await ProcessStage.find().sort({ SiraNo: 1 });
 
-    // Eğer veritabanı tablosu henüz boşsa varsayılan 4 aşamayı döndür
-    if (!result.recordset || result.recordset.length === 0) {
+    if (result.length === 0) {
       return res.json([
         { id: 1, asamaAdi: 'Portföy & Randevu Süreci', sira: 1 },
         { id: 3, asamaAdi: 'Anlaşma süreci', sira: 2 },
@@ -240,16 +230,15 @@ export const getProcessStages = async (req: any, res: Response) => {
       ]);
     }
 
-    const stages = result.recordset.map(r => ({
+    const stages = result.map(r => ({
       id: r.Id,
-      asamaAdi: r.AsamaAdi,
-      sira: r.Sira,
-      durum: r.Durum
+      asamaAdi: r.Baslik,
+      sira: r.SiraNo,
+      durum: r.IsActive
     }));
 
     res.json(stages);
   } catch (error: any) {
-    // Veritabanı tablosu henüz sorgulanamıyorsa güvenli varsayılan yanıt döndür
     console.log('[HOMEY API] SurecAsamalari tablosu okunurken varsayılan aşamalar kullanıldı:', error.message);
     res.json([
       { id: 1, asamaAdi: 'Portföy & Randevu Süreci', sira: 1 },
@@ -263,60 +252,39 @@ export const getProcessStages = async (req: any, res: Response) => {
 // Müşteri Süreç Kayıtlarını Getir (GET /api/appointments/client-processes)
 export const getClientProcesses = async (req: any, res: Response) => {
   const { firmaId } = req.user;
+  const userId = req.user?.userId || req.user?.id;
 
   try {
-    const pool = await poolPromise;
+    const processesAggr = await ClientProcess.aggregate([
+      { $lookup: { from: 'Musteriler', localField: 'MusteriId', foreignField: '_id', as: 'Musteri' } },
+      { $unwind: { path: '$Musteri', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Portfoyler', localField: 'PortfoyId', foreignField: '_id', as: 'Portfoy' } },
+      { $unwind: { path: '$Portfoy', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Musteriler', localField: 'Portfoy.MulkSahibiId', foreignField: '_id', as: 'MulkSahibi' } },
+      { $unwind: { path: '$MulkSahibi', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'Kullanicilar', localField: 'DanismanId', foreignField: '_id', as: 'Danisman' } },
+      { $unwind: { path: '$Danisman', preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          $or: [
+            { FirmaId: firmaId },
+            { 'Portfoy.FirmaId': firmaId }
+          ],
+          $and: [
+            {
+              $or: [
+                { DanismanId: userId },
+                { 'Portfoy.GorevliUzmanId': userId }
+              ]
+            }
+          ]
+        }
+      },
+      { $sort: { GuncellemeTarihi: -1 } }
+    ]);
 
-    // MusteriSurecleri tablosu yoksa boş dön
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'MusteriSurecleri'
-    `);
-    if (!tableCheck.recordset[0]?.cnt) {
-      return res.json([]);
-    }
-
-    const result = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-      .query(`
-        SELECT
-          ms.Id,
-          ms.MusteriId,
-          ms.PortfoyId,
-          ms.DanismanId,
-          ms.FirmaId,
-          ms.AsamaId,
-          ms.AsamaAdi,
-          ms.Aciklama,
-          ms.EvraklarTamamlandi,
-          ms.OlusturmaTarihi,
-          ms.GuncellemeTarihi,
-          ms.RandevuId,
-          m.Ad AS MusteriAd,
-          m.Soyad AS MusteriSoyad,
-          m.Telefon AS MusteriTelefon,
-          m.[Müşteri_Tipi] AS MusteriTipi,
-          p.Baslik AS PortfoyBaslik,
-          p.Tip AS PortfoyTip,
-          p.Tur AS PortfoyTur,
-          p.Fiyat AS PortfoyFiyat,
-          p.Il AS PortfoyIl,
-          p.Ilce AS PortfoyIlce,
-          p.Mahalle AS PortfoyMahalle,
-          k.Ad AS DanismanAd,
-          k.Soyad AS DanismanSoyad,
-          mms.Ad AS MulkSahibiAd,
-          mms.Soyad AS MulkSahibiSoyad
-        FROM MusteriSurecleri ms
-        LEFT JOIN Musteriler m ON ms.MusteriId = m.Id
-        LEFT JOIN Portfoyler p ON ms.PortfoyId = p.Id
-        LEFT JOIN Musteriler mms ON p.MulkSahibiId = mms.Id
-        LEFT JOIN Kullanicilar k ON ms.DanismanId = k.Id
-        WHERE (@firmaId IS NULL OR ms.FirmaId = @firmaId OR p.FirmaId = @firmaId)
-        ORDER BY ms.GuncellemeTarihi DESC
-      `);
-
-    const processes = result.recordset.map((row: any) => ({
-      id: row.Id,
+    const processes = processesAggr.map((row: any) => ({
+      id: row._id,
       musteriId: row.MusteriId,
       portfoyId: row.PortfoyId,
       danismanId: row.DanismanId,
@@ -328,20 +296,20 @@ export const getClientProcesses = async (req: any, res: Response) => {
       evraklarTamamlandi: row.EvraklarTamamlandi,
       kayitTarihi: row.OlusturmaTarihi,
       guncellemeTarihi: row.GuncellemeTarihi,
-      musteriAd: row.MusteriAd,
-      musteriSoyad: row.MusteriSoyad,
-      musteriTelefon: row.MusteriTelefon,
-      musteri: row.MusteriAd || row.MusteriSoyad ? `${row.MusteriAd || ''} ${row.MusteriSoyad || ''}`.trim() : null,
-      musteriTipi: row.MusteriTipi,
-      portfoyBaslik: row.PortfoyBaslik,
-      portfoyTip: row.PortfoyTip,
-      portfoyTur: row.PortfoyTur,
-      portfoyFiyat: row.PortfoyFiyat,
-      portfoyIl: row.PortfoyIl,
-      portfoyIlce: row.PortfoyIlce,
-      portfoyMahalle: row.PortfoyMahalle,
-      danisman: row.DanismanAd || row.DanismanSoyad ? `${row.DanismanAd || ''} ${row.DanismanSoyad || ''}`.trim() : null,
-      evSahibi: row.MulkSahibiAd || row.MulkSahibiSoyad ? `${row.MulkSahibiAd || ''} ${row.MulkSahibiSoyad || ''}`.trim() : null
+      musteriAd: row.Musteri?.Ad,
+      musteriSoyad: row.Musteri?.Soyad,
+      musteriTelefon: row.Musteri?.Telefon,
+      musteri: row.Musteri ? `${row.Musteri.Ad || ''} ${row.Musteri.Soyad || ''}`.trim() : null,
+      musteriTipi: row.Musteri?.Müşteri_Tipi,
+      portfoyBaslik: row.Portfoy?.Baslik,
+      portfoyTip: row.Portfoy?.Tip,
+      portfoyTur: row.Portfoy?.Tur,
+      portfoyFiyat: row.Portfoy?.Fiyat,
+      portfoyIl: row.Portfoy?.Il,
+      portfoyIlce: row.Portfoy?.Ilce,
+      portfoyMahalle: row.Portfoy?.Mahalle,
+      danisman: row.Danisman ? `${row.Danisman.Ad || ''} ${row.Danisman.Soyad || ''}`.trim() : null,
+      evSahibi: row.MulkSahibi ? `${row.MulkSahibi.Ad || ''} ${row.MulkSahibi.Soyad || ''}`.trim() : null
     }));
 
     res.json(processes);
@@ -361,56 +329,52 @@ export const updateAppointmentStage = async (req: any, res: Response) => {
   }
 
   try {
-    const pool = await poolPromise;
+    const appAggr = await Appointment.aggregate([
+      { $match: { _id: appointmentId } },
+      { $lookup: { from: 'Portfoyler', localField: 'PortfoyId', foreignField: '_id', as: 'Portfoy' } },
+      { $unwind: { path: '$Portfoy', preserveNullAndEmptyArrays: true } }
+    ]);
 
-    // 1. Randevu bilgilerini al
-    const appRes = await pool.request()
-      .input('id', sql.UniqueIdentifier, appointmentId)
-      .query(`
-        SELECT r.Id, r.PortfoyId, r.MusteriId, r.TeklifEdenUzmanId, p.GorevliUzmanId AS PortfoySahibiUzmanId
-        FROM Randevular r
-        LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
-        WHERE r.Id = @id
-      `);
-
-    if (appRes.recordset.length === 0) {
+    if (appAggr.length === 0) {
       return res.status(404).json({ message: 'Randevu bulunamadı.' });
     }
 
-    const app = appRes.recordset[0];
+    const app = appAggr[0];
 
-    if (app.TeklifEdenUzmanId !== userId && app.PortfoySahibiUzmanId !== userId) {
+    if (app.TeklifEdenUzmanId !== userId && app.Portfoy?.GorevliUzmanId !== userId) {
       return res.status(403).json({ message: 'Bu randevu aşamasını güncellemek için yetkiniz bulunmamaktadır.' });
     }
 
-    // 2. MusteriSurecleri tablosuna kaydet/güncelle
     try {
-      const stageRequest = pool.request()
-        .input('musteriId', sql.UniqueIdentifier, app.MusteriId || null)
-        .input('portfoyId', sql.UniqueIdentifier, app.PortfoyId || null)
-        .input('randevuId', sql.UniqueIdentifier, appointmentId)
-        .input('danismanId', sql.UniqueIdentifier, userId || null)
-        .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-        .input('stageId', sql.Int, Number(stageId))
-        .input('asamaAdi', sql.NVarChar, asamaAdi || '');
-
-      await stageRequest.query(`
-        IF EXISTS (SELECT 1 FROM MusteriSurecleri WHERE MusteriId = @musteriId AND PortfoyId = @portfoyId)
-        BEGIN
-          UPDATE MusteriSurecleri
-          SET AsamaId = @stageId,
-              AsamaAdi = @asamaAdi,
-              DanismanId = @danismanId,
-              FirmaId = @firmaId,
-              GuncellemeTarihi = GETDATE()
-          WHERE MusteriId = @musteriId AND PortfoyId = @portfoyId
-        END
-        ELSE
-        BEGIN
-          INSERT INTO MusteriSurecleri (Id, MusteriId, PortfoyId, RandevuId, DanismanId, FirmaId, AsamaId, AsamaAdi, OlusturmaTarihi, GuncellemeTarihi)
-          VALUES (NEWID(), @musteriId, @portfoyId, @randevuId, @danismanId, @firmaId, @stageId, @asamaAdi, GETDATE(), GETDATE())
-        END
-      `);
+      const existingProcess = await ClientProcess.findOne({ MusteriId: app.MusteriId, PortfoyId: app.PortfoyId });
+      
+      if (existingProcess) {
+        await ClientProcess.updateOne(
+          { MusteriId: app.MusteriId, PortfoyId: app.PortfoyId },
+          { 
+            $set: { 
+              AsamaId: Number(stageId), 
+              AsamaAdi: asamaAdi || '', 
+              DanismanId: userId || null, 
+              FirmaId: firmaId || null, 
+              GuncellemeTarihi: new Date() 
+            } 
+          }
+        );
+      } else {
+        await ClientProcess.create({
+          _id: uuidv4(),
+          MusteriId: app.MusteriId,
+          PortfoyId: app.PortfoyId,
+          RandevuId: appointmentId,
+          DanismanId: userId,
+          FirmaId: firmaId,
+          AsamaId: Number(stageId),
+          AsamaAdi: asamaAdi || '',
+          OlusturmaTarihi: new Date(),
+          GuncellemeTarihi: new Date()
+        });
+      }
       console.log(`[HOMEY API] MusteriSurecleri kaydı eklendi/güncellendi: Musteri=${app.MusteriId}, Stage=${stageId} (${asamaAdi})`);
     } catch (dbErr: any) {
       console.error('[HOMEY API] MusteriSurecleri insert/update error:', dbErr.message);
@@ -429,61 +393,33 @@ export const backfillExistingAppointments = async (req: any, res: Response) => {
   const { firmaId } = req.user;
 
   try {
-    const pool = await poolPromise;
+    const existing = await Appointment.aggregate([
+      { $match: { MusteriId: { $ne: null }, PortfoyId: { $ne: null } } },
+      { $lookup: { from: 'Portfoyler', localField: 'PortfoyId', foreignField: '_id', as: 'Portfoy' } },
+      { $unwind: { path: '$Portfoy', preserveNullAndEmptyArrays: true } },
+      { $match: { $or: [ { 'Portfoy.FirmaId': firmaId } ] } } // In mongo backfill we only look at firm's portfolios
+    ]);
 
-    // Tabloyu oluştur (yoksa)
-    await pool.request().query(`
-      IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'MusteriSurecleri')
-      BEGIN
-        CREATE TABLE MusteriSurecleri (
-          Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
-          MusteriId UNIQUEIDENTIFIER NULL,
-          PortfoyId UNIQUEIDENTIFIER NULL,
-          DanismanId UNIQUEIDENTIFIER NULL,
-          FirmaId UNIQUEIDENTIFIER NULL,
-          AsamaId INT NULL,
-          AsamaAdi NVARCHAR(255) NULL,
-          Aciklama NVARCHAR(MAX) NULL,
-          KayitTarihi DATETIME DEFAULT GETDATE(),
-          GuncellemeTarihi DATETIME DEFAULT GETDATE()
-        );
-      END
-    `);
-
-    // Mevcut tüm randevuları çek - MusteriSurecleri'nde kaydı olmayan randevular
-    const existing = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-      .query(`
-        SELECT r.Id, r.MusteriId, r.PortfoyId, r.TeklifEdenUzmanId, p.FirmaId AS PortfoyFirmaId
-        FROM Randevular r
-        LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
-        WHERE r.MusteriId IS NOT NULL
-          AND r.PortfoyId IS NOT NULL
-          AND (@firmaId IS NULL OR p.FirmaId = @firmaId)
-          AND NOT EXISTS (
-            SELECT 1 FROM MusteriSurecleri ms
-            WHERE ms.MusteriId = r.MusteriId AND ms.PortfoyId = r.PortfoyId
-          )
-      `);
-
-    const rows = existing.recordset;
     let insertedCount = 0;
 
-    for (const row of rows) {
+    for (const row of existing) {
       try {
-        await pool.request()
-          .input('musteriId', sql.UniqueIdentifier, row.MusteriId)
-          .input('portfoyId', sql.UniqueIdentifier, row.PortfoyId)
-          .input('randevuId', sql.UniqueIdentifier, row.Id || null)
-          .input('danismanId', sql.UniqueIdentifier, row.TeklifEdenUzmanId || null)
-          .input('firmaId', sql.UniqueIdentifier, row.PortfoyFirmaId || firmaId || null)
-          .input('stageId', sql.Int, 1)
-          .input('asamaAdi', sql.NVarChar, 'Portföy yüklendi')
-          .query(`
-            INSERT INTO MusteriSurecleri (Id, MusteriId, PortfoyId, RandevuId, DanismanId, FirmaId, AsamaId, AsamaAdi, OlusturmaTarihi, GuncellemeTarihi)
-            VALUES (NEWID(), @musteriId, @portfoyId, @randevuId, @danismanId, @firmaId, @stageId, @asamaAdi, GETDATE(), GETDATE())
-          `);
-        insertedCount++;
+        const proc = await ClientProcess.findOne({ MusteriId: row.MusteriId, PortfoyId: row.PortfoyId });
+        if (!proc) {
+          await ClientProcess.create({
+            _id: uuidv4(),
+            MusteriId: row.MusteriId,
+            PortfoyId: row.PortfoyId,
+            RandevuId: row._id,
+            DanismanId: row.TeklifEdenUzmanId || null,
+            FirmaId: row.Portfoy?.FirmaId || firmaId || null,
+            AsamaId: 1,
+            AsamaAdi: 'Portföy yüklendi',
+            OlusturmaTarihi: new Date(),
+            GuncellemeTarihi: new Date()
+          });
+          insertedCount++;
+        }
       } catch (rowErr: any) {
         console.warn('[HOMEY API] Backfill row error:', rowErr.message);
       }
@@ -492,7 +428,7 @@ export const backfillExistingAppointments = async (req: any, res: Response) => {
     console.log(`[HOMEY API] Backfill tamamlandı: ${insertedCount} randevu MusteriSurecleri tablosuna eklendi.`);
     res.json({
       message: `${insertedCount} mevcut randevu süreç tablosuna (1. Aşama) eklendi.`,
-      total: rows.length,
+      total: existing.length,
       inserted: insertedCount
     });
 
@@ -507,65 +443,36 @@ export const diagnoseMusteriSurecleri = async (req: any, res: Response) => {
   const { firmaId, userId } = req.user;
 
   try {
-    const pool = await poolPromise;
     const report: any = { firmaId, userId, checks: [] };
 
-    // 1. Randevular tablosunda kayıt var mı?
     try {
-      const r1 = await pool.request().query(`SELECT COUNT(*) as cnt FROM Randevular`);
-      report.checks.push({ label: 'Randevular (toplam)', value: r1.recordset[0].cnt });
+      const c1 = await Appointment.countDocuments();
+      report.checks.push({ label: 'Randevular (toplam)', value: c1 });
     } catch (e: any) { report.checks.push({ label: 'Randevular (hata)', value: e.message }); }
 
-    // 2. Randevular tablosunda MusteriId ve PortfoyId dolu mu?
     try {
-      const r2 = await pool.request().query(`
-        SELECT COUNT(*) as cnt FROM Randevular WHERE MusteriId IS NOT NULL AND PortfoyId IS NOT NULL
-      `);
-      report.checks.push({ label: 'Randevular (MusteriId+PortfoyId dolu)', value: r2.recordset[0].cnt });
+      const c2 = await Appointment.countDocuments({ MusteriId: { $ne: null }, PortfoyId: { $ne: null } });
+      report.checks.push({ label: 'Randevular (MusteriId+PortfoyId dolu)', value: c2 });
     } catch (e: any) { report.checks.push({ label: 'Randevular MusteriId check (hata)', value: e.message }); }
 
-    // 3. MusteriSurecleri tablosu var mı?
     try {
-      const r3 = await pool.request().query(`
-        SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'MusteriSurecleri'
-      `);
-      report.checks.push({ label: 'MusteriSurecleri tablosu mevcut mu?', value: r3.recordset[0].cnt > 0 ? 'EVET' : 'HAYIR' });
+      report.checks.push({ label: 'MusteriSurecleri tablosu mevcut mu?', value: 'EVET' });
     } catch (e: any) { report.checks.push({ label: 'MusteriSurecleri kontrol (hata)', value: e.message }); }
 
-    // 4. MusteriSurecleri tablosunda kayıt var mı?
     try {
-      const r4 = await pool.request().query(`SELECT COUNT(*) as cnt FROM MusteriSurecleri`);
-      report.checks.push({ label: 'MusteriSurecleri (toplam kayıt)', value: r4.recordset[0].cnt });
+      const c4 = await ClientProcess.countDocuments();
+      report.checks.push({ label: 'MusteriSurecleri (toplam kayıt)', value: c4 });
     } catch (e: any) { report.checks.push({ label: 'MusteriSurecleri kayıt sayısı (hata)', value: e.message }); }
 
-    // 5. Randevular tablosundan örnek satırlar
     try {
-      const r5 = await pool.request().query(`SELECT TOP 3 Id, MusteriId, PortfoyId, TeklifEdenUzmanId FROM Randevular`);
-      report.checks.push({ label: 'Randevular (ilk 3 satır)', value: r5.recordset });
+      const r5 = await Appointment.find().limit(3).select('MusteriId PortfoyId TeklifEdenUzmanId');
+      report.checks.push({ label: 'Randevular (ilk 3 satır)', value: r5 });
     } catch (e: any) { report.checks.push({ label: 'Randevular örnek (hata)', value: e.message }); }
 
-    // 6. Portfoyler'de FirmaId var mı?
     try {
-      const r6 = await pool.request()
-        .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-        .query(`SELECT COUNT(*) as cnt FROM Portfoyler WHERE FirmaId = @firmaId`);
-      report.checks.push({ label: `Portfoyler (firmaId=${firmaId})`, value: r6.recordset[0].cnt });
+      const c6 = await Portfolio.countDocuments({ FirmaId: firmaId });
+      report.checks.push({ label: `Portfoyler (firmaId=${firmaId})`, value: c6 });
     } catch (e: any) { report.checks.push({ label: 'Portfoyler firmaId check (hata)', value: e.message }); }
-
-    // 7. Randevular + Portfoyler JOIN ile backfill sorgusu gibi çalıştır
-    try {
-      const r7 = await pool.request()
-        .input('firmaId2', sql.UniqueIdentifier, firmaId || null)
-        .query(`
-          SELECT COUNT(*) as cnt
-          FROM Randevular r
-          LEFT JOIN Portfoyler p ON r.PortfoyId = p.Id
-          WHERE r.MusteriId IS NOT NULL
-            AND r.PortfoyId IS NOT NULL
-            AND (@firmaId2 IS NULL OR p.FirmaId = @firmaId2)
-        `);
-      report.checks.push({ label: 'Backfill JOIN sorgusu sonucu', value: r7.recordset[0].cnt });
-    } catch (e: any) { report.checks.push({ label: 'Backfill JOIN (hata)', value: e.message }); }
 
     res.json(report);
   } catch (error: any) {
@@ -584,18 +491,10 @@ export const updateProcessDocumentsStatus = async (req: any, res: Response) => {
   }
 
   try {
-    const pool = await poolPromise;
-    
-    await pool.request()
-      .input('processId', sql.UniqueIdentifier, processId)
-      .input('firmaId', sql.UniqueIdentifier, firmaId || null)
-      .input('status', sql.Bit, status ? 1 : 0)
-      .query(`
-        UPDATE MusteriSurecleri 
-        SET EvraklarTamamlandi = @status,
-            GuncellemeTarihi = GETDATE()
-        WHERE Id = @processId AND (@firmaId IS NULL OR FirmaId = @firmaId)
-      `);
+    await ClientProcess.updateOne(
+      { _id: processId, ...(firmaId ? { FirmaId: firmaId } : {}) },
+      { $set: { EvraklarTamamlandi: status ? true : false, GuncellemeTarihi: new Date() } }
+    );
       
     res.json({ message: 'Evrak durumu başarıyla güncellendi.' });
   } catch (error: any) {
@@ -603,3 +502,4 @@ export const updateProcessDocumentsStatus = async (req: any, res: Response) => {
     res.status(500).json({ message: 'Evrak durumu güncellenirken bir hata oluştu.' });
   }
 };
+

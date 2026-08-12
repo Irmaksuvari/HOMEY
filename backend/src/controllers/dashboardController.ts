@@ -1,5 +1,9 @@
 import { Response } from 'express';
-import { poolPromise, sql } from '../config/db';
+import { Sale } from '../models/Sale';
+import { Portfolio } from '../models/Portfolio';
+import { Client } from '../models/Client';
+import { User } from '../models/User';
+import mongoose from 'mongoose';
 
 // GET /api/dashboard/summary — Ofis Finansal Dashboard Verileri (Sadece YETKILI)
 export const getDashboardSummary = async (req: any, res: Response) => {
@@ -10,106 +14,67 @@ export const getDashboardSummary = async (req: any, res: Response) => {
   }
 
   try {
-    const pool = await poolPromise;
-
-    // --- Tarih hesaplamaları ---
     const now = new Date();
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-
-    // 1. Toplam Ofis Cirosu (FirmaId'ye ait tüm kullanıcıların ciroları toplamı)
-    const ciroThisMonth = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT ISNULL(SUM(s.HizmetBedeliCiro), 0) AS toplam
-        FROM SatisIslemleri s
-        INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
-        WHERE p.FirmaId = @firmaId
-      `);
-
-    // 2. Geçen Ay Toplam Ofis Cirosu (Karşılaştırma için)
-    const ciroLastMonth = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, lastMonthStart)
-      .input('endDate', sql.DateTime, lastMonthEnd)
-      .query(`
-        SELECT ISNULL(SUM(s.HizmetBedeliCiro), 0) AS toplam
-        FROM SatisIslemleri s
-        INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
-        WHERE p.FirmaId = @firmaId
-          AND s.IslemTarihi >= @startDate AND s.IslemTarihi <= @endDate
-      `);
-
-    // 3. Yeni Müşteri Sayısı (FirmaID ve Son 1 Hafta içinde kayıt olanlar)
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const musteriThisMonth = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('oneWeekAgo', sql.DateTime, oneWeekAgo)
-      .query(`
-        SELECT COUNT(*) AS toplam
-        FROM Musteriler
-        WHERE FirmaId = @firmaId
-          AND KayitTarihi >= @oneWeekAgo
-      `);
-
-    // 4. Yeni Müşteri Sayısı (Önceki 1 Hafta karşılaştırması)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const musteriLastMonth = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('twoWeeksAgo', sql.DateTime, twoWeeksAgo)
-      .input('oneWeekAgo', sql.DateTime, oneWeekAgo)
-      .query(`
-        SELECT COUNT(*) AS toplam
-        FROM Musteriler
-        WHERE FirmaId = @firmaId
-          AND KayitTarihi >= @twoWeeksAgo AND KayitTarihi < @oneWeekAgo
-      `);
 
-    // 5. Kapanan İşlem Sayısı (FirmaID'ye ait bütün satışların toplam sayısı)
-    const kapananIslem = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT COUNT(*) AS toplam
-        FROM SatisIslemleri s
-        INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
-        WHERE p.FirmaId = @firmaId
-      `);
+    // Filter Portfolios by FirmaId first to limit the join space
+    const firmPortfolios = await Portfolio.find({ FirmaId: firmaId }).select('_id');
+    const firmPortfolioIds = firmPortfolios.map(p => p._id);
+
+    // 1. Toplam Ofis Cirosu
+    const ciroThisMonthAggr = await Sale.aggregate([
+      { $match: { PortfoyID: { $in: firmPortfolioIds } } },
+      { $group: { _id: null, toplam: { $sum: '$HizmetBedeliCiro' } } }
+    ]);
+    const aylikCiro = ciroThisMonthAggr[0]?.toplam || 0;
+
+    // 2. Geçen Ay Toplam Ofis Cirosu
+    const ciroLastMonthAggr = await Sale.aggregate([
+      { $match: { PortfoyID: { $in: firmPortfolioIds }, IslemTarihi: { $gte: lastMonthStart, $lte: lastMonthEnd } } },
+      { $group: { _id: null, toplam: { $sum: '$HizmetBedeliCiro' } } }
+    ]);
+    const gecenAyCiro = ciroLastMonthAggr[0]?.toplam || 0;
+
+    // 3. Yeni Müşteri Sayısı (Son 1 Hafta)
+    const yeniMusteri = await Client.countDocuments({ FirmaId: firmaId, KayitTarihi: { $gte: oneWeekAgo } });
+
+    // 4. Yeni Müşteri Sayısı (Önceki 1 Hafta)
+    const gecenAyMusteri = await Client.countDocuments({ FirmaId: firmaId, KayitTarihi: { $gte: twoWeeksAgo, $lt: oneWeekAgo } });
+
+    // 5. Kapanan İşlem Sayısı
+    const kapananIslem = await Sale.countDocuments({ PortfoyID: { $in: firmPortfolioIds } });
 
     // 6. Aktif İlan Stoğu Bedeli
-    const aktifIlanBedeli = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT ISNULL(SUM(Fiyat), 0) AS toplam, COUNT(*) AS adet
-        FROM Portfoyler
-        WHERE FirmaId = @firmaId AND Durum = 'BOSTA'
-      `);
+    const aktifIlanAggr = await Portfolio.aggregate([
+      { $match: { FirmaId: firmaId, Durum: 'BOSTA' } },
+      { $group: { _id: null, toplam: { $sum: '$Fiyat' }, adet: { $sum: 1 } } }
+    ]);
+    const aktifIlanBedeli = aktifIlanAggr[0]?.toplam || 0;
+    const aktifIlanAdet = aktifIlanAggr[0]?.adet || 0;
 
-    // 7. Son 6 Ay Ciro Trend (Aylık)
-    const ciroTrend = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT 
-          YEAR(s.IslemTarihi) AS yil,
-          MONTH(s.IslemTarihi) AS ay,
-          ISNULL(SUM(s.HizmetBedeliCiro), 0) AS toplam
-        FROM SatisIslemleri s
-        INNER JOIN Portfoyler p ON s.PortfoyID = p.Id
-        WHERE p.FirmaId = @firmaId
-          AND s.IslemTarihi >= DATEADD(MONTH, -5, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
-        GROUP BY YEAR(s.IslemTarihi), MONTH(s.IslemTarihi)
-        ORDER BY yil, ay
-      `);
+    // 7. Son 6 Ay Ciro Trend
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const ciroTrend = await Sale.aggregate([
+      { $match: { PortfoyID: { $in: firmPortfolioIds }, IslemTarihi: { $gte: sixMonthsAgo } } },
+      { $group: { 
+          _id: { yil: { $year: '$IslemTarihi' }, ay: { $month: '$IslemTarihi' } },
+          toplam: { $sum: '$HizmetBedeliCiro' }
+      }},
+      { $sort: { '_id.yil': 1, '_id.ay': 1 } }
+    ]);
 
-    // Son 6 ayı doldur (veri olmayan aylar için 0)
     const aylar = [];
     const ayIsimleri = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const yil = d.getFullYear();
       const ay = d.getMonth() + 1;
-      const match = ciroTrend.recordset.find((r: any) => r.yil === yil && r.ay === ay);
+      const match = ciroTrend.find(r => r._id.yil === yil && r._id.ay === ay);
       aylar.push({
         ay: ayIsimleri[d.getMonth()],
         yil,
@@ -118,57 +83,47 @@ export const getDashboardSummary = async (req: any, res: Response) => {
     }
 
     // 8. Portföy Tipi Dağılımı
-    const tipDagilimi = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .query(`
-        SELECT Tip, COUNT(*) AS adet
-        FROM Portfoyler
-        WHERE FirmaId = @firmaId
-        GROUP BY Tip
-        ORDER BY adet DESC
-      `);
+    const tipDagilimi = await Portfolio.aggregate([
+      { $match: { FirmaId: firmaId } },
+      { $group: { _id: '$Tip', adet: { $sum: 1 } } },
+      { $sort: { adet: -1 } }
+    ]);
 
     // 9. Danışman Performans Liderlik Tablosu
-    const danismanPerformans = await pool.request()
-      .input('firmaId', sql.UniqueIdentifier, firmaId)
-      .input('startDate', sql.DateTime, thisMonthStart)
-      .input('endDate', sql.DateTime, thisMonthEnd)
-      .query(`
-        WITH PerformansVerisi AS (
-          SELECT 
-            k.Id AS danismanId,
-            k.Ad,
-            k.Soyad,
-            (SELECT COUNT(*) FROM Portfoyler WHERE GorevliUzmanId = k.Id AND Durum = 'BOSTA') AS aktifPortfoySayisi,
-            ISNULL((
-              SELECT COUNT(*)
-              FROM SatisIslemleri s2
-              INNER JOIN Portfoyler p2 ON s2.PortfoyID = p2.Id
-              WHERE s2.DanismanID = k.Id
-                AND s2.IslemTarihi >= @startDate AND s2.IslemTarihi <= @endDate
-            ), 0) AS buAyKapananIslem,
-            ISNULL((
-              SELECT SUM(s3.HizmetBedeliCiro)
-              FROM SatisIslemleri s3
-              INNER JOIN Portfoyler p3 ON s3.PortfoyID = p3.Id
-              WHERE s3.DanismanID = k.Id
-                AND s3.IslemTarihi >= @startDate AND s3.IslemTarihi <= @endDate
-            ), 0) AS buAyCiro
-          FROM Kullanicilar k
-          WHERE k.FirmaId = @firmaId AND k.Rol != 'YETKILI'
-        )
-        SELECT 
-          *,
-          ((buAyKapananIslem * 50) + (aktifPortfoySayisi * 10) + (buAyCiro / 1000)) AS performansPuani
-        FROM PerformansVerisi
-        ORDER BY performansPuani DESC, buAyCiro DESC
-      `);
+    const users = await User.find({ FirmaId: firmaId, Rol: { $ne: 'YETKILI' } });
+    const userIds = users.map(u => u._id);
+    
+    const danismanPortfoyler = await Portfolio.aggregate([
+      { $match: { GorevliUzmanId: { $in: userIds }, Durum: 'BOSTA' } },
+      { $group: { _id: '$GorevliUzmanId', count: { $sum: 1 } } }
+    ]);
+    const dpMap = danismanPortfoyler.reduce((acc, curr) => { acc[curr._id] = curr.count; return acc; }, {});
 
-    // --- Yanıt ---
-    const aylikCiro = Number(ciroThisMonth.recordset[0].toplam);
-    const gecenAyCiro = Number(ciroLastMonth.recordset[0].toplam);
-    const yeniMusteri = Number(musteriThisMonth.recordset[0].toplam);
-    const gecenAyMusteri = Number(musteriLastMonth.recordset[0].toplam);
+    const danismanSatislar = await Sale.aggregate([
+      { $match: { DanismanID: { $in: userIds }, IslemTarihi: { $gte: thisMonthStart, $lte: thisMonthEnd } } },
+      { $group: { _id: '$DanismanID', islemCount: { $sum: 1 }, toplamCiro: { $sum: '$HizmetBedeliCiro' } } }
+    ]);
+    const dsMap = danismanSatislar.reduce((acc, curr) => { acc[curr._id] = curr; return acc; }, {});
+
+    let danismanPerformans = users.map((u: any) => {
+      const aktifPortfoySayisi = dpMap[u._id] || 0;
+      const satis = dsMap[u._id] || { islemCount: 0, toplamCiro: 0 };
+      const buAyKapananIslem = satis.islemCount;
+      const buAyCiro = satis.toplamCiro;
+      const performansPuani = (buAyKapananIslem * 50) + (aktifPortfoySayisi * 10) + (buAyCiro / 1000);
+
+      return {
+        id: u._id,
+        ad: u.Ad,
+        soyad: u.Soyad,
+        aktifPortfoySayisi,
+        buAyKapananIslem,
+        buAyCiro,
+        performansPuani
+      };
+    });
+
+    danismanPerformans.sort((a, b) => b.performansPuani - a.performansPuani || b.buAyCiro - a.buAyCiro);
 
     res.json({
       aylikCiro,
@@ -177,22 +132,12 @@ export const getDashboardSummary = async (req: any, res: Response) => {
       yeniMusteriSayisi: yeniMusteri,
       gecenAyMusteriSayisi: gecenAyMusteri,
       musteriDegisimYuzde: gecenAyMusteri > 0 ? Math.round(((yeniMusteri - gecenAyMusteri) / gecenAyMusteri) * 100) : (yeniMusteri > 0 ? 100 : 0),
-      kapananIslemSayisi: Number(kapananIslem.recordset[0].toplam),
-      aktifIlanBedeli: Number(aktifIlanBedeli.recordset[0].toplam),
-      aktifIlanAdet: Number(aktifIlanBedeli.recordset[0].adet),
+      kapananIslemSayisi: kapananIslem,
+      aktifIlanBedeli,
+      aktifIlanAdet,
       aylikCiroTrend: aylar,
-      portfoyTipDagilimi: tipDagilimi.recordset.map((r: any) => ({
-        tip: r.Tip,
-        adet: r.adet
-      })),
-      danismanPerformans: danismanPerformans.recordset.map((r: any) => ({
-        id: r.danismanId,
-        ad: r.Ad,
-        soyad: r.Soyad,
-        aktifPortfoySayisi: r.aktifPortfoySayisi,
-        buAyKapananIslem: r.buAyKapananIslem,
-        buAyCiro: Number(r.buAyCiro)
-      }))
+      portfoyTipDagilimi: tipDagilimi.map(r => ({ tip: r._id, adet: r.adet })),
+      danismanPerformans
     });
 
   } catch (error: any) {
@@ -205,21 +150,16 @@ export const getDashboardSummary = async (req: any, res: Response) => {
 export const getPersonalStats = async (req: any, res: any) => {
   const userId = req.user?.userId || req.user?.id;
   try {
-    const pool = await poolPromise;
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-    const personalRevenue = await pool.request()
-      .input('danismanId', sql.UniqueIdentifier, userId)
-      .input('startDate', sql.DateTime, startOfMonth)
-      .query(`
-        SELECT ISNULL(SUM(HizmetBedeliCiro), 0) AS AylikCiro, COUNT(IslemID) AS IslemSayisi
-        FROM SatisIslemleri
-        WHERE DanismanID = @danismanId AND IslemTarihi >= @startDate
-      `);
+    const personalRevenue = await Sale.aggregate([
+      { $match: { DanismanID: userId, IslemTarihi: { $gte: startOfMonth } } },
+      { $group: { _id: null, AylikCiro: { $sum: '$HizmetBedeliCiro' }, IslemSayisi: { $sum: 1 } } }
+    ]);
       
     res.json({ 
-      aylikCiro: personalRevenue.recordset[0].AylikCiro,
-      islemSayisi: personalRevenue.recordset[0].IslemSayisi
+      aylikCiro: personalRevenue[0]?.AylikCiro || 0,
+      islemSayisi: personalRevenue[0]?.IslemSayisi || 0
     });
   } catch (error) {
     console.error(error);
