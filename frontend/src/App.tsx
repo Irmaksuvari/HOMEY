@@ -2796,7 +2796,8 @@ export default function App() {
 
         const data = await res.json();
         if (res.ok) {
-          showToast(`Gayrimenkul uzmanı başarıyla eklendi!\nGeçici şifresi: Homey123!`, 'success');
+          const toastType = data.message?.includes('GÖNDERİLEMEDİ') ? 'error' : 'success';
+          showToast(data.message || 'Gayrimenkul uzmanı başarıyla eklendi!', toastType);
           setNewEmpName('');
           setNewEmpEmail('');
           fetchEmployees(token!);
