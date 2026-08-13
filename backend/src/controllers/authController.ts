@@ -299,7 +299,7 @@ export const googleLogin = async (req: Request, res: Response) => {
     ]);
 
     if (user.length === 0) {
-      return res.status(401).json({ message: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' });
+      return res.status(401).json({ message: 'Firma yetkiliniz tarafından mailinize bir üyelik atanmamıştı bu nedenle giriş yapamıyorsunuz.' });
     }
 
     const matchedUser = user[0];

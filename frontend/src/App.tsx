@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import TextLoop from './components/TextLoop';
 import { useGoogleLogin } from '@react-oauth/google';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
@@ -3600,8 +3601,27 @@ export default function App() {
   // RENDER 1: AUTHENTICATION SCREEN (LOGIN / REGISTER)
   if (!token) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-6 font-sans">
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+      <div className="min-h-screen bg-cream flex items-center justify-center p-6 font-sans relative overflow-hidden">
+        <div className="absolute inset-0 z-0 flex items-center justify-center opacity-40 pointer-events-none text-charcoal">
+          <TextLoop
+            text="HOMEY"
+            shape="wave"
+            speed={90}
+            direction="forward"
+            separator="✦"
+            curviness={90}
+            fontSize={64}
+            fontWeight={800}
+            letterSpacing={4}
+            uppercase
+            color="currentColor"
+            ribbon={true}
+            ribbonColor="gradient"
+            ribbonWidth={120}
+            pauseOnHover={false}
+          />
+        </div>
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch relative z-10">
 
           {/* Left Branding Panel */}
           <div className="bg-charcoal text-white rounded-3xl p-8 flex flex-col justify-between border-none shadow-none">
@@ -4028,10 +4048,10 @@ export default function App() {
                 {/* Right Hamburger Menu Button */}
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="w-10 h-10 rounded-xl hover:bg-zinc-800 transition-all duration-300 hover:rotate-90 text-white flex items-center justify-center border-none cursor-pointer active:scale-90 shrink-0"
+                  className="w-10 h-10 rounded-xl hover:bg-zinc-800 transition-all duration-300 hover:rotate-90 text-slate-100 flex items-center justify-center border-none cursor-pointer active:scale-90 shrink-0"
                   title="Menüyü Daralt"
                 >
-                  <Menu size={20} />
+                  <Menu size={20} color="#f8fafc" />
                 </button>
               </div>
             ) : (
@@ -4045,8 +4065,8 @@ export default function App() {
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-pastelYellow via-pastelPink to-pastelBlue rounded-full blur-xs opacity-75 group-hover:opacity-100 transition duration-300 animate-pulse"></div>
 
                 {/* Inner Circle Container holding the 3 Lines (Menu Icon) */}
-                <div className="relative w-10 h-10 bg-zinc-950 rounded-full flex items-center justify-center text-white border border-zinc-800 transition-transform duration-300">
-                  <Menu size={18} className="text-white group-hover:rotate-180 transition-transform duration-500 ease-out" />
+                <div className="relative w-10 h-10 bg-[#111111] rounded-full flex items-center justify-center text-slate-100 border border-[#27272a] transition-transform duration-300">
+                  <Menu size={18} color="#f8fafc" className="group-hover:rotate-180 transition-transform duration-500 ease-out" />
                 </div>
               </button>
             )}
