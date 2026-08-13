@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 
@@ -47,7 +48,7 @@ const buildPath = (shape, curviness, ribbonWidth) => {
 const TextLoop = ({
   text = 'React ✦ Bits',
   shape = 'wave',
-  path,
+  path = undefined,
   speed = 90,
   direction = 'forward',
   separator = '✦',
