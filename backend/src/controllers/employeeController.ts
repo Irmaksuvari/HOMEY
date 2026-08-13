@@ -64,7 +64,7 @@ export const addEmployee = async (req: any, res: Response) => {
       SilindiMi: false
     });
 
-    await sendEmail(
+    const emailResult = await sendEmail(
       eposta,
       'Homey CRM - Hesabınız Oluşturuldu',
       `
@@ -79,8 +79,13 @@ export const addEmployee = async (req: any, res: Response) => {
       `
     );
 
+    let msg = 'Gayrimenkul uzmanı başarıyla eklendi ve şifresi mail olarak gönderildi.';
+    if (!emailResult.success) {
+      msg = 'Gayrimenkul uzmanı eklendi ancak şifre maili GÖNDERİLEMEDİ! Lütfen mail adresini ve gönderim ayarlarını kontrol edin.';
+    }
+
     res.status(201).json({
-      message: 'Gayrimenkul uzmanı başarıyla eklendi. Geçici giriş şifresi: Homey123!',
+      message: msg,
       employee: { ad, soyad, eposta, rol: 'UZMAN', durum: 'Ofiste' }
     });
 

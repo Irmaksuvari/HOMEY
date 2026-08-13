@@ -11,14 +11,19 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
-    const data = await resend.emails.send({
+    const response = await resend.emails.send({
       from: 'HOMEY <info@homey.irmaksuvari.me>', // Verified custom domain
       to,
       subject,
       html,
     });
 
-    return { success: true, data };
+    if (response.error) {
+      console.error('Resend API Error:', response.error);
+      return { success: false, error: response.error };
+    }
+
+    return { success: true, data: response.data };
   } catch (error) {
     console.error('Error sending email:', error);
     return { success: false, error };
