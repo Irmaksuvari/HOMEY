@@ -54,7 +54,7 @@ Projeyi yerel ortamınızda çalıştırmak için:
 1. Depoyu bilgisayarınıza klonlayın.
 2. `frontend` ve `backend` klasörlerinde sırasıyla `npm install` komutu ile bağımlılıkları yükleyin.
 3. Çevresel değişkenlerinizi (`.env` dosyaları) ayarlayın.
-4. Geliştirme ortamını başlatmak için `npm run dev` komutunu kullanın (Frontend için varsayılan: `http://localhost:5173`).
+4. Geliştirme ortamını başlatmak için `npm run dev` komutunu kullanın (Frontend için varsayılan: `http://localhost:3000`).
 
 ---
 *Daha fazla detay ve arayüz görselleri için docs klasörü içerisindeki [HOMEY_RAPOR2.pdf](./HOMEY_RAPOR2.pdf) dosyasını inceleyebilirsiniz.*
