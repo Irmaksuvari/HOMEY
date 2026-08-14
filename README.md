@@ -1,5 +1,7 @@
 # HOMEY - Emlak Yönetim ve CRM Sistemi
 
+🌐 **Canlı Demo:** Projemizi [homey.irmaksuvari.me](https://homey.irmaksuvari.me) adresinden canlı olarak inceleyebilirsiniz.
+
 HOMEY, gayrimenkul danışmanlarının ve emlak ofislerinin günlük operasyonlarını (portföy yönetimi, müşteri takibi, evrak işleri) dijitalleştirerek tek bir merkezden, hızlı ve hatasız bir şekilde yönetmelerini sağlamak amacıyla geliştirilmiş modern bir **SaaS (Software as a Service)** çözümüdür.
 
 ![Giriş Ekranı](./docs/Giris-ekrani.png)
@@ -55,4 +57,4 @@ Projeyi yerel ortamınızda çalıştırmak için:
 4. Geliştirme ortamını başlatmak için `npm run dev` komutunu kullanın (Frontend için varsayılan: `http://localhost:5173`).
 
 ---
-*Daha fazla detay ve arayüz görselleri için [HOMEY_RAPOR2.pdf](./HOMEY_RAPOR2.pdf) dosyasını inceleyebilirsiniz.*
+*Daha fazla detay ve arayüz görselleri için docs klasörü içerisindeki [HOMEY_RAPOR2.pdf](./HOMEY_RAPOR2.pdf) dosyasını inceleyebilirsiniz.*
