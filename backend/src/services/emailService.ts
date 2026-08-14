@@ -17,6 +17,8 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
       subject,
       html,
     });
+    
+    console.log('RESEND API CEVABI:', response);
 
     if (response.error) {
       console.error('Resend API Error:', response.error);

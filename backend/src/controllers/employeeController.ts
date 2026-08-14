@@ -106,10 +106,18 @@ export const listEmployees = async (req: any, res: Response) => {
     
     // Aggregate portfolios for stats
     const stats = await Portfolio.aggregate([
-      { $match: { GorevliUzmanId: { $in: userIds } } },
+      { $match: { GorevliUzmanId: { $in: userIds }, SilindiMi: { $ne: true } } },
       { $group: {
           _id: '$GorevliUzmanId',
-          SozlesmeSayisi: { $sum: 1 },
+          SozlesmeSayisi: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$Durum', ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI']] } },
+                1,
+                0
+              ]
+            }
+          },
           KazanilanCiro: {
             $sum: {
               $cond: [

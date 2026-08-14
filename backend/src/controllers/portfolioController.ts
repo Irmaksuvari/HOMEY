@@ -119,7 +119,8 @@ export const listPortfolios = async (req: any, res: Response) => {
       { 
         $match: { 
           FirmaId: firmaId, 
-          Durum: { $nin: ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI'] } 
+          Durum: { $nin: ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI'] },
+          SilindiMi: { $ne: true }
         } 
       },
       { $lookup: { from: 'Kullanicilar', localField: 'GorevliUzmanId', foreignField: '_id', as: 'Uzman' } },
@@ -398,7 +399,8 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
           $or: [
             { DanismanID: firmaId ? null : userId }, 
             { 'Portfoy.FirmaId': firmaId }
-          ]
+          ],
+          'Portfoy.SilindiMi': { $ne: true }
         }
       },
       { $lookup: { from: 'Kullanicilar', localField: 'DanismanID', foreignField: '_id', as: 'IslemYapan' } },
@@ -416,7 +418,8 @@ export const getCompletedPortfolios = async (req: any, res: Response) => {
       { 
         $match: { 
           FirmaId: firmaId, 
-          Durum: { $in: ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI'] } 
+          Durum: { $in: ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI'] },
+          SilindiMi: { $ne: true }
         } 
       },
       { 

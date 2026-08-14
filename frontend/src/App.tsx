@@ -1225,7 +1225,10 @@ export default function App() {
           });
           if (res.ok) {
             const data = await res.json();
-            setFirmaSettings(data);
+            setFirmaSettings({
+              ...data,
+              YetkilendirmeSarti: data.YetkilendirmeSarti === true || data.YetkilendirmeSarti === 'true'
+            });
           }
         } catch (e) {
           console.error(e);

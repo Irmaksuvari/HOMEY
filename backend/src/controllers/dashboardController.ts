@@ -23,7 +23,7 @@ export const getDashboardSummary = async (req: any, res: Response) => {
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     // Filter Portfolios by FirmaId first to limit the join space
-    const firmPortfolios = await Portfolio.find({ FirmaId: firmaId }).select('_id');
+    const firmPortfolios = await Portfolio.find({ FirmaId: firmaId, SilindiMi: { $ne: true } }).select('_id');
     const firmPortfolioIds = firmPortfolios.map(p => p._id);
 
     // 1. Toplam Ofis Cirosu
@@ -51,7 +51,7 @@ export const getDashboardSummary = async (req: any, res: Response) => {
 
     // 6. Aktif İlan Stoğu Bedeli
     const aktifIlanAggr = await Portfolio.aggregate([
-      { $match: { FirmaId: firmaId, Durum: 'BOSTA' } },
+      { $match: { FirmaId: firmaId, Durum: 'BOSTA', SilindiMi: { $ne: true } } },
       { $group: { _id: null, toplam: { $sum: '$Fiyat' }, adet: { $sum: 1 } } }
     ]);
     const aktifIlanBedeli = aktifIlanAggr[0]?.toplam || 0;
@@ -84,17 +84,23 @@ export const getDashboardSummary = async (req: any, res: Response) => {
 
     // 8. Portföy Tipi Dağılımı
     const tipDagilimi = await Portfolio.aggregate([
-      { $match: { FirmaId: firmaId } },
+      { 
+        $match: { 
+          FirmaId: firmaId, 
+          SilindiMi: { $ne: true },
+          Durum: { $nin: ['SATILDI', 'KIRALANDI', 'KIRALANDI_SATILDI', 'TAMAMLANDI'] }
+        } 
+      },
       { $group: { _id: '$Tip', adet: { $sum: 1 } } },
       { $sort: { adet: -1 } }
     ]);
 
     // 9. Danışman Performans Liderlik Tablosu
-    const users = await User.find({ FirmaId: firmaId, Rol: { $ne: 'YETKILI' } });
+    const users = await User.find({ FirmaId: firmaId, Rol: { $ne: 'YETKILI' }, SilindiMi: { $ne: true } });
     const userIds = users.map(u => u._id);
     
     const danismanPortfoyler = await Portfolio.aggregate([
-      { $match: { GorevliUzmanId: { $in: userIds }, Durum: 'BOSTA' } },
+      { $match: { GorevliUzmanId: { $in: userIds }, Durum: 'BOSTA', SilindiMi: { $ne: true } } },
       { $group: { _id: '$GorevliUzmanId', count: { $sum: 1 } } }
     ]);
     const dpMap = danismanPortfoyler.reduce((acc, curr) => { acc[curr._id] = curr.count; return acc; }, {});

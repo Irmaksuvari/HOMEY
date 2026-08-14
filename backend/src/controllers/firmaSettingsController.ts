@@ -71,7 +71,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
         { FirmaId: firmaId },
         {
           $set: {
-            YetkilendirmeSarti: YetkilendirmeSarti === true,
+            YetkilendirmeSarti: YetkilendirmeSarti === true || YetkilendirmeSarti === 'true',
             KiralamaKomisyonOrani: KiralamaKomisyonOrani ?? 1.00,
             KiralamaKdv: KiralamaKdv ?? 20.00,
             KiralamaDepozitoSiniri: KiralamaDepozitoSiniri ?? 3,
@@ -102,7 +102,7 @@ export const upsertFirmaSettings = async (req: any, res: Response) => {
       await FirmCommissionSetting.create({
         _id: uuidv4(),
         FirmaId: firmaId,
-        YetkilendirmeSarti: YetkilendirmeSarti === true,
+        YetkilendirmeSarti: YetkilendirmeSarti === true || YetkilendirmeSarti === 'true',
         KiralamaKomisyonOrani: KiralamaKomisyonOrani ?? 1.00,
         KiralamaKdv: KiralamaKdv ?? 20.00,
         KiralamaDepozitoSiniri: KiralamaDepozitoSiniri ?? 3,
